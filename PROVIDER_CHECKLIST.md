@@ -30,9 +30,9 @@ Generally projects are named `provider-<name>`, with `name` being the API being
 managed. Example project names are `provider-aws`, `provider-kubernetes`,
 and `provider-github`.
 
-The [provider-template](https://github.com/crossplane/provider-template) repository can be
+The [provider-ceph](https://github.com/crossplane/provider-ceph) repository can be
 used as a starting point for new providers. For [terrajet](https://github.com/crossplane/terrajet)-based providers, the
-[provider-jet-template](https://github.com/crossplane-contrib/provider-jet-template) is
+[provider-jet-ceph](https://github.com/crossplane-contrib/provider-jet-ceph) is
 available.
 
 ## Files
@@ -43,17 +43,17 @@ Most Crossplane providers include the following files:
   [provider-gcp/README.md](https://github.com/crossplane/provider-gcp/blob/master/README.md)
   as an example)
 - [ ]  Code is licensed under the [Apache 2.0
-  License](https://github.com/crossplane/provider-template/blob/main/LICENSE)
+  License](https://github.com/crossplane/provider-ceph/blob/main/LICENSE)
 - [ ]  Include a “Developer Certificate of Origin”. Example:
   [DCO](https://github.com/upbound/build/blob/master/DCO)
 - [ ]  Include the CNCF [Code of
   Conduct](https://github.com/crossplane/crossplane/blob/master/CODE_OF_CONDUCT.md)
 - [ ]  Update
-  [OWNERS.md](https://github.com/crossplane/provider-template/blob/main/OWNERS.md)
+  [OWNERS.md](https://github.com/crossplane/provider-ceph/blob/main/OWNERS.md)
   with contacts for project Owners
 - [ ]  Ensure `hack/boilerplate.go.txt` (used in Code generation) includes
   Crossplane Authors, Apache license and any other Copyright statements:
-  [https://github.com/crossplane/provider-template/blob/main/hack/boilerplate.go.txt](https://github.com/crossplane/provider-template/blob/main/hack/boilerplate.go.txt)
+  [https://github.com/crossplane/provider-ceph/blob/main/hack/boilerplate.go.txt](https://github.com/crossplane/provider-ceph/blob/main/hack/boilerplate.go.txt)
 - [ ] Include Documentation on how to:
   - [ ] Install Provider
   - [ ] Contribute to Development
@@ -68,7 +68,7 @@ There are a number of build tools and processes that are common across the
 Crossplane ecosystem. Using these ensures a consistent development environment
 across projects.
 
-The [provider-template](https://github.com/crossplane/provider-template)
+The [provider-ceph](https://github.com/crossplane/provider-ceph)
 repository contains most of these settings.
 
 - [ ] Use the [Upbound build](https://github.com/upbound/build) submodule. (see
@@ -81,7 +81,7 @@ repository contains most of these settings.
 - [ ] Create a [Crossplane
   Package](https://crossplane.io/docs/master/concepts/packages.html)
   configuration (see
-  [package/crossplane.yaml)](https://github.com/crossplane/provider-template/blob/main/package/crossplane.yaml)
+  [package/crossplane.yaml)](https://github.com/crossplane/provider-ceph/blob/main/package/crossplane.yaml)
 
 ## Deployment of Artifacts
 
@@ -96,7 +96,7 @@ the publish and promotion workflows.
 In general, providers should:
 
 - [ ] Utilize GitHub workflows from
-  <https://github.com/crossplane/provider-template/tree/main/.github/workflows>
+  <https://github.com/crossplane/provider-ceph/tree/main/.github/workflows>
 - [ ] Create OCI image repos to push Package and Controller images.
 - [ ] Automatically push Provider images and packages via CI
 - [ ] Add GitHub Secrets to push to Docker repository. (To be performed by
@@ -112,7 +112,7 @@ to grant your project access to the GitHub org scoped secrets.
 
 - [ ] Follow recommendations at
   [https://github.com/crossplane/crossplane/blob/master/GOVERNANCE.md#repository-governance](https://github.com/crossplane/crossplane/blob/master/GOVERNANCE.md#repository-governance)
-- [ ] Enable Issues on your project and configure Issue templates (examples at:
-  [.github/ISSUE_TEMPLATE](https://github.com/crossplane/provider-template/tree/master/.github/ISSUE_TEMPLATE))
-- [ ] Create Pull Request Templates: (example:
-  [PULL_REQUEST_TEMPLATE.md](https://github.com/crossplane/provider-template/blob/master/.github/PULL_REQUEST_TEMPLATE.md))
+- [ ] Enable Issues on your project and configure Issue cephs (examples at:
+  [.github/ISSUE_TEMPLATE](https://github.com/crossplane/provider-ceph/tree/master/.github/ISSUE_TEMPLATE))
+- [ ] Create Pull Request Cephs: (example:
+  [PULL_REQUEST_TEMPLATE.md](https://github.com/crossplane/provider-ceph/blob/master/.github/PULL_REQUEST_TEMPLATE.md))

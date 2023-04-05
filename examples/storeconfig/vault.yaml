@@ -1,4 +1,4 @@
-apiVersion: template.crossplane.io/v1alpha1
+apiVersion: ceph.crossplane.io/v1alpha1
 kind: StoreConfig
 metadata:
   name: vault

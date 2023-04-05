@@ -34,7 +34,7 @@ echo_error(){
 
 
 # The name of your provider. Many provider Makefiles override this value.
-PACKAGE_NAME="provider-template"
+PACKAGE_NAME="provider-ceph"
 
 
 # ------------------------------

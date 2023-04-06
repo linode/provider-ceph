@@ -2,19 +2,22 @@ apiVersion: v1
 kind: Secret
 metadata:
   namespace: crossplane-system
-  name: example-provider-secret
+  name: ceph-admin-cfg
 type: Opaque
 data:
-  # credentials: BASE64ENCODED_PROVIDER_CREDS
+  access_key: "echo -n <access_key> | base64"
+  secret_key: "echo -n <secret_key> | base64"
 ---
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
-  name: example
+  name: ceph-admin-cfg
+  namespace: crossplane-system
 spec:
+  hostBase: "<host_base>" 
   credentials:
     source: Secret
     secretRef:
       namespace: crossplane-system
-      name: example-provider-secret
+      name: ceph-admin-cfg
       key: credentials

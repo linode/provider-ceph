@@ -29,6 +29,9 @@ import (
 type ProviderConfigSpec struct {
 	// Credentials required to authenticate to this provider.
 	Credentials ProviderCredentials `json:"credentials"`
+
+	HostBase   string `json:"hostBase"`
+	HostBucket string `json:"hostBucket,omitempty"`
 }
 
 // ProviderCredentials required to authenticate.

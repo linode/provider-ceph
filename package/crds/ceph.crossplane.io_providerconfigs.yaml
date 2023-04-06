@@ -96,8 +96,13 @@ spec:
                 required:
                 - source
                 type: object
+              hostBase:
+                type: string
+              hostBucket:
+                type: string
             required:
             - credentials
+            - hostBase
             type: object
           status:
             description: A ProviderConfigStatus reflects the observed state of a ProviderConfig.

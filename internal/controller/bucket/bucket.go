@@ -18,7 +18,6 @@ package bucket
 
 import (
 	"context"
-	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -136,9 +135,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotBucket)
 	}
 
-	// These fmt statements should be removed in the real implementation.
-	fmt.Printf("Observing: %s\n", cr.Name)
-
 	resp, err := c.s3Client.ListBucketsWithContext(ctx, nil)
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, "unable to list buckets using s3 client")
@@ -179,10 +175,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotBucket)
 	}
 
-	fmt.Printf("Creating: %+v", cr.Name)
-
-	bucketName := "s3://" + cr.Name
-	_, err := c.s3Client.CreateBucketWithContext(ctx, &s3.CreateBucketInput{Bucket: aws.String(bucketName)})
+	_, err := c.s3Client.CreateBucketWithContext(ctx, &s3.CreateBucketInput{Bucket: aws.String(cr.Name)})
 	if err != nil {
 		return managed.ExternalCreation{}, err
 	}
@@ -200,8 +193,6 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotBucket)
 	}
 
-	fmt.Printf("Updating: %+v", cr)
-
 	return managed.ExternalUpdate{
 		// Optionally return any details that may be required to connect to the
 		// external resource. These will be stored as the connection secret.
@@ -215,7 +206,10 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.New(errNotBucket)
 	}
 
-	fmt.Printf("Deleting: %+v", cr)
+	_, err := c.s3Client.DeleteBucketWithContext(ctx, &s3.DeleteBucketInput{Bucket: aws.String(cr.Name)})
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

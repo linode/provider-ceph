@@ -58,8 +58,6 @@ make run
 
 - Create Secret and ProviderConfig
 ```
-kubectl create ns crossplane-system 
-
 kubectl apply -f examples/provider/config.yaml
 ```
 - Check ceph cluster for existing buckets

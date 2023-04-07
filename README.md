@@ -33,3 +33,52 @@ guide may also be of use.
 
 [CONTRIBUTING.md]: https://github.com/crossplane/crossplane/blob/master/CONTRIBUTING.md
 [provider-dev]: https://github.com/crossplane/crossplane/blob/master/docs/contributing/provider_development_guide.md
+
+## Demo
+
+### Prerequisites
+- Access to a running ceph cluster
+
+### Steps
+- Create a local k8s cluster
+```
+kind create cluster
+```
+- Install necessary CRDs
+```
+ kubectl apply -f package/crds
+```
+- Run provider locally for debugging
+```
+make run
+```
+- In a separate terminal, edit examples/provider/config.yaml
+  - Edit Secret: Add `access_key and `secret_key` from `s3_admin.cfg` (config file for you ceph cluster)
+  - Edit ProviderConfig: add `host_base` from `s3_admin.cfg`
+
+- Create Secret and ProviderConfig
+```
+kubectl create ns crossplane-system 
+
+kubectl apply -f examples/provider/config.yaml
+```
+- Check ceph cluster for existing buckets
+```
+s3cmd --config /path/to/s3_admin.cfg ls
+```
+- Create Bucket CR 
+```
+kubectl apply -f examples/sample/bucket.yaml
+```
+- Check ceph cluster for newly created bucket
+```
+s3cmd --config /path/to/s3_admin.cfg ls
+```
+- Delete Bucket CR 
+```
+kubectl delete -f examples/sample/bucket.yaml
+```
+- Check ceph cluster to verify bucket was deleted
+```
+s3cmd --config /path/to/s3_admin.cfg ls
+```

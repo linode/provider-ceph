@@ -46,7 +46,7 @@ func NewClient(data map[string][]byte, hostBase string) *s3.S3 {
 
 	sessionConfig.EndpointResolver = buildEndpointResolver(hostBase)
 
-	// This setting is neccessary to interact with ceph
+	// This setting is necessary to interact with ceph
 	// see https://github.com/aws/aws-sdk-go/issues/1585
 	sessionConfig.WithS3ForcePathStyle(true)
 

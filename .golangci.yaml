@@ -1,0 +1,93 @@
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+  goconst:
+    min-len: 2
+    min-occurrences: 3
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - unnamedResult
+      - hugeParam
+  nolintlint:
+    require-explanation: true
+    require-specific: true
+
+linters:
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - containedctx
+    - contextcheck
+    - cyclop
+    - decorder
+    - depguard
+    - dogsled
+    - dupl
+    - dupword
+    - durationcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - errcheck
+    - exportloopref
+    - exhaustive
+    - exportloopref
+    - forbidigo
+    - forcetypeassert
+    # - funlen
+    # - gci
+    - gocheckcompilerdirectives
+    - gocognit
+    - goconst
+    - gocritic
+    # - godot
+    # - godox
+    - goerr113
+    - gofmt
+    - goimports
+    - gomnd
+    - gocyclo
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - loggercheck
+    - maintidx
+    - makezero
+    - misspell
+    - nestif
+    - nilerr
+    - nilnil
+    - nlreturn
+    - noctx
+    - nolintlint
+    - nakedret
+    - paralleltest
+    - prealloc
+    - predeclared
+    - reassign
+    - revive
+    - staticcheck
+    - stylecheck
+    - tenv
+    - thelper
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    # - varnamelen
+    - whitespace
+    # - wrapcheck
+
+run:
+  issues-exit-code: 1

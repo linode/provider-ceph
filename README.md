@@ -20,6 +20,8 @@ make provider.addtype provider={Ceph} group={group} kind={type}
 2. Replace the default controller and ProviderConfig implementations with your own
 2. Run `make reviewable` to run code generation, linters, and tests.
 2. Run `make build` to build the provider.
+2. Change your path to `export PATH="$PWD/bin:$PATH"`.
+2. Install Git hooks `husky install`.
 
 Refer to Crossplane's [CONTRIBUTING.md] file for more information on how the
 Crossplane community prefers to work. The [Provider Development][provider-dev]

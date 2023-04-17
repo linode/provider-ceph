@@ -19,6 +19,7 @@ package features
 import "github.com/crossplane/crossplane-runtime/pkg/feature"
 
 // Feature flags.
+// #nosec
 const (
 	// EnableAlphaExternalSecretStores enables alpha support for
 	// External Secret Stores. See the below design for more details.

@@ -37,11 +37,14 @@ import (
 // https://github.com/crossplane/crossplane/blob/master/CONTRIBUTING.md#contributing-code
 
 func TestObserve(t *testing.T) {
+	t.Parallel()
+
 	type fields struct {
 		s3Client *s3.S3
 	}
 
 	type args struct {
+		//nolint:containedctx // It is a test.
 		ctx context.Context
 		mg  resource.Managed
 	}
@@ -61,7 +64,10 @@ func TestObserve(t *testing.T) {
 	}
 
 	for name, tc := range cases {
+		tc := tc
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			e := external{s3Client: tc.fields.s3Client}
 			got, err := e.Observe(tc.args.ctx, tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {

@@ -155,7 +155,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 				// resource. These will be stored as the connection secret.
 				ConnectionDetails: managed.ConnectionDetails{},
 			}, nil
-
 		}
 	}
 

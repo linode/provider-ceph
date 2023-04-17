@@ -1,31 +1,25 @@
 # provider-ceph
 
 `provider-ceph` is a minimal [Crossplane](https://crossplane.io/) Provider
-that is meant to be used as a ceph for implementing new Providers. It comes
-with the following features that are meant to be refactored:
+that reconciles `Bucket` CRs with an external Ceph cluster. It comes
+with the following features:
 
-- A `ProviderConfig` type that only points to a credentials `Secret`.
-- A `MyType` resource type that serves as an example managed resource.
-- A managed resource controller that reconciles `MyType` objects and simply
-  prints their configuration in its `Observe` method.
+- A `ProviderConfig` type that points to a credentials `Secret` for access to a Ceph cluster.
+- A `Bucket` resource type that serves as an example managed resource.
+- A managed resource controller that reconciles `Bucket` objects and reconciles these objects with the Ceph cluster.
 
 ## Developing
 
-1. Use this repository as a ceph to create a new one.
 1. Run `make submodules` to initialize the "build" Make submodule we use for CI/CD.
-1. Rename the provider by running the follwing command:
+2. Add your new type by running the following command:
 ```
-  make provider.prepare provider={PascalProviderName}
+make provider.addtype provider={Ceph} group={group} kind={type}
 ```
-4. Add your new type by running the following command:
-```
-make provider.addtype provider={PascalProviderName} group={group} kind={type}
-```
-5. Replace the *sample* group with your new group in apis/{provider}.go
-5. Replace the *mytype* type with your new type in internal/controller/{provider}.go
-5. Replace the default controller and ProviderConfig implementations with your own
-5. Run `make reviewable` to run code generation, linters, and tests.
-5. Run `make build` to build the provider.
+2. Replace the *sample* group with your new group in apis/{provider}.go
+2. Replace the *mytype* type with your new type in internal/controller/{provider}.go
+2. Replace the default controller and ProviderConfig implementations with your own
+2. Run `make reviewable` to run code generation, linters, and tests.
+2. Run `make build` to build the provider.
 
 Refer to Crossplane's [CONTRIBUTING.md] file for more information on how the
 Crossplane community prefers to work. The [Provider Development][provider-dev]
@@ -47,6 +41,10 @@ kind create cluster
 - Install necessary CRDs
 ```
  kubectl apply -f package/crds
+```
+- Initialize the build
+```
+make submodules
 ```
 - Run provider locally for debugging
 ```

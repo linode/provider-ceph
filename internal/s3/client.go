@@ -9,28 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	apisv1alpha1 "github.com/crossplane/provider-ceph/apis/v1alpha1"
-
-	"fmt"
 )
-
-func CreateBucket(client *s3.S3, bucketName string) error {
-	_, err := client.CreateBucket(&s3.CreateBucketInput{
-		Bucket: aws.String(bucketName),
-	})
-
-	return err
-}
-
-func ListBuckets(client *s3.S3) error {
-	resp, err := client.ListBuckets(nil)
-	if err != nil {
-		return err
-	}
-	for _, bucket := range resp.Buckets {
-		fmt.Println(*bucket.Name)
-	}
-	return nil
-}
 
 const (
 	defaultRegion = "us-east-1"

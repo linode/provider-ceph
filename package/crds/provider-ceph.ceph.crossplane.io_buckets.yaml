@@ -64,7 +64,51 @@ spec:
               forProvider:
                 description: BucketParameters are the configurable fields of a Bucket.
                 properties:
+                  acl:
+                    description: The canned ACL to apply to the bucket.
+                    type: string
                   configurableField:
+                    type: string
+                  grantFullControl:
+                    description: Allows grantee the read, write, read ACP, and write
+                      ACP permissions on the bucket.
+                    type: string
+                  grantRead:
+                    description: Allows grantee to list the objects in the bucket.
+                    type: string
+                  grantReadACP:
+                    description: Allows grantee to read the bucket ACL.
+                    type: string
+                  grantWrite:
+                    description: "Allows grantee to create new objects in the bucket.
+                      \n For the bucket and object owners of existing objects, also
+                      allows deletions and overwrites of those objects."
+                    type: string
+                  grantWriteACP:
+                    description: Allows grantee to write the ACL for the applicable
+                      bucket.
+                    type: string
+                  locationConstraint:
+                    description: Specifies the Region where the bucket will be created.
+                    type: string
+                  objectLockEnabledForBucket:
+                    description: Specifies whether you want S3 Object Lock to be enabled
+                      for the new bucket.
+                    type: boolean
+                  objectOwnership:
+                    description: "The container element for object ownership for a
+                      bucket's ownership controls. \n BucketOwnerPreferred - Objects
+                      uploaded to the bucket change ownership to the bucket owner
+                      if the objects are uploaded with the bucket-owner-full-control
+                      canned ACL. \n ObjectWriter - The uploading account will own
+                      the object if the object is uploaded with the bucket-owner-full-control
+                      canned ACL. \n BucketOwnerEnforced - Access control lists (ACLs)
+                      are disabled and no longer affect permissions. The bucket owner
+                      automatically owns and has full control over every object in
+                      the bucket. The bucket only accepts PUT requests that don't
+                      specify an ACL or bucket owner full control ACLs, such as the
+                      bucket-owner-full-control canned ACL or an equivalent form of
+                      this ACL expressed in the XML format."
                     type: string
                 required:
                 - configurableField

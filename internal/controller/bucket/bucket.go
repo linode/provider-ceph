@@ -38,7 +38,7 @@ import (
 	"github.com/crossplane/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/crossplane/provider-ceph/apis/v1alpha1"
 	"github.com/crossplane/provider-ceph/internal/controller/features"
-	s3client "github.com/crossplane/provider-ceph/internal/s3"
+	s3internal "github.com/crossplane/provider-ceph/internal/s3"
 )
 
 const (
@@ -116,7 +116,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, "cannot get Provider secret")
 	}
 
-	return &external{s3Client: s3client.NewClient(secret.Data, &pc.Spec)}, nil
+	return &external{s3Client: s3internal.NewClient(secret.Data, &pc.Spec)}, nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
@@ -168,12 +168,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.Bucket)
+	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotBucket)
 	}
 
-	_, err := c.s3Client.CreateBucketWithContext(ctx, &s3.CreateBucketInput{Bucket: aws.String(cr.Name)})
+	_, err := c.s3Client.CreateBucketWithContext(ctx, s3internal.BucketToCreateBucketInput(bucket))
 	if err != nil {
 		return managed.ExternalCreation{}, err
 	}

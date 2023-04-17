@@ -46,8 +46,6 @@ const (
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	errGetPC        = "cannot get ProviderConfig"
 	errGetCreds     = "cannot get credentials"
-
-	errNewClient = "cannot create new Service"
 )
 
 // A NoOpService does nothing.
@@ -118,7 +116,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, "cannot get Provider secret")
 	}
 
-	return &external{s3Client: s3client.NewClient(secret.Data, pc.Spec.HostBase)}, nil
+	return &external{s3Client: s3client.NewClient(secret.Data, &pc.Spec)}, nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an

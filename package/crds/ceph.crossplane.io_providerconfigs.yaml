@@ -97,9 +97,14 @@ spec:
                 - source
                 type: object
               hostBase:
+                description: HostBase url specified in s3cfg.
                 type: string
               hostBucket:
+                description: HostBucket url specified in s3cfg.
                 type: string
+              useHttps:
+                description: UseHttps ceph cluster configuration.
+                type: boolean
             required:
             - credentials
             - hostBase

@@ -30,8 +30,14 @@ type ProviderConfigSpec struct {
 	// Credentials required to authenticate to this provider.
 	Credentials ProviderCredentials `json:"credentials"`
 
-	HostBase   string `json:"hostBase"`
+	// HostBase url specified in s3cfg.
+	HostBase string `json:"hostBase"`
+
+	// HostBucket url specified in s3cfg.
 	HostBucket string `json:"hostBucket,omitempty"`
+
+	// UseHttps ceph cluster configuration.
+	UseHttps bool `json:"useHttps,omitempty"`
 }
 
 // ProviderCredentials required to authenticate.

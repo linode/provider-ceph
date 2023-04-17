@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	apisv1alpha1 "github.com/crossplane/provider-ceph/apis/v1alpha1"
 
 	"fmt"
 )
@@ -38,13 +39,13 @@ const (
 	secretKey = "secret_key"
 )
 
-func NewClient(data map[string][]byte, hostBase string) *s3.S3 {
+func NewClient(data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec) *s3.S3 {
 	// By default make sure a region is specified, this is required for S3 operations
 	sessionConfig := aws.Config{Region: aws.String(defaultRegion)}
 
 	sessionConfig.Credentials = credentials.NewStaticCredentials(string(data[accessKey]), string(data[secretKey]), "")
 
-	sessionConfig.EndpointResolver = buildEndpointResolver(hostBase)
+	sessionConfig.EndpointResolver = buildEndpointResolver(pcSpec)
 
 	// This setting is necessary to interact with ceph
 	// see https://github.com/aws/aws-sdk-go/issues/1585
@@ -56,20 +57,23 @@ func NewClient(data map[string][]byte, hostBase string) *s3.S3 {
 	})))
 }
 
-func buildEndpointResolver(hostname string) endpoints.Resolver {
+func buildEndpointResolver(pcSpec *apisv1alpha1.ProviderConfigSpec) endpoints.Resolver {
 	defaultResolver := endpoints.DefaultResolver()
 
-	fixedHost := hostname
-	// TODO: Using http for testing for now as ceph clusters
-	// deployed by ceph-deploy are not https by default AFAIK.
-	if !strings.HasPrefix(hostname, "http") {
-		fixedHost = "http://" + hostname
+	hostBase := pcSpec.HostBase
+	if !strings.HasPrefix(hostBase, "http") {
+		if pcSpec.UseHttps {
+			hostBase = "https://" + hostBase
+		} else {
+			hostBase = "http://" + hostBase
+
+		}
 	}
 
 	return endpoints.ResolverFunc(func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
 		if service == endpoints.S3ServiceID {
 			return endpoints.ResolvedEndpoint{
-				URL: fixedHost,
+				URL: hostBase,
 			}, nil
 		}
 

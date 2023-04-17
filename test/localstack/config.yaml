@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: crossplane-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: crossplane-system
+  name: ceph-admin-cfg
+type: Opaque
+data:
+  access_key: "RHVtbXk="
+  secret_key: "RHVtbXk="
+---
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: ceph-admin-cfg
+  namespace: crossplane-system
+spec:
+  hostBase: "localhost:4566" 
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: ceph-admin-cfg
+      key: credentials

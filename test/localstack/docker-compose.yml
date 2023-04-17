@@ -1,0 +1,20 @@
+version: '3.2'
+services:
+  localstack:
+    network_mode: bridge
+    image: localstack/localstack:latest
+    container_name: localstack_main
+    ports:
+      - "4510-4559:4510-4559"
+      - "4566-4583:4566-4583"
+    environment:
+      - SERVICES=s3
+      - EDGE_PORT=4566
+      - AWS_DEFAULT_REGION=us-east-1
+      - MAIN_CONTAINER_NAME=localstack_main
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DATA_DIR=/tmp/localstack/data
+    volumes:
+      - './.localstack:/tmp/localstack'
+      - '/var/run/docker.sock:/var/run/docker.sock'

@@ -41,11 +41,10 @@ func buildEndpointResolver(pcSpec *apisv1alpha1.ProviderConfigSpec) endpoints.Re
 
 	hostBase := pcSpec.HostBase
 	if !strings.HasPrefix(hostBase, "http") {
-		if pcSpec.UseHttps {
+		if pcSpec.UseHTTPS {
 			hostBase = "https://" + hostBase
 		} else {
 			hostBase = "http://" + hostBase
-
 		}
 	}
 

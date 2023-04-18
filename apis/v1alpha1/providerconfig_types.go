@@ -36,8 +36,8 @@ type ProviderConfigSpec struct {
 	// HostBucket url specified in s3cfg.
 	HostBucket string `json:"hostBucket,omitempty"`
 
-	// UseHttps ceph cluster configuration.
-	UseHttps bool `json:"useHttps,omitempty"`
+	// UseHTTPS ceph cluster configuration.
+	UseHTTPS bool `json:"useHttps,omitempty"`
 }
 
 // ProviderCredentials required to authenticate.

@@ -35,5 +35,6 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 			return err
 		}
 	}
+
 	return nil
 }

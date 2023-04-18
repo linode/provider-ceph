@@ -43,6 +43,9 @@ XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/crossplane
 XPKGS = provider-ceph
 -include build/makelib/xpkg.mk
 
+# Husky git hook manager tasks.
+-include .husky/husky.mk
+
 # NOTE(hasheddan): we force image building to happen prior to xpkg build so that
 # we ensure image is present in daemon.
 xpkg.build.provider-ceph: do.build.images
@@ -161,3 +164,11 @@ crossplane.help:
 help-special: crossplane.help
 
 .PHONY: crossplane.help help-special
+
+# Install Earthly to run CI pipelines.
+EARTHLY ?= $(shell pwd)/bin/earthly
+earthly:
+ifeq (,$(wildcard $(EARTHLY)))
+	curl -sL https://github.com/earthly/earthly/releases/download/v0.7.1/earthly-linux-amd64 -o $(EARTHLY)
+	chmod +x $(EARTHLY)
+endif

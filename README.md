@@ -48,11 +48,11 @@ make submodules
 ```
 - Run provider locally for debugging
 ```
-make run
+make submodules run
 ```
 - In a separate terminal, edit examples/provider/config.yaml
-  - Edit Secret: Add `access_key and `secret_key` from `s3_admin.cfg` (config file for you ceph cluster)
-  - Edit ProviderConfig: add `host_base` from `s3_admin.cfg`
+  - Edit Secret: Add `access_key` and `secret_key` from `s3_admin.cfg` (config file for you ceph cluster)
+  - Edit ProviderConfig: add `host_base` from `s3_admin.cfg` (if missing, generate it via `s3cmd --configure`)
 
 - Create Secret and ProviderConfig
 ```

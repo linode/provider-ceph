@@ -95,6 +95,7 @@ dev: $(KIND) $(KUBECTL)
 	@$(KUBECTL) apply -k https://github.com/crossplane/crossplane//cluster?ref=master
 	@$(INFO) Installing Provider Ceph CRDs
 	@$(KUBECTL) apply -R -f package/crds
+	@$(KUBECTL) apply -R -f examples/provider/config.yaml
 	@$(INFO) Starting Provider Ceph controllers
 	@$(GO) run cmd/provider/main.go --debug
 

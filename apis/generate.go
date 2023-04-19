@@ -1,4 +1,4 @@
-// +build generate
+//go:build generate
 
 /*
 Copyright 2020 The Crossplane Authors.

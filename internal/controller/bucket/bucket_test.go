@@ -20,12 +20,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/google/go-cmp/cmp"
+	"github.com/pkg/errors"
 
+	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/pkg/test"
+	"github.com/crossplane/provider-ceph/apis/provider-ceph/v1alpha1"
 )
 
 // Unlike many Kubernetes projects Crossplane does not use third party testing
@@ -36,17 +38,19 @@ import (
 // https://github.com/golang/go/wiki/TestComments
 // https://github.com/crossplane/crossplane/blob/master/CONTRIBUTING.md#contributing-code
 
+var (
+	unexpectedItem resource.Managed
+)
+
 func TestObserve(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		s3Client *s3.S3
+		s3Backends s3Backends
 	}
 
 	type args struct {
-		//nolint:containedctx // It is a test.
-		ctx context.Context
-		mg  resource.Managed
+		mg resource.Managed
 	}
 
 	type want struct {
@@ -60,21 +64,191 @@ func TestObserve(t *testing.T) {
 		args   args
 		want   want
 	}{
-		// TODO: Add test cases.
+		"Invalid managed resource": {
+			args: args{
+				mg: unexpectedItem,
+			},
+			want: want{
+				err: errors.New(errNotBucket),
+			},
+		},
+		"S3 backend reference does not exist": {
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						ResourceSpec: v1.ResourceSpec{
+							ProviderConfigReference: &v1.Reference{
+								Name: "s3-backend-1",
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				err: errors.New(errBackendNotStored),
+			},
+		},
+		"S3 backend not referenced and none exist": {
+			args: args{
+				mg: &v1alpha1.Bucket{},
+			},
+			want: want{
+				err: errors.New(errNoS3BackendsStored),
+			},
+		},
 	}
-
 	for name, tc := range cases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			e := external{s3Client: tc.fields.s3Client}
-			got, err := e.Observe(tc.args.ctx, tc.args.mg)
+			e := external{s3Backends: tc.fields.s3Backends}
+			got, err := e.Observe(context.Background(), tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Observe(...): -want error, +got error:\n%s\n", tc.reason, diff)
 			}
 			if diff := cmp.Diff(tc.want.o, got); diff != "" {
 				t.Errorf("\n%s\ne.Observe(...): -want, +got:\n%s\n", tc.reason, diff)
+			}
+		})
+	}
+}
+
+func TestCreate(t *testing.T) {
+	t.Parallel()
+
+	type fields struct {
+		s3Backends s3Backends
+	}
+
+	type args struct {
+		mg resource.Managed
+	}
+
+	type want struct {
+		o   managed.ExternalCreation
+		err error
+	}
+
+	cases := map[string]struct {
+		reason string
+		fields fields
+		args   args
+		want   want
+	}{
+		"Invalid managed resource": {
+			args: args{
+				mg: unexpectedItem,
+			},
+			want: want{
+				err: errors.New(errNotBucket),
+			},
+		},
+		"S3 backend reference does not exist": {
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						ResourceSpec: v1.ResourceSpec{
+							ProviderConfigReference: &v1.Reference{
+								Name: "s3-backend-1",
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				err: errors.New(errBackendNotStored),
+			},
+		},
+		"S3 backend not referenced and none exist": {
+			args: args{
+				mg: &v1alpha1.Bucket{},
+			},
+			want: want{
+				err: errors.New(errNoS3BackendsStored),
+			},
+		},
+	}
+	for name, tc := range cases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			e := external{s3Backends: tc.fields.s3Backends}
+			got, err := e.Create(context.Background(), tc.args.mg)
+			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
+				t.Errorf("\n%s\ne.Create(...): -want error, +got error:\n%s\n", tc.reason, diff)
+			}
+			if diff := cmp.Diff(tc.want.o, got); diff != "" {
+				t.Errorf("\n%s\ne.Create(...): -want, +got:\n%s\n", tc.reason, diff)
+			}
+		})
+	}
+}
+
+func TestDelete(t *testing.T) {
+	t.Parallel()
+
+	type fields struct {
+		s3Backends s3Backends
+	}
+
+	type args struct {
+		mg resource.Managed
+	}
+
+	type want struct {
+		err error
+	}
+
+	cases := map[string]struct {
+		reason string
+		fields fields
+		args   args
+		want   want
+	}{
+		"Invalid managed resource": {
+			args: args{
+				mg: unexpectedItem,
+			},
+			want: want{
+				err: errors.New(errNotBucket),
+			},
+		},
+		"S3 backend reference does not exist": {
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						ResourceSpec: v1.ResourceSpec{
+							ProviderConfigReference: &v1.Reference{
+								Name: "s3-backend-1",
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				err: errors.New(errBackendNotStored),
+			},
+		},
+		"S3 backend not referenced and none exist": {
+			args: args{
+				mg: &v1alpha1.Bucket{},
+			},
+			want: want{
+				err: errors.New(errNoS3BackendsStored),
+			},
+		},
+	}
+	for name, tc := range cases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			e := external{s3Backends: tc.fields.s3Backends}
+			err := e.Delete(context.Background(), tc.args.mg)
+			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
+				t.Errorf("\n%s\ne.Delete(...): -want error, +got error:\n%s\n", tc.reason, diff)
 			}
 		})
 	}

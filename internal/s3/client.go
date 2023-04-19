@@ -1,13 +1,14 @@
 package s3
 
 import (
+	"context"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	apisv1alpha1 "github.com/crossplane/provider-ceph/apis/v1alpha1"
 )
 
@@ -18,44 +19,39 @@ const (
 	secretKey = "secret_key"
 )
 
-func NewClient(data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec) *s3.S3 {
+func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec) (*s3.Client, error) {
+	hostBase := resolveHostBase(pcSpec.HostBase, pcSpec.UseHTTPS)
+
+	endpointResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+		return aws.Endpoint{
+			URL: hostBase,
+		}, nil
+	})
+
+	sessionConfig, err := config.LoadDefaultConfig(ctx, config.WithEndpointResolverWithOptions(endpointResolver))
+	if err != nil {
+		return nil, err
+	}
+
 	// By default make sure a region is specified, this is required for S3 operations
-	sessionConfig := aws.Config{Region: aws.String(defaultRegion)}
+	region := defaultRegion
+	sessionConfig.Region = aws.ToString(&region)
 
-	sessionConfig.Credentials = credentials.NewStaticCredentials(string(data[accessKey]), string(data[secretKey]), "")
+	sessionConfig.Credentials = aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(string(data[accessKey]), string(data[secretKey]), ""))
 
-	sessionConfig.EndpointResolver = buildEndpointResolver(pcSpec)
-
-	// This setting is necessary to interact with ceph
-	// see https://github.com/aws/aws-sdk-go/issues/1585
-	sessionConfig.WithS3ForcePathStyle(true)
-
-	return s3.New(session.Must(session.NewSessionWithOptions(session.Options{
-		Config:            sessionConfig,
-		SharedConfigState: session.SharedConfigEnable,
-	})))
+	return s3.NewFromConfig(sessionConfig, func(o *s3.Options) {
+		o.UsePathStyle = true
+	}), nil
 }
 
-func buildEndpointResolver(pcSpec *apisv1alpha1.ProviderConfigSpec) endpoints.Resolver {
-	defaultResolver := endpoints.DefaultResolver()
-
-	hostBase := pcSpec.HostBase
+func resolveHostBase(hostBase string, useHTTPS bool) string {
 	if !strings.HasPrefix(hostBase, "http") {
-		if pcSpec.UseHTTPS {
+		if useHTTPS {
 			hostBase = "https://" + hostBase
 		} else {
 			hostBase = "http://" + hostBase
 		}
 	}
 
-	return endpoints.ResolverFunc(func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
-		//nolint:staticcheck // Should work for POC.
-		if service == endpoints.S3ServiceID {
-			return endpoints.ResolvedEndpoint{
-				URL: hostBase,
-			}, nil
-		}
-
-		return defaultResolver.EndpointFor(service, region, optFns...)
-	})
+	return hostBase
 }

@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"go.uber.org/zap/zapcore"
 	"gopkg.in/alecthomas/kingpin.v2"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,7 +54,6 @@ var defaultZapConfig = map[string]string{
 func main() {
 	var (
 		app            = kingpin.New(filepath.Base(os.Args[0]), "Ceph support for Crossplane.").DefaultEnvars()
-		debug          = app.Flag("debug", "Run with debug logging.").Short('d').Bool()
 		leaderElection = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()
 		leaderRenew    = app.Flag("leader-renew", "Set leader election renewal.").Short('r').Default("10s").OverrideDefaultFromEnvar("LEADER_ELECTION_RENEW").Duration()
 
@@ -65,22 +65,64 @@ func main() {
 		enableExternalSecretStores = app.Flag("enable-external-secret-stores", "Enable support for ExternalSecretStores.").Default("false").Envar("ENABLE_EXTERNAL_SECRET_STORES").Bool()
 	)
 
-	var opts zap.Options
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+	var zo zap.Options
+	zapFlagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	zo.BindFlags(zapFlagSet)
 
-	flag.CommandLine.VisitAll(func(f *flag.Flag) {
+	zapOpts := []zap.Opts{}
+	zapFlagSet.VisitAll(func(f *flag.Flag) {
 		defaultValue, ok := defaultZapConfig[f.Name]
 		if !ok {
 			defaultValue = f.DefValue
 		}
 
-		app.Flag(f.Name, f.Usage).Default(defaultValue).String()
+		kf := app.Flag(f.Name, f.Usage).Default(defaultValue)
+
+		switch f.Name {
+		case "zap-devel":
+			d := kf.Bool()
+			zapOpts = append(zapOpts, func(o *zap.Options) {
+				o.Development = *d
+			})
+		case "zap-encoder":
+			e := kf.String()
+			zapOpts = append(zapOpts, func(o *zap.Options) {
+				o.NewEncoder = func(eco ...zap.EncoderConfigOption) zapcore.Encoder {
+					if *e == "json" {
+						zap.JSONEncoder(eco...)(o)
+					} else {
+						zap.ConsoleEncoder(eco...)(o)
+					}
+
+					return o.Encoder
+				}
+			})
+		case "zap-log-level":
+			ll := kf.String()
+			zapOpts = append(zapOpts, func(o *zap.Options) {
+				l := zapcore.Level(0)
+				app.FatalIfError(l.Set(*ll), "Unable to unmarshal zap-log-level")
+				o.Level = l
+			})
+		case "zap-stacktrace-level":
+			sl := kf.String()
+			zapOpts = append(zapOpts, func(o *zap.Options) {
+				l := zapcore.Level(0)
+				app.FatalIfError(l.Set(*sl), "Unable to unmarshal zap-stacktrace-level")
+				o.StacktraceLevel = l
+			})
+		case "zap-time-encoding":
+			te := kf.String()
+			zapOpts = append(zapOpts, func(o *zap.Options) {
+				o.TimeEncoder = zapcore.EpochTimeEncoder
+				app.FatalIfError(o.TimeEncoder.UnmarshalText([]byte(*te)), "Unable to unmarshal zap-time-encoding")
+			})
+		}
 	})
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
-	zl := zap.New(zap.UseDevMode(*debug), zap.UseFlagOptions(&opts))
+	zl := zap.New(zapOpts...)
 	ctrl.SetLogger(zl)
 	klog.SetLogger(zl)
 
@@ -89,9 +131,11 @@ func main() {
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
 
-	renewDeadline := time.Duration(*leaderRenew) * time.Second
-	leaseDuration := time.Duration(int(1.2*float64(*leaderRenew))) * time.Second
-	leaderRetryDuration := renewDeadline / 2
+	const oneDotTwo = 1.2
+	const two = 2
+
+	leaseDuration := time.Duration(int(oneDotTwo*float64(*leaderRenew))) * time.Second
+	leaderRetryDuration := *leaderRenew / two
 
 	mgr, err := ctrl.NewManager(ratelimiter.LimitRESTConfig(cfg, *maxReconcileRate), ctrl.Options{
 		SyncPeriod: syncInterval,
@@ -100,7 +144,7 @@ func main() {
 		LeaderElectionID:           "crossplane-leader-election-provider-ceph-ibyaiby",
 		LeaderElectionNamespace:    *namespace,
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
-		RenewDeadline:              &renewDeadline,
+		RenewDeadline:              leaderRenew,
 		LeaseDuration:              &leaseDuration,
 		RetryPeriod:                &leaderRetryDuration,
 	})

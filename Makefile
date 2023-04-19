@@ -88,7 +88,7 @@ build.init: $(UP)
 run: go.build
 	@$(INFO) Running Crossplane locally out-of-cluster . . .
 	@# To see other arguments that can be provided, run the command with --help instead
-	$(GO_OUT_DIR)/provider --debug
+	$(GO_OUT_DIR)/provider --zap-devel
 
 dev: $(KIND) $(KUBECTL)
 	@$(INFO) Creating kind cluster
@@ -100,7 +100,7 @@ dev: $(KIND) $(KUBECTL)
 	@$(KUBECTL) apply -R -f package/crds
 	@$(KUBECTL) apply -R -f examples/provider/config.yaml
 	@$(INFO) Starting Provider Ceph controllers
-	@$(GO) run cmd/provider/main.go --debug
+	@$(GO) run cmd/provider/main.go --zap-devel
 
 dev-clean: $(KIND) $(KUBECTL)
 	@$(INFO) Deleting kind cluster

@@ -6,16 +6,14 @@ all:
     WAIT
         BUILD +go-lint
         BUILD +go-test
-    END
-    WAIT
         BUILD +go-sec
     END
 
 go-lint:
     FROM earthly/dind:alpine
     COPY . ./workdir
-    WITH DOCKER --pull golangci/golangci-lint:v1.51.0
-        RUN docker run -w /workdir -v /workdir:/workdir golangci/golangci-lint:v1.51.0 golangci-lint run --timeout 500s
+    WITH DOCKER --pull golangci/golangci-lint:v1.52.2
+        RUN docker run -w /workdir -v /workdir:/workdir golangci/golangci-lint:v1.52.2 golangci-lint run -c .golangci.yml --timeout 500s
     END
 
 go-sec:
@@ -39,11 +37,12 @@ deps-submodules:
 
 deps-go:
     BUILD +deps-submodules
+    COPY --dir build build
+    COPY Makefile ./
     COPY go.mod go.sum ./
+    RUN make go.modules.tidy
     RUN go mod download
 
 deps-go-build:
     FROM +deps-go
-    COPY --dir build build
-    COPY Makefile ./
     RUN make generate

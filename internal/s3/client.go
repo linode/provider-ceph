@@ -49,6 +49,7 @@ func buildEndpointResolver(pcSpec *apisv1alpha1.ProviderConfigSpec) endpoints.Re
 	}
 
 	return endpoints.ResolverFunc(func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
+		//nolint:staticcheck // Should work for POC.
 		if service == endpoints.S3ServiceID {
 			return endpoints.ResolvedEndpoint{
 				URL: hostBase,

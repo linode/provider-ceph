@@ -329,7 +329,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		if err != nil {
 			return managed.ExternalCreation{}, err
 		}
-		_, err = s3Backend.CreateBucket(ctx, &s3.CreateBucketInput{Bucket: aws.String(cr.Name)})
+		_, err = s3Backend.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(cr))
 		if err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBucket)
 		}
@@ -348,7 +348,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	for _, client := range c.s3Backends {
-		_, err := client.CreateBucket(ctx, &s3.CreateBucketInput{Bucket: aws.String(cr.Name)})
+		_, err := client.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(cr))
 		if err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBucket)
 		}

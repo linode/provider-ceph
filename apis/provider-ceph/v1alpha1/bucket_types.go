@@ -33,7 +33,7 @@ type BucketParameters struct {
 	ACL *string `json:"acl,omitempty"`
 
 	// Specifies the Region where the bucket will be created.
-	LocationConstraint *string `json:"locationConstraint,omitempty"`
+	LocationConstraint string `json:"locationConstraint,omitempty"`
 
 	// Allows grantee the read, write, read ACP, and write ACP permissions on the
 	// bucket.

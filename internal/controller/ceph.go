@@ -20,18 +20,19 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	"github.com/crossplane/provider-ceph/internal/backendstore"
 	"github.com/crossplane/provider-ceph/internal/controller/bucket"
 	"github.com/crossplane/provider-ceph/internal/controller/config"
 )
 
 // Setup creates all Ceph controllers with the supplied logger and adds them to
 // the supplied manager.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
-	for _, setup := range []func(ctrl.Manager, controller.Options) error{
+func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore) error {
+	for _, setup := range []func(ctrl.Manager, controller.Options, *backendstore.BackendStore) error{
 		config.Setup,
 		bucket.Setup,
 	} {
-		if err := setup(mgr, o); err != nil {
+		if err := setup(mgr, o, s); err != nil {
 			return err
 		}
 	}

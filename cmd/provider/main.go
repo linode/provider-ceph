@@ -41,6 +41,7 @@ import (
 
 	"github.com/crossplane/provider-ceph/apis"
 	"github.com/crossplane/provider-ceph/apis/v1alpha1"
+	"github.com/crossplane/provider-ceph/internal/backendstore"
 	ceph "github.com/crossplane/provider-ceph/internal/controller"
 	"github.com/crossplane/provider-ceph/internal/controller/features"
 )
@@ -178,6 +179,7 @@ func main() {
 		})), "cannot create default store config")
 	}
 
-	kingpin.FatalIfError(ceph.Setup(mgr, o), "Cannot setup Ceph controllers")
+	backendStore := backendstore.NewBackendStore()
+	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore), "Cannot setup Ceph controllers")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }

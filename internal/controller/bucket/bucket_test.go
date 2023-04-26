@@ -28,6 +28,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/pkg/test"
 	"github.com/crossplane/provider-ceph/apis/provider-ceph/v1alpha1"
+	"github.com/crossplane/provider-ceph/internal/backendstore"
 )
 
 // Unlike many Kubernetes projects Crossplane does not use third party testing
@@ -46,7 +47,7 @@ func TestObserve(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		s3Backends s3Backends
+		backendStore *backendstore.BackendStore
 	}
 
 	type args struct {
@@ -65,6 +66,9 @@ func TestObserve(t *testing.T) {
 		want   want
 	}{
 		"Invalid managed resource": {
+			fields: fields{
+				backendStore: backendstore.NewBackendStore(),
+			},
 			args: args{
 				mg: unexpectedItem,
 			},
@@ -73,6 +77,9 @@ func TestObserve(t *testing.T) {
 			},
 		},
 		"S3 backend reference does not exist": {
+			fields: fields{
+				backendStore: backendstore.NewBackendStore(),
+			},
 			args: args{
 				mg: &v1alpha1.Bucket{
 					Spec: v1alpha1.BucketSpec{
@@ -89,6 +96,9 @@ func TestObserve(t *testing.T) {
 			},
 		},
 		"S3 backend not referenced and none exist": {
+			fields: fields{
+				backendStore: backendstore.NewBackendStore(),
+			},
 			args: args{
 				mg: &v1alpha1.Bucket{},
 			},
@@ -102,7 +112,7 @@ func TestObserve(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			e := external{s3Backends: tc.fields.s3Backends}
+			e := external{backendStore: tc.fields.backendStore}
 			got, err := e.Observe(context.Background(), tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Observe(...): -want error, +got error:\n%s\n", tc.reason, diff)
@@ -118,7 +128,7 @@ func TestCreate(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		s3Backends s3Backends
+		backendStore *backendstore.BackendStore
 	}
 
 	type args struct {
@@ -137,6 +147,9 @@ func TestCreate(t *testing.T) {
 		want   want
 	}{
 		"Invalid managed resource": {
+			fields: fields{
+				backendStore: backendstore.NewBackendStore(),
+			},
 			args: args{
 				mg: unexpectedItem,
 			},
@@ -145,6 +158,9 @@ func TestCreate(t *testing.T) {
 			},
 		},
 		"S3 backend reference does not exist": {
+			fields: fields{
+				backendStore: backendstore.NewBackendStore(),
+			},
 			args: args{
 				mg: &v1alpha1.Bucket{
 					Spec: v1alpha1.BucketSpec{
@@ -161,6 +177,9 @@ func TestCreate(t *testing.T) {
 			},
 		},
 		"S3 backend not referenced and none exist": {
+			fields: fields{
+				backendStore: backendstore.NewBackendStore(),
+			},
 			args: args{
 				mg: &v1alpha1.Bucket{},
 			},
@@ -174,7 +193,7 @@ func TestCreate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			e := external{s3Backends: tc.fields.s3Backends}
+			e := external{backendStore: tc.fields.backendStore}
 			got, err := e.Create(context.Background(), tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Create(...): -want error, +got error:\n%s\n", tc.reason, diff)
@@ -190,7 +209,7 @@ func TestDelete(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		s3Backends s3Backends
+		backendStore *backendstore.BackendStore
 	}
 
 	type args struct {
@@ -208,6 +227,9 @@ func TestDelete(t *testing.T) {
 		want   want
 	}{
 		"Invalid managed resource": {
+			fields: fields{
+				backendStore: backendstore.NewBackendStore(),
+			},
 			args: args{
 				mg: unexpectedItem,
 			},
@@ -216,6 +238,9 @@ func TestDelete(t *testing.T) {
 			},
 		},
 		"S3 backend reference does not exist": {
+			fields: fields{
+				backendStore: backendstore.NewBackendStore(),
+			},
 			args: args{
 				mg: &v1alpha1.Bucket{
 					Spec: v1alpha1.BucketSpec{
@@ -232,6 +257,9 @@ func TestDelete(t *testing.T) {
 			},
 		},
 		"S3 backend not referenced and none exist": {
+			fields: fields{
+				backendStore: backendstore.NewBackendStore(),
+			},
 			args: args{
 				mg: &v1alpha1.Bucket{},
 			},
@@ -245,7 +273,7 @@ func TestDelete(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			e := external{s3Backends: tc.fields.s3Backends}
+			e := external{backendStore: tc.fields.backendStore}
 			err := e.Delete(context.Background(), tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Delete(...): -want error, +got error:\n%s\n", tc.reason, diff)

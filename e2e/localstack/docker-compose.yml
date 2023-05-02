@@ -1,0 +1,62 @@
+version: '3.2'
+services:
+  localstack-a:
+    network_mode: bridge
+    image: localstack/localstack:latest
+    container_name: localstack_a
+    hostname: localstack_a
+    ports:
+      - "4510:4510"
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - EDGE_PORT=4566
+      - AWS_DEFAULT_REGION=us-east-1
+      - MAIN_CONTAINER_NAME=localstack_a
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DATA_DIR=/tmp/localstacka/data
+    volumes:
+      - './.localstack:/tmp/localstacka'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+
+  localstack-b:
+    network_mode: bridge
+    image: localstack/localstack:latest
+    container_name: localstack_b
+    hostname: localstack_b
+    ports:
+      - "4511:4511"
+      - "4567:4567"
+    environment:
+      - SERVICES=s3
+      - EDGE_PORT=4567
+      - AWS_DEFAULT_REGION=us-east-1
+      - MAIN_CONTAINER_NAME=localstack_b
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DATA_DIR=/tmp/localstackb/data
+    volumes:
+      - './.localstack:/tmp/localstackb'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+
+  localstack-c:
+    network_mode: bridge
+    image: localstack/localstack:latest
+    container_name: localstack_c
+    hostname: localstack
+    ports:
+      - "4512:4512"
+      - "4568:4568"
+    environment:
+      - SERVICES=s3
+      - EDGE_PORT=4568
+      - AWS_DEFAULT_REGION=us-east-1
+      - MAIN_CONTAINER_NAME=localstack_c
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DATA_DIR=/tmp/localstackc/data
+    volumes:
+      - './.localstack:/tmp/localstackc'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+

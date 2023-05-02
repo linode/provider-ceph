@@ -67,8 +67,6 @@ spec:
                   acl:
                     description: The canned ACL to apply to the bucket.
                     type: string
-                  configurableField:
-                    type: string
                   grantFullControl:
                     description: Allows grantee the read, write, read ACP, and write
                       ACP permissions on the bucket.
@@ -110,8 +108,6 @@ spec:
                       bucket-owner-full-control canned ACL or an equivalent form of
                       this ACL expressed in the XML format."
                     type: string
-                required:
-                - configurableField
                 type: object
               providerConfigRef:
                 default:

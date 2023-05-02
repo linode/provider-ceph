@@ -1,0 +1,6 @@
+[default]
+host_base = localhost:4566
+host_bucket = localhost:4566
+access_key = Dummy
+secret_key = Dummy
+use_https = False

@@ -27,8 +27,6 @@ import (
 
 // BucketParameters are the configurable fields of a Bucket.
 type BucketParameters struct {
-	ConfigurableField string `json:"configurableField"`
-
 	// The canned ACL to apply to the bucket.
 	ACL *string `json:"acl,omitempty"`
 

@@ -29,6 +29,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/connection"
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
@@ -235,6 +236,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotBucket)
 	}
 
+	bucket.Status.SetConditions(xpv1.Creating())
 	// Where a bucket has a ProviderConfigReference Name, we can infer that this bucket is to be
 	// created only on this S3 Backend. An empty config reference name will be automatically set
 	// to "default".
@@ -286,10 +288,11 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket) (mana
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	_, ok := mg.(*v1alpha1.Bucket)
+	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
 		return managed.ExternalUpdate{}, errors.New(errNotBucket)
 	}
+	bucket.Status.SetConditions(xpv1.Available())
 
 	return managed.ExternalUpdate{
 		// Optionally return any details that may be required to connect to the
@@ -304,6 +307,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.New(errNotBucket)
 	}
 
+	bucket.Status.SetConditions(xpv1.Deleting())
 	// Where a bucket has a ProviderConfigReference Name, we can infer that this bucket is to be
 	// deleted only from this S3 Backend. An empty config reference name will be automatically set
 	// to "default".

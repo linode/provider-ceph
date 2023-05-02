@@ -9,3 +9,6 @@ cover.out
 .vscode
 .idea
 .DS_Store
+kind-logs*
+kubeconfig
+package/provider-ceph-*.xpkg

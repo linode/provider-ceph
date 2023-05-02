@@ -10,8 +10,8 @@ metadata:
   name: ceph-admin-cfg
 type: Opaque
 data:
-  access_key: "echo -n <access_key> | base64"
-  secret_key: "echo -n <secret_key> | base64"
+  access_key: "RHVtbXk="
+  secret_key: "RHVtbXk="
 ---
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
@@ -19,7 +19,7 @@ metadata:
   name: ceph-admin-cfg
   namespace: crossplane-system
 spec:
-  hostBase: "<host_base>" 
+  hostBase: "localhost:4566" 
   credentials:
     source: Secret
     secretRef:

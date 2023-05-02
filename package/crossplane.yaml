@@ -7,8 +7,4 @@ metadata:
     meta.crossplane.io/source: github.com/crossplane/provider-ceph
     meta.crossplane.io/license: Apache-2.0
     meta.crossplane.io/description: |
-      A ceph that can be used to create Crossplane providers.
-
-spec:
-  controller:
-    image: DOCKER_REGISTRY/provider-ceph-controller:VERSION
+      A Crossplane provider that performs CRUD operations on s3 buckets.

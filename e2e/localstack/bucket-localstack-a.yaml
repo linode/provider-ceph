@@ -1,8 +1,8 @@
 apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
 kind: Bucket
 metadata:
-  name: test-bucket
+  name: bucket-localstack-a
 spec:
   forProvider: {}
   providerConfigRef:
-    name: ceph-admin-cfg
+    name: localstack-a

@@ -49,4 +49,45 @@ startKIND: false
 timeout: 90
 EOF
 
+file=./.github/workflows/kuttl-e2e-test-${major}.yaml
+
+	cat <<EOF > "${file}"
+${HEADER}
+name: kuttl e2e test ${major}
+on: [push]
+jobs:
+  test:
+    name: kuttl e2e test ${major}
+    runs-on: ubuntu-latest
+    env:
+      KUTTL: /usr/local/bin/kubectl-kuttl
+      COMPOSE: /usr/local/bin/docker-compose
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: \${{ github.token }}
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.19'
+      - name: Install dependencies
+        run: |
+          sudo curl -Lo \$KUTTL https://github.com/kudobuilder/kuttl/releases/download/v0.13.0/kubectl-kuttl_0.13.0_linux_x86_64
+          sudo chmod +x \$KUTTL
+          sudo curl -Lo \$COMPOSE https://github.com/docker/compose/releases/download/v2.17.3/docker-compose-linux-x86_64
+          sudo chmod +x \$COMPOSE
+      - name: Build
+        run: make submodules build
+      - name: Create test environment
+        run: make crossplane-cluster load-package
+      - name: Run kuttl tests ${major}
+        run: kubectl-kuttl test --config e2e/kuttl/${REPO}-${major}.yaml
+      - uses: actions/upload-artifact@v3
+        if: \${{ always() }}
+        with:
+          name: kind-logs
+          path: kind-logs-*
+EOF
+
 done

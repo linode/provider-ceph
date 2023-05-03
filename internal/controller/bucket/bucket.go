@@ -129,7 +129,6 @@ type external struct {
 	log          logging.Logger
 }
 
-//nolint:cyclop,gocyclo //TODO: modularise func
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	cr, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
@@ -139,34 +138,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// observed only on this S3 Backend. An empty config reference name will be automatically set
 	// to "default".
 	if cr.GetProviderConfigReference() != nil && cr.GetProviderConfigReference().Name != defaultPC {
-		bucketExists, err := c.bucketExists(ctx, cr.GetProviderConfigReference().Name, cr.Name)
-		if err != nil {
-			return managed.ExternalObservation{}, err
-		}
-		if bucketExists {
-			return managed.ExternalObservation{
-				// Return false when the external resource does not exist. This lets
-				// the managed resource reconciler know that it needs to call Create to
-				// (re)create the resource, or that it has successfully been deleted.
-				ResourceExists: true,
-
-				// Return false when the external resource exists, but it not up to date
-				// with the desired managed resource state. This lets the managed
-				// resource reconciler know that it needs to call Update.
-				ResourceUpToDate: false,
-
-				// Return any details that may be required to connect to the external
-				// resource. These will be stored as the connection secret.
-				ConnectionDetails: managed.ConnectionDetails{},
-			}, nil
-		}
-
-		return managed.ExternalObservation{
-			// Return false when the external resource does not exist. This lets
-			// the managed resource reconciler know that it needs to call Create to
-			// (re)create the resource, or that it has successfully been deleted.
-			ResourceExists: false,
-		}, nil
+		return c.observe(ctx, cr)
 	}
 
 	// No ProviderConfigReference Name specified for bucket, we can infer that his bucket is to
@@ -175,6 +147,41 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNoS3BackendsStored)
 	}
 
+	return c.observeAll(ctx, cr.Name)
+}
+
+func (c *external) observe(ctx context.Context, bucket *v1alpha1.Bucket) (managed.ExternalObservation, error) {
+	bucketExists, err := c.bucketExists(ctx, bucket.GetProviderConfigReference().Name, bucket.Name)
+	if err != nil {
+		return managed.ExternalObservation{}, err
+	}
+	if bucketExists {
+		return managed.ExternalObservation{
+			// Return false when the external resource does not exist. This lets
+			// the managed resource reconciler know that it needs to call Create to
+			// (re)create the resource, or that it has successfully been deleted.
+			ResourceExists: true,
+
+			// Return false when the external resource exists, but it not up to date
+			// with the desired managed resource state. This lets the managed
+			// resource reconciler know that it needs to call Update.
+			ResourceUpToDate: false,
+
+			// Return any details that may be required to connect to the external
+			// resource. These will be stored as the connection secret.
+			ConnectionDetails: managed.ConnectionDetails{},
+		}, nil
+	}
+
+	return managed.ExternalObservation{
+		// Return false when the external resource does not exist. This lets
+		// the managed resource reconciler know that it needs to call Create to
+		// (re)create the resource, or that it has successfully been deleted.
+		ResourceExists: false,
+	}, nil
+}
+
+func (c *external) observeAll(ctx context.Context, bucketName string) (managed.ExternalObservation, error) {
 	type bucketExistsResult struct {
 		bucketExists bool
 		err          error
@@ -186,9 +193,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	allBackends := c.backendStore.GetAllBackends()
 	for s3BackendName := range allBackends {
 		go func(backendName, bucketName string) {
-			bucketExists, err := c.bucketExists(context.Background(), backendName, bucketName)
+			bucketExists, err := c.bucketExists(ctx, backendName, bucketName)
 			bucketExistsResults <- bucketExistsResult{bucketExists, err}
-		}(s3BackendName, cr.Name)
+		}(s3BackendName, bucketName)
 	}
 
 	// Wait for any go routine to finish, if the bucket exists anywhere
@@ -371,7 +378,7 @@ func (c *external) deleteAll(ctx context.Context, bucketName string) error {
 		})
 	}
 	if err := g.Wait(); err != nil {
-		return errors.Wrap(err, errCreateBucket)
+		return errors.Wrap(err, errDeleteBucket)
 	}
 
 	return nil

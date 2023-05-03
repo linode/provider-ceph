@@ -271,20 +271,36 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket) (mana
 
 	c.log.Info("Creating bucket on all available s3 backends", "bucket name", bucket.Name)
 
-	g := new(errgroup.Group)
-	for _, client := range c.backendStore.GetAllBackends() {
+	bucketCreatedErr := make(chan error)
+
+	// Create the bucket on each backend in a separate go routine
+	allBackends := c.backendStore.GetAllBackends()
+	for _, client := range allBackends {
 		cl := client
-		g.Go(func() error {
+		go func(bucket *v1alpha1.Bucket) {
 			_, err := cl.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
 
-			return err
-		})
-	}
-	if err := g.Wait(); err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errCreateBucket)
+			bucketCreatedErr <- err
+		}(bucket)
 	}
 
-	return managed.ExternalCreation{}, nil
+	// Wait for any go routine to finish, if the bucket was successfully
+	// created anywhere, return no error.
+	var err error
+	for i := 0; i < len(allBackends); i++ {
+		err = <-bucketCreatedErr
+		if err != nil {
+			c.log.Info(errors.Wrap(err, errCreateBucket).Error())
+
+			continue
+		}
+
+		return managed.ExternalCreation{}, nil
+	}
+
+	// Bucket could not be created on any backend. Return the error
+	// so that the operation can be retried.
+	return managed.ExternalCreation{}, errors.Wrap(err, errCreateBucket)
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {

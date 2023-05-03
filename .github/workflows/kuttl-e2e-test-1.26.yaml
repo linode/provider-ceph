@@ -29,6 +29,10 @@ jobs:
         run: make crossplane-cluster load-package
       - name: Run kuttl tests 1.26
         run: kubectl-kuttl test --config e2e/kuttl/provider-ceph-1.26.yaml
+        env:
+          AWS_ACCESS_KEY_ID: 'Dummy'
+          AWS_SECRET_ACCESS_KEY: 'Dummy'
+          AWS_DEFAULT_REGION: 'us-east-1'
       - uses: actions/upload-artifact@v3
         if: ${{ always() }}
         with:

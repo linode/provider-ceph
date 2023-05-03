@@ -83,6 +83,10 @@ jobs:
         run: make crossplane-cluster load-package
       - name: Run kuttl tests ${major}
         run: kubectl-kuttl test --config e2e/kuttl/${REPO}-${major}.yaml
+        env:
+          AWS_ACCESS_KEY_ID: 'Dummy'
+          AWS_SECRET_ACCESS_KEY: 'Dummy'
+          AWS_DEFAULT_REGION: 'us-east-1'
       - uses: actions/upload-artifact@v3
         if: \${{ always() }}
         with:

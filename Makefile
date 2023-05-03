@@ -238,7 +238,7 @@ crossplane.help:
 
 help-special: crossplane.help
 
-.PHONY: crossplane.help help-special
+.PHONY: crossplane.help help-special aws
 
 # Install Earthly to run CI pipelines.
 EARTHLY ?= $(shell pwd)/bin/earthly
@@ -254,4 +254,13 @@ compose:
 ifeq (,$(wildcard $(COMPOSE)))
 	curl -sL https://github.com/docker/compose/releases/download/v2.17.3/docker-compose-linux-x86_64 -o $(COMPOSE)
 	chmod +x $(COMPOSE)
+endif
+
+# Install aws cli for testing.
+AWS ?= /usr/local/bin/aws
+aws:
+ifeq (,$(wildcard $(AWS)))
+	curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o $(shell pwd)/bin/awscliv2.zip
+	unzip $(shell pwd)/bin/awscliv2.zip -d $(shell pwd)/bin/
+	$(shell pwd)/bin/aws/install
 endif

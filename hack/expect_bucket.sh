@@ -11,6 +11,7 @@ bucket_exists() {
             >/dev/null 2>&1
 
     if [[ ${?} -eq 0 ]]; then
+        echo "pass: bucket $bucketname found"
         return 0
     else
         echo "error: bucket not found"
@@ -27,6 +28,7 @@ bucket_does_not_exist() {
         echo "error: bucket found, should not exist"
         return 1
     else
+        echo "pass: bucket does not exist"
         return 0
     fi
 }

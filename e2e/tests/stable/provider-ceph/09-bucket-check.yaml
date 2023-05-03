@@ -1,0 +1,12 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+    # localstack-a should have no buckets
+  - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist bucket-for-all 4566
+  - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist bucket-for-localstack-b 4566
+    # localstack-b should have no buckets
+  - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist bucket-for-all 4567
+  - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist bucket-for-localstack-b 4567
+    # localstack-c should have no buckets
+  - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist bucket-for-all 4568
+  - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist bucket-for-localstack-b 4568

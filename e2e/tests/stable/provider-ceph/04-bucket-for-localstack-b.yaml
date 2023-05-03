@@ -4,5 +4,5 @@ metadata:
   name: bucket-for-localstack-b
 spec:
   forProvider: {}
-  configProviderRef:
+  providerConfigRef:
     name: localstack-b

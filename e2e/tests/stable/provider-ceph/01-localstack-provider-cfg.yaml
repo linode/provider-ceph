@@ -11,10 +11,38 @@ data:
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
-  name: localstack
+  name: localstack-a
   namespace: crossplane-system
 spec:
   hostBase: "172.17.0.1:4566"
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: localstack
+      key: credentials
+---
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: localstack-b
+  namespace: crossplane-system
+spec:
+  hostBase: "172.17.0.1:4567"
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: localstack
+      key: credentials
+---
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: localstack-c
+  namespace: crossplane-system
+spec:
+  hostBase: "172.17.0.1:4568"
   credentials:
     source: Secret
     secretRef:

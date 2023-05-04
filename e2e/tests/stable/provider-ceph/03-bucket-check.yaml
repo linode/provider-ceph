@@ -1,0 +1,6 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - command: ../../../../hack/expect_bucket.sh bucket_exists bucket-for-all 4566
+  - command: ../../../../hack/expect_bucket.sh bucket_exists bucket-for-all 4567
+  - command: ../../../../hack/expect_bucket.sh bucket_exists bucket-for-all 4568

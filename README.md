@@ -1,27 +1,42 @@
 # provider-ceph
 
 `provider-ceph` is a minimal [Crossplane](https://crossplane.io/) Provider
-that reconciles `Bucket` CRs with an external Ceph cluster. It comes
+that reconciles `Bucket` CRs with multiple external S3 backends such as Ceph. It comes
 with the following features:
 
-- A `ProviderConfig` type that points to a credentials `Secret` for access to a Ceph cluster.
-- A `Bucket` resource type that serves as an example managed resource.
-- A managed resource controller that reconciles `Bucket` objects and reconciles these objects with the Ceph cluster.
+- A `ProviderConfig` type that represents a single S3 backend (such as Ceph) and points to a credentials `Secret` for access to that backend.
+- A controller that reconciles `ProviderConfig` objects which represent S3 backends and stores client details for each backend.
+- A `Bucket` resource type that represents an S3 bucket.
+- A controller that observes `Bucket` objects and reconciles these objects with the S3 backends.
+
+## Testing
+
+The E2E test setup consists of the following:
+- A single [Kind](https://kind.sigs.k8s.io/) cluster with [Crossplane](https://www.crossplane.io/) installed and `provider-ceph` deployed.
+- Three [LocalStack](https://localstack.cloud/) instances representing the S3 backends. These are created using Docker Compose.
+
+The tests are run using [Kuttl](https://kuttl.dev/) and s3 backend operations are verified using the [AWS CLI](https://aws.amazon.com/cli/).
+
+![provider-ceph-testing drawio](https://user-images.githubusercontent.com/41484746/236199553-06990687-462a-4097-8d42-a7f7f055abbf.png)
+
+### Run Kuttl Test Suite
+
+```
+make kuttl
+```
 
 ## Developing
+Spin up the test environment, but with `provider-ceph` running locally in your terminal:
 
-1. Run `make submodules` to initialize the "build" Make submodule we use for CI/CD.
-2. Add your new type by running the following command:
 ```
-make provider.addtype provider={Ceph} group={group} kind={type}
+make dev
 ```
-2. Replace the *sample* group with your new group in apis/{provider}.go
-2. Replace the *mytype* type with your new type in internal/controller/{provider}.go
-2. Replace the default controller and ProviderConfig implementations with your own
-2. Run `make reviewable` to run code generation, linters, and tests.
-2. Run `make build` to build the provider.
-2. Change your path to `export PATH="$PWD/bin:$PATH"`.
-2. Install Git hooks `husky install`.
+
+After you've made some changes, kill (Ctrl+C) the existing `provider-ceph` and re-run it:
+
+```
+make run
+```
 
 Refer to Crossplane's [CONTRIBUTING.md] file for more information on how the
 Crossplane community prefers to work. The [Provider Development][provider-dev]
@@ -29,54 +44,3 @@ guide may also be of use.
 
 [CONTRIBUTING.md]: https://github.com/crossplane/crossplane/blob/master/CONTRIBUTING.md
 [provider-dev]: https://github.com/crossplane/crossplane/blob/master/docs/contributing/provider_development_guide.md
-
-## Demo
-
-### Prerequisites
-- Access to a running ceph cluster
-
-### Steps
-- Create a local k8s cluster
-```
-kind create cluster
-```
-- Install necessary CRDs
-```
- kubectl apply -f package/crds
-```
-- Initialize the build
-```
-make submodules
-```
-- Run provider locally for debugging
-```
-make submodules run
-```
-- In a separate terminal, edit examples/provider/config.yaml
-  - Edit Secret: Add `access_key` and `secret_key` from `s3_admin.cfg` (config file for you ceph cluster)
-  - Edit ProviderConfig: add `host_base` from `s3_admin.cfg` (if missing, generate it via `s3cmd --configure`)
-
-- Create Secret and ProviderConfig
-```
-kubectl apply -f examples/provider/config.yaml
-```
-- Check ceph cluster for existing buckets
-```
-s3cmd --config /path/to/s3_admin.cfg ls
-```
-- Create Bucket CR 
-```
-kubectl apply -f examples/sample/bucket.yaml
-```
-- Check ceph cluster for newly created bucket
-```
-s3cmd --config /path/to/s3_admin.cfg ls
-```
-- Delete Bucket CR 
-```
-kubectl delete -f examples/sample/bucket.yaml
-```
-- Check ceph cluster to verify bucket was deleted
-```
-s3cmd --config /path/to/s3_admin.cfg ls
-```

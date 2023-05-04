@@ -7,7 +7,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   namespace: crossplane-system
-  name: localstack-a
+  name: localstack
 type: Opaque
 data:
   access_key: "RHVtbXk="
@@ -24,18 +24,8 @@ spec:
     source: Secret
     secretRef:
       namespace: crossplane-system
-      name: localstack-a
+      name: localstack
       key: credentials
----
-apiVersion: v1
-kind: Secret
-metadata:
-  namespace: crossplane-system
-  name: localstack-b
-type: Opaque
-data:
-  access_key: "RHVtbXk="
-  secret_key: "RHVtbXk="
 ---
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
@@ -48,18 +38,8 @@ spec:
     source: Secret
     secretRef:
       namespace: crossplane-system
-      name: localstack-b
+      name: localstack
       key: credentials
----
-apiVersion: v1
-kind: Secret
-metadata:
-  namespace: crossplane-system
-  name: localstack-c
-type: Opaque
-data:
-  access_key: "RHVtbXk="
-  secret_key: "RHVtbXk="
 ---
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
@@ -72,5 +52,5 @@ spec:
     source: Secret
     secretRef:
       namespace: crossplane-system
-      name: localstack-c
+      name: localstack
       key: credentials

@@ -4,7 +4,6 @@ Dependencies:
 
  * AWS CLI
  * Docker-compose (`compose` subcommand of `docker` doesn't work)
- * S3cmd (optional)
  * Kubectl
 
 Create an AWS account, it should be real or fake.
@@ -29,12 +28,6 @@ export AWS_SECRET_ACCESS_KEY=Dummy
 export AWS_DEFAULT_REGION=us-east-1
 ```
 
-Generate client config for `s3cmd` (optional):
-
-```bash
-s3cmd --configure
-```
-
 Start Localstack:
 
 ```bash
@@ -44,5 +37,5 @@ docker-compose -f docker-compose.yml up
 Apply provider config:
 
 ```bash
-kubectl apply -f config.yaml
+kubectl apply -f localstack-provider-cfg.yaml
 ```

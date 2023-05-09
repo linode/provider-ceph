@@ -61,6 +61,8 @@ const (
 	errFailedToCreateClient = "failed to create s3 client"
 
 	defaultPC = "default"
+
+	requestRetries = 5
 )
 
 // A NoOpService does nothing.
@@ -247,8 +249,13 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket) (mana
 	for _, client := range allBackends {
 		cl := client
 		go func(bucket *v1alpha1.Bucket) {
-			_, err := cl.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
-
+			var err error
+			for i := 0; i < requestRetries; i++ {
+				_, err = cl.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
+				if err == nil {
+					break
+				}
+			}
 			bucketCreatedErr <- err
 		}(bucket)
 	}
@@ -336,7 +343,15 @@ func (c *external) deleteAll(ctx context.Context, bucketName string) error {
 	for _, client := range c.backendStore.GetAllBackends() {
 		cl := client
 		g.Go(func() error {
-			return c.delete(ctx, bucketName, cl)
+			var err error
+			for i := 0; i < requestRetries; i++ {
+				err = c.delete(ctx, bucketName, cl)
+				if err == nil {
+					break
+				}
+			}
+
+			return err
 		})
 	}
 	if err := g.Wait(); err != nil {

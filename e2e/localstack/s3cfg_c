@@ -1,6 +1,0 @@
-[default]
-host_base = localhost:4568
-host_bucket = localhost:4568
-access_key = Dummy
-secret_key = Dummy
-use_https = False

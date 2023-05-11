@@ -45,13 +45,16 @@ func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1
 }
 
 func resolveHostBase(hostBase string, useHTTPS bool) string {
-	if !strings.HasPrefix(hostBase, "http") {
-		if useHTTPS {
-			hostBase = "https://" + hostBase
-		} else {
-			hostBase = "http://" + hostBase
-		}
+	httpsPrefix := "https://"
+	httpPrefix := "http://"
+	// Remove prefix in either case if it has been specified.
+	// Let useHTTPS option take precedence.
+	hostBase = strings.TrimPrefix(hostBase, httpPrefix)
+	hostBase = strings.TrimPrefix(hostBase, httpsPrefix)
+
+	if useHTTPS {
+		return httpsPrefix + hostBase
 	}
 
-	return hostBase
+	return httpPrefix + hostBase
 }

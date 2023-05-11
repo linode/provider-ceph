@@ -39,11 +39,11 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
-	"github.com/crossplane/provider-ceph/apis"
-	"github.com/crossplane/provider-ceph/apis/v1alpha1"
-	"github.com/crossplane/provider-ceph/internal/backendstore"
-	ceph "github.com/crossplane/provider-ceph/internal/controller"
-	"github.com/crossplane/provider-ceph/internal/controller/features"
+	"github.com/linode/provider-ceph/apis"
+	"github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/backendstore"
+	ceph "github.com/linode/provider-ceph/internal/controller"
+	"github.com/linode/provider-ceph/internal/controller/features"
 )
 
 var defaultZapConfig = map[string]string{

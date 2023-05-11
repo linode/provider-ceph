@@ -38,11 +38,11 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
-	"github.com/crossplane/provider-ceph/apis/provider-ceph/v1alpha1"
-	apisv1alpha1 "github.com/crossplane/provider-ceph/apis/v1alpha1"
-	"github.com/crossplane/provider-ceph/internal/backendstore"
-	"github.com/crossplane/provider-ceph/internal/controller/features"
-	s3internal "github.com/crossplane/provider-ceph/internal/s3"
+	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/controller/features"
+	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
 const (

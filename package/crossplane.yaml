@@ -4,7 +4,7 @@ metadata:
   name: provider-ceph
   annotations:
     meta.crossplane.io/maintainer: Crossplane Maintainers <info@crossplane.io>
-    meta.crossplane.io/source: github.com/crossplane/provider-ceph
+    meta.crossplane.io/source: github.com/linode/provider-ceph
     meta.crossplane.io/license: Apache-2.0
     meta.crossplane.io/description: |
       A Crossplane provider that performs CRUD operations on s3 buckets.

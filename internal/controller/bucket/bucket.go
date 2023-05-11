@@ -228,7 +228,7 @@ func (c *external) create(ctx context.Context, bucket *v1alpha1.Bucket) (managed
 
 	c.log.Info("Creating bucket on single s3 backend", "bucket name", bucket.Name, "backend name", bucket.GetProviderConfigReference().Name)
 	_, err = s3Backend.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
-	if err != nil {
+	if resource.Ignore(isAlreadyExists, err) != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateBucket)
 	}
 
@@ -252,7 +252,7 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket) (mana
 			var err error
 			for i := 0; i < requestRetries; i++ {
 				_, err = cl.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
-				if err == nil {
+				if resource.Ignore(isAlreadyExists, err) == nil {
 					break
 				}
 			}
@@ -322,14 +322,8 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 func (c *external) delete(ctx context.Context, bucketName string, s3Backend *s3.Client) error {
 	_, err := s3Backend.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: aws.String(bucketName)})
-	if err != nil {
-		var noSuchBucketErr *s3types.NotFound
-		if errors.As(err, &noSuchBucketErr) {
-			return errors.Wrap(err, errDeleteBucket)
-		}
-	}
 
-	return err
+	return resource.Ignore(isNotFound, err)
 }
 
 func (c *external) deleteAll(ctx context.Context, bucketName string) error {
@@ -368,9 +362,7 @@ func (c *external) bucketExists(ctx context.Context, s3BackendName, bucketName s
 	}
 	_, err = s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
 	if err != nil {
-		var notFoundErr *s3types.NotFound
-		if errors.As(err, &notFoundErr) {
-			// Bucket does not exist, log error and return false.
+		if isNotFound(err) {
 			return false, nil
 		}
 		// Some other error occurred, return false with error
@@ -388,4 +380,18 @@ func (c *external) getStoredBackend(s3BackendName string) (*s3.Client, error) {
 	}
 
 	return nil, errors.New(errBackendNotStored)
+}
+
+// isNotFound helper function to test for NotFound error
+func isNotFound(err error) bool {
+	var notFoundError *s3types.NotFound
+
+	return errors.As(err, &notFoundError)
+}
+
+// isAlreadyExists helper function to test for ErrCodeBucketAlreadyOwnedByYou error
+func isAlreadyExists(err error) bool {
+	var alreadyOwnedByYou *s3types.BucketAlreadyOwnedByYou
+
+	return errors.As(err, &alreadyOwnedByYou)
 }

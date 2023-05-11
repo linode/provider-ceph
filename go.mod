@@ -1,4 +1,4 @@
-module github.com/crossplane/provider-ceph
+module github.com/linode/provider-ceph
 
 go 1.19
 

@@ -20,8 +20,8 @@ package apis
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 
-	providercephv1alpha1 "github.com/crossplane/provider-ceph/apis/provider-ceph/v1alpha1"
-	v1alpha1 "github.com/crossplane/provider-ceph/apis/v1alpha1"
+	providercephv1alpha1 "github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	v1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 )
 
 func init() {

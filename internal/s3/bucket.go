@@ -4,7 +4,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/crossplane/provider-ceph/apis/provider-ceph/v1alpha1"
+	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 )
 
 func BucketToCreateBucketInput(bucket *v1alpha1.Bucket) *s3.CreateBucketInput {

@@ -1,7 +1,7 @@
 # ====================================================================================
 # Setup Project
 PROJECT_NAME := provider-ceph
-PROJECT_REPO := github.com/crossplane/$(PROJECT_NAME)
+PROJECT_REPO := github.com/linode/$(PROJECT_NAME)
 
 PLATFORMS ?= linux_amd64 linux_arm64
 -include build/makelib/common.mk
@@ -44,10 +44,10 @@ IMAGES = provider-ceph
 # ====================================================================================
 # Setup XPKG
 
-XPKG_REG_ORGS ?= xpkg.upbound.io/crossplane
+XPKG_REG_ORGS ?= xpkg.upbound.io/linode
 # NOTE(hasheddan): skip promoting on xpkg.upbound.io as channel tags are
 # inferred.
-XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/crossplane
+XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/linode
 XPKGS = provider-ceph
 -include build/makelib/xpkg.mk
 

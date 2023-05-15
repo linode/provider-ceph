@@ -3,8 +3,13 @@ kind: Provider
 metadata:
   name: provider-ceph
   annotations:
-    meta.crossplane.io/maintainer: Crossplane Maintainers <info@crossplane.io>
+    meta.crossplane.io/maintainer:  github.com/linode/provider-ceph
     meta.crossplane.io/source: github.com/linode/provider-ceph
-    meta.crossplane.io/license: Apache-2.0
     meta.crossplane.io/description: |
       A Crossplane provider that performs CRUD operations on s3 buckets.
+    meta.crossplane.io/readme: |
+      A Crossplane provider that performs CRUD operations on s3 buckets.
+    friendly-name.meta.crossplane.io: Provider Ceph
+spec:
+  controller:
+    image: xpkg.upbound.io/linode/provider-ceph:v0.0.1

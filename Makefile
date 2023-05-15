@@ -35,9 +35,13 @@ GO111MODULE = on
 
 -include build/makelib/k8s_tools.mk
 
+# Husky git hook manager tasks.
+-include .husky/husky.mk
+
 # ====================================================================================
 # Setup Images
 
+REGISTRY_ORGS ?= xpkg.upbound.io/linode
 IMAGES = provider-ceph
 -include build/makelib/imagelight.mk
 
@@ -50,11 +54,7 @@ XPKG_REG_ORGS ?= xpkg.upbound.io/linode
 XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/linode
 XPKGS = provider-ceph
 -include build/makelib/xpkg.mk
-
 -include build/makelib/local.xpkg.mk
-
-# Husky git hook manager tasks.
--include .husky/husky.mk
 
 # NOTE(hasheddan): we force image building to happen prior to xpkg build so that
 # we ensure image is present in daemon.

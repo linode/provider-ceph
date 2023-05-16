@@ -22,14 +22,14 @@ import (
 
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/controller/bucket"
-	"github.com/linode/provider-ceph/internal/controller/config"
+	"github.com/linode/provider-ceph/internal/controller/providerconfig"
 )
 
 // Setup creates all Ceph controllers with the supplied logger and adds them to
 // the supplied manager.
 func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore) error {
 	for _, setup := range []func(ctrl.Manager, controller.Options, *backendstore.BackendStore) error{
-		config.Setup,
+		providerconfig.Setup,
 		bucket.Setup,
 	} {
 		if err := setup(mgr, o, s); err != nil {

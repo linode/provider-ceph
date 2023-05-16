@@ -38,6 +38,12 @@ type ProviderConfigSpec struct {
 
 	// UseHTTPS ceph cluster configuration.
 	UseHTTPS bool `json:"useHttps,omitempty"`
+
+	DisableHealthCheck bool `json:"disableHealthCheck,omitempty"`
+
+	// +kubebuilder:validation:Minimum:=0
+	// +kubebuilder:default:=30
+	HealthCheckIntervalSeconds int32 `json:"healthCheckIntervalSeconds,omitempty"`
 }
 
 // ProviderCredentials required to authenticate.
@@ -52,6 +58,10 @@ type ProviderCredentials struct {
 // A ProviderConfigStatus reflects the observed state of a ProviderConfig.
 type ProviderConfigStatus struct {
 	xpv1.ProviderConfigStatus `json:",inline"`
+
+	// Health of the s3 backend represented by the ProviderConfig determined
+	// by periodic health check.
+	Health string `json:"health,omitempty"`
 }
 
 // +kubebuilder:object:root=true

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package config
+package providerconfig
 
 import (
 	"context"
@@ -26,14 +26,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -41,54 +37,27 @@ import (
 )
 
 const (
-	errCreateClient = "cannot create s3 client"
-	errGetSecret    = "cannot get Secret"
+	errCreateClient     = "cannot create s3 client"
+	errGetSecret        = "cannot get Secret"
+	errBackendNotStored = "s3 backend is not stored"
 )
 
-// Setup adds a controller that reconciles ProviderConfigs by accounting for
-// their current usage.
-func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore) error {
-	name := providerconfig.ControllerName(apisv1alpha1.ProviderConfigGroupKind)
-
-	of := resource.ProviderConfigKinds{
-		Config:    apisv1alpha1.ProviderConfigGroupVersionKind,
-		UsageList: apisv1alpha1.ProviderConfigUsageListGroupVersionKind,
-	}
-
-	// Add an 'internal' controller to the manager for the ProviderConfig.
-	// This will be used, initially, to manage the backendstore of s3 clients.
-	if err := newReconciler(mgr.GetClient(), o, s).setupWithManager(mgr); err != nil {
-		return err
-	}
-
-	r := providerconfig.NewReconciler(mgr, of,
-		providerconfig.WithLogger(o.Logger.WithValues("controller", name)),
-		providerconfig.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
-
-	return ctrl.NewControllerManagedBy(mgr).
-		Named(name).
-		WithOptions(o.ForControllerRuntime()).
-		For(&apisv1alpha1.ProviderConfig{}).
-		Watches(&source.Kind{Type: &apisv1alpha1.ProviderConfigUsage{}}, &resource.EnqueueRequestForProviderConfig{}).
-		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
-}
-
-func newReconciler(k client.Client, o controller.Options, s *backendstore.BackendStore) *Reconciler {
-	return &Reconciler{
+func newBackendStoreReconciler(k client.Client, o controller.Options, s *backendstore.BackendStore) *BackendStoreReconciler {
+	return &BackendStoreReconciler{
 		kube:         k,
 		backendStore: s,
-		log:          o.Logger.WithValues("internal-controller", providerconfig.ControllerName(apisv1alpha1.ProviderConfigGroupKind)),
+		log:          o.Logger.WithValues("backend-store-controller", providerconfig.ControllerName(apisv1alpha1.ProviderConfigGroupKind)),
 	}
 }
 
-type Reconciler struct {
+type BackendStoreReconciler struct {
 	kube         client.Client
 	backendStore *backendstore.BackendStore
 	log          logging.Logger
 }
 
-func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.log.Info("Reconciling object", "name", req.Name)
+func (r *BackendStoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	r.log.Info("Reconciling backend store", "name", req.Name)
 	providerConfig := &apisv1alpha1.ProviderConfig{}
 	if err := r.kube.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
@@ -102,12 +71,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 	// ProviderConfig has been created or updated, add or
 	// update its backend in the backend store.
-	r.log.Info("Adding s3 backend to backend store", "name", req.Name)
-
 	return ctrl.Result{}, r.addOrUpdateBackend(ctx, providerConfig)
 }
 
-func (r *Reconciler) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.ProviderConfig) error {
+func (r *BackendStoreReconciler) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.ProviderConfig) error {
 	secret, err := r.getProviderConfigSecret(ctx, pc.Spec.Credentials.SecretRef.Namespace, pc.Spec.Credentials.SecretRef.Name)
 	if err != nil {
 		return err
@@ -123,7 +90,7 @@ func (r *Reconciler) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 	return nil
 }
 
-func (r *Reconciler) getProviderConfigSecret(ctx context.Context, secretNamespace, secretName string) (*corev1.Secret, error) {
+func (r *BackendStoreReconciler) getProviderConfigSecret(ctx context.Context, secretNamespace, secretName string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{}
 	ns := types.NamespacedName{Namespace: secretNamespace, Name: secretName}
 	if err := r.kube.Get(ctx, ns, secret); err != nil {
@@ -133,7 +100,7 @@ func (r *Reconciler) getProviderConfigSecret(ctx context.Context, secretNamespac
 	return secret, nil
 }
 
-func (r *Reconciler) setupWithManager(mgr ctrl.Manager) error {
+func (r *BackendStoreReconciler) setupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&apisv1alpha1.ProviderConfig{}).
 		Complete(r)

@@ -38,6 +38,29 @@ After you've made some changes, kill (Ctrl+C) the existing `provider-ceph` and r
 make run
 ```
 
+## Getting Started
+
+[Install Crossplane](https://docs.crossplane.io/v1.11/software/install/#install-crossplane) in you Kubernetes cluster
+
+Install the provider by using the Upbound CLI after changing the image tag to the latest release:
+
+```
+up ctp provider install linode/provider-ceph:v0.0.1
+```
+
+Alternatively, you can use declarative installation:
+```
+cat <<EOF | kubectl apply -f -
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: linode-provider-ceph
+spec:
+  package: linode/provider-ceph:v0.0.1
+EOF
+```
+
+
 Refer to Crossplane's [CONTRIBUTING.md] file for more information on how the
 Crossplane community prefers to work. The [Provider Development][provider-dev]
 guide may also be of use.

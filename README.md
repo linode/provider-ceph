@@ -38,6 +38,13 @@ After you've made some changes, kill (Ctrl+C) the existing `provider-ceph` and r
 make run
 ```
 
+Refer to Crossplane's [CONTRIBUTING.md] file for more information on how the
+Crossplane community prefers to work. The [Provider Development][provider-dev]
+guide may also be of use.
+
+[CONTRIBUTING.md]: https://github.com/crossplane/crossplane/blob/master/CONTRIBUTING.md
+[provider-dev]: https://github.com/crossplane/crossplane/blob/master/docs/contributing/provider_development_guide.md
+
 ## Getting Started
 
 [Install Crossplane](https://docs.crossplane.io/v1.11/software/install/#install-crossplane) in you Kubernetes cluster
@@ -59,11 +66,3 @@ spec:
   package: linode/provider-ceph:v0.0.1
 EOF
 ```
-
-
-Refer to Crossplane's [CONTRIBUTING.md] file for more information on how the
-Crossplane community prefers to work. The [Provider Development][provider-dev]
-guide may also be of use.
-
-[CONTRIBUTING.md]: https://github.com/crossplane/crossplane/blob/master/CONTRIBUTING.md
-[provider-dev]: https://github.com/crossplane/crossplane/blob/master/docs/contributing/provider_development_guide.md

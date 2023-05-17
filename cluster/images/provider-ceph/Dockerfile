@@ -6,4 +6,6 @@ ARG TARGETARCH
 ADD bin/$TARGETOS\_$TARGETARCH/provider /usr/local/bin/crossplane-ceph-provider
 
 USER 65532
+EXPOSE 8080
+
 ENTRYPOINT ["crossplane-ceph-provider"]

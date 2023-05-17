@@ -74,7 +74,8 @@ type BucketParameters struct {
 
 // BucketObservation are the observable fields of a Bucket.
 type BucketObservation struct {
-	ObservableField string `json:"observableField,omitempty"`
+	ConfigurableField string `json:"configurableField"`
+	ObservableField   string `json:"observableField,omitempty"`
 }
 
 // A BucketSpec defines the desired state of a Bucket.

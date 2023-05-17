@@ -3,4 +3,4 @@ kind: Provider
 metadata:
   name: provider-ceph
 spec:
-  package: nolancon/provider-ceph:latest
+  package: xpkg.upbound.io/linode/provider-ceph:v0.0.1

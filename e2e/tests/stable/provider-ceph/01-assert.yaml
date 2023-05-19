@@ -1,0 +1,35 @@
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: localstack-a-health-check
+---
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: localstack-b-health-check
+---
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: localstack-c-health-check
+---
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: localstack-a
+status:
+  health: Healthy
+---
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: localstack-b
+status:
+  health: Healthy
+---
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: localstack-c
+status:
+  health: Healthy

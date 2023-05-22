@@ -34,11 +34,13 @@ import (
 	commonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/utils"
 )
 
 const (
@@ -146,9 +148,15 @@ func (r *HealthCheckReconciler) cleanup(ctx context.Context, req ctrl.Request, h
 
 		return ctrl.Result{}, err
 	}
-	// 3. Remove the bucket's finalizer so that it can be garbage collected (it is a
-	// child of the deleted ProviderConfig being reconciled).
-	hcBucket.SetFinalizers(nil)
+	// 3. Remove the bucket's finalizers so that it can be garbage collected. These are the healthcheck
+	// finalizer added at creation time, and the managed-resource finalizer added by crossplane.
+	// 'Normal' buckets are given the managed-resource finalizer in order to prevent the associated
+	// provider config from being deleted whilst it is still in use. However, health check buckets are
+	// treated differently as they are owned by the provider config.
+	finalizers := utils.RemoveStringFromSlice(hcBucket.GetFinalizers(), managed.FinalizerName)
+	finalizers = utils.RemoveStringFromSlice(finalizers, healthCheckFinalizer)
+	hcBucket.SetFinalizers(finalizers)
+
 	if err := r.kubeClient.Update(ctx, hcBucket); err != nil {
 		return ctrl.Result{}, err
 	}

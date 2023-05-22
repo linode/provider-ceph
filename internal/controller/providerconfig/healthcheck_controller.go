@@ -117,6 +117,8 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		err = r.bucketExistsRetry(ctx, providerConfig.Name, hcBucket.Name)
 	})
 	if err != nil {
+		r.onceMap.deleteEntry(providerConfig.Name)
+
 		return ctrl.Result{}, err
 	}
 

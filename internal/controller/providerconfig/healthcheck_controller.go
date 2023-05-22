@@ -59,7 +59,7 @@ const (
 func newHealthCheckReconciler(k client.Client, o controller.Options, s *backendstore.BackendStore) *HealthCheckReconciler {
 	return &HealthCheckReconciler{
 		onceMap:      newOnceMap(),
-		kube:         k,
+		kubeClient:   k,
 		backendStore: s,
 		log:          o.Logger.WithValues("health-check-controller", providerconfig.ControllerName(apisv1alpha1.ProviderConfigGroupKind)),
 	}
@@ -67,7 +67,7 @@ func newHealthCheckReconciler(k client.Client, o controller.Options, s *backends
 
 type HealthCheckReconciler struct {
 	onceMap      *onceMap
-	kube         client.Client
+	kubeClient   client.Client
 	backendStore *backendstore.BackendStore
 	log          logging.Logger
 }
@@ -81,7 +81,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	hcBucket.SetNamespace(req.Namespace)
 
 	providerConfig := &apisv1alpha1.ProviderConfig{}
-	if err := r.kube.Get(ctx, req.NamespacedName, providerConfig); err != nil {
+	if err := r.kubeClient.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
 			// ProviderConfig has been deleted, perform cleanup.
 			return r.cleanup(ctx, req, hcBucket)
@@ -92,14 +92,14 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	if providerConfig.Spec.DisableHealthCheck {
 		providerConfig.Status.Health = healthStatusDisabled
-		if err := r.kube.Status().Update(ctx, providerConfig); err != nil {
+		if err := r.kubeClient.Status().Update(ctx, providerConfig); err != nil {
 			return ctrl.Result{}, errors.Wrap(err, errGetHealthCheckFile)
 		}
 
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.kube.Get(ctx, types.NamespacedName{Namespace: hcBucket.Namespace, Name: hcBucket.Name}, hcBucket); err != nil {
+	if err := r.kubeClient.Get(ctx, types.NamespacedName{Namespace: hcBucket.Namespace, Name: hcBucket.Name}, hcBucket); err != nil {
 		if kerrors.IsNotFound(err) {
 			// No existing health check bucket for this ProviderConfig, create it.
 			if err := r.createHealthCheckBucket(ctx, providerConfig, hcBucket); err != nil {
@@ -137,7 +137,7 @@ func (r *HealthCheckReconciler) cleanup(ctx context.Context, req ctrl.Request, h
 
 	// 2. Get the latest version of the health check bucket (in order to
 	// complete 3).
-	if err := r.kube.Get(ctx, types.NamespacedName{Namespace: hcBucket.Namespace, Name: hcBucket.Name}, hcBucket); err != nil {
+	if err := r.kubeClient.Get(ctx, types.NamespacedName{Namespace: hcBucket.Namespace, Name: hcBucket.Name}, hcBucket); err != nil {
 		if kerrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -147,7 +147,7 @@ func (r *HealthCheckReconciler) cleanup(ctx context.Context, req ctrl.Request, h
 	// 3. Remove the bucket's finalizer so that it can be garbage collected (it is a
 	// child of the deleted ProviderConfig being reconciled).
 	hcBucket.SetFinalizers(nil)
-	if err := r.kube.Update(ctx, hcBucket); err != nil {
+	if err := r.kubeClient.Update(ctx, hcBucket); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -169,7 +169,7 @@ func (r *HealthCheckReconciler) createHealthCheckBucket(ctx context.Context, pro
 	// Set the ProviderConfigReference so that the bucket is created on the correct backend.
 	hcBucket.Spec.ProviderConfigReference = &commonv1.Reference{Name: providerConfig.Name}
 
-	return r.kube.Create(ctx, hcBucket)
+	return r.kubeClient.Create(ctx, hcBucket)
 }
 
 func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, hcBucket *v1alpha1.Bucket) error {
@@ -187,7 +187,7 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 		Body:   strings.NewReader(time.Now().Format(time.RFC850)),
 	})
 	if err != nil {
-		if err := r.kube.Status().Update(ctx, providerConfig); err != nil {
+		if err := r.kubeClient.Status().Update(ctx, providerConfig); err != nil {
 			return err
 		}
 
@@ -199,7 +199,7 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 		Key:    aws.String(healthCheckFile),
 	})
 	if err != nil {
-		if err := r.kube.Status().Update(ctx, providerConfig); err != nil {
+		if err := r.kubeClient.Status().Update(ctx, providerConfig); err != nil {
 			return err
 		}
 
@@ -209,7 +209,7 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 	// Health check completed successfully, update status.
 	providerConfig.Status.Health = healthStatusHealthy
 
-	return r.kube.Status().Update(ctx, providerConfig)
+	return r.kubeClient.Status().Update(ctx, providerConfig)
 }
 
 func (r *HealthCheckReconciler) bucketExistsOnce(ctx context.Context, s3BackendName, bucketName string) error {

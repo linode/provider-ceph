@@ -49,9 +49,6 @@ const (
 	errUpdateHealth       = "failed to update health status of provider config"
 	healthCheckSuffix     = "-health-check"
 	healthCheckFile       = "health-check-file"
-	healthStatusHealthy   = "Healthy"
-	healthStatusUnhealthy = "Unhealthy"
-	healthStatusDisabled  = "HealthCheckDisabled"
 	// retryInterval is the interval used when checking
 	// for an existing bucket.
 	retryInterval        = 5
@@ -93,7 +90,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if providerConfig.Spec.DisableHealthCheck {
-		providerConfig.Status.Health = healthStatusDisabled
+		providerConfig.Status.Health = apisv1alpha1.HealthStatusDisabled
 		if err := r.kubeClient.Status().Update(ctx, providerConfig); err != nil {
 			return ctrl.Result{}, errors.Wrap(err, errGetHealthCheckFile)
 		}
@@ -189,7 +186,7 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 	}
 
 	// Assume the status is Unhealthy until we can verify otherwise.
-	providerConfig.Status.Health = healthStatusUnhealthy
+	providerConfig.Status.Health = apisv1alpha1.HealthStatusUnhealthy
 
 	_, putErr := s3Backend.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(hcBucket.Name),
@@ -217,7 +214,7 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 	}
 
 	// Health check completed successfully, update status.
-	providerConfig.Status.Health = healthStatusHealthy
+	providerConfig.Status.Health = apisv1alpha1.HealthStatusHealthy
 
 	return r.kubeClient.Status().Update(ctx, providerConfig)
 }

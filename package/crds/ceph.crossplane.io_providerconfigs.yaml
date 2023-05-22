@@ -155,6 +155,10 @@ spec:
               health:
                 description: Health of the s3 backend represented by the ProviderConfig
                   determined by periodic health check.
+                enum:
+                - Healthy
+                - Unhealthy
+                - HealthCheckDisabled
                 type: string
               users:
                 description: Users of this provider configuration.

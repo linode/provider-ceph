@@ -55,13 +55,22 @@ type ProviderCredentials struct {
 	xpv1.CommonCredentialSelectors `json:",inline"`
 }
 
+type HealthStatus string
+
+const (
+	HealthStatusHealthy   = "Healthy"
+	HealthStatusUnhealthy = "Unhealthy"
+	HealthStatusDisabled  = "HealthCheckDisabled"
+)
+
 // A ProviderConfigStatus reflects the observed state of a ProviderConfig.
 type ProviderConfigStatus struct {
 	xpv1.ProviderConfigStatus `json:",inline"`
 
 	// Health of the s3 backend represented by the ProviderConfig determined
 	// by periodic health check.
-	Health string `json:"health,omitempty"`
+	//+kubebuilder:validation:Enum=Healthy;Unhealthy;HealthCheckDisabled
+	Health HealthStatus `json:"health,omitempty"`
 }
 
 // +kubebuilder:object:root=true

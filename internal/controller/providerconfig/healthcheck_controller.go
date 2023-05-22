@@ -117,7 +117,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// This is done because the backend store reconciler and bucket controller need to
 	// complete before we can write to the health check bucket.
 	r.onceMap.addEntryWithOnce(req.Name).Do(func() {
-		err = r.bucketExistsOnce(ctx, providerConfig.Name, hcBucket.Name)
+		err = r.bucketExistsRetry(ctx, providerConfig.Name, hcBucket.Name)
 	})
 	if err != nil {
 		return ctrl.Result{}, err
@@ -222,20 +222,17 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 	return r.kubeClient.Status().Update(ctx, providerConfig)
 }
 
-func (r *HealthCheckReconciler) bucketExistsOnce(ctx context.Context, s3BackendName, bucketName string) error {
+func (r *HealthCheckReconciler) bucketExistsRetry(ctx context.Context, s3BackendName, bucketName string) error {
+	if err := r.bucketExists(ctx, s3BackendName, bucketName); err == nil {
+		return nil
+	}
+
 	ticker := time.NewTicker(retryInterval * time.Second)
 	var errStr string
 	for {
 		select {
 		case <-ticker.C:
-			s3Backend := r.backendStore.GetBackend(s3BackendName)
-			if s3Backend == nil {
-				errStr = errBackendNotStored
-
-				continue
-			}
-			_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
-			if err != nil {
+			if err := r.bucketExists(ctx, s3BackendName, bucketName); err != nil {
 				errStr = err.Error()
 
 				continue
@@ -249,6 +246,19 @@ func (r *HealthCheckReconciler) bucketExistsOnce(ctx context.Context, s3BackendN
 			return errors.Wrap(ctx.Err(), errStr)
 		}
 	}
+}
+
+func (r *HealthCheckReconciler) bucketExists(ctx context.Context, s3BackendName, bucketName string) error {
+	s3Backend := r.backendStore.GetBackend(s3BackendName)
+	if s3Backend == nil {
+		return errors.New(errBackendNotStored)
+	}
+	_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *HealthCheckReconciler) setupWithManager(mgr ctrl.Manager) error {

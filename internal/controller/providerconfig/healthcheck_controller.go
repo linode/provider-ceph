@@ -103,6 +103,8 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if kerrors.IsNotFound(err) {
 			// No existing health check bucket for this ProviderConfig, create it.
 			if err := r.createHealthCheckBucket(ctx, providerConfig, hcBucket); err != nil {
+				r.log.Info("Failed to create bucket for health check on s3 backend", "name", providerConfig.Name)
+
 				return ctrl.Result{}, err
 			}
 		}

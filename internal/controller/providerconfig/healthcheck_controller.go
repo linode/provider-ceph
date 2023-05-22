@@ -183,29 +183,29 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 	// Assume the status is Unhealthy until we can verify otherwise.
 	providerConfig.Status.Health = healthStatusUnhealthy
 
-	_, err := s3Backend.PutObject(ctx, &s3.PutObjectInput{
+	_, putErr := s3Backend.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(hcBucket.Name),
 		Key:    aws.String(healthCheckFile),
 		Body:   strings.NewReader(time.Now().Format(time.RFC850)),
 	})
-	if err != nil {
+	if putErr != nil {
 		if err := r.kubeClient.Status().Update(ctx, providerConfig); err != nil {
-			return err
+			return errors.Wrap(err, putErr.Error())
 		}
 
-		return errors.Wrap(err, errPutHealthCheckFile)
+		return errors.Wrap(putErr, errPutHealthCheckFile)
 	}
 
-	_, err = s3Backend.GetObject(ctx, &s3.GetObjectInput{
+	_, getErr := s3Backend.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(hcBucket.Name),
 		Key:    aws.String(healthCheckFile),
 	})
-	if err != nil {
+	if getErr != nil {
 		if err := r.kubeClient.Status().Update(ctx, providerConfig); err != nil {
-			return err
+			return errors.Wrap(err, getErr.Error())
 		}
 
-		return errors.Wrap(err, errGetHealthCheckFile)
+		return errors.Wrap(getErr, errGetHealthCheckFile)
 	}
 
 	// Health check completed successfully, update status.

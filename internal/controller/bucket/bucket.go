@@ -360,39 +360,13 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.New(errNotBucket)
 	}
 
-	bucket.Status.SetConditions(xpv1.Deleting())
-	// Where a bucket has a ProviderConfigReference Name, we can infer that this bucket is to be
-	// deleted only from this S3 Backend. An empty config reference name will be automatically set
-	// to "default".
-	if bucket.GetProviderConfigReference() != nil && bucket.GetProviderConfigReference().Name != defaultPC {
-		backendName := bucket.GetProviderConfigReference().Name
-		s3Backend, err := c.getStoredBackend(backendName)
-		if err != nil {
-			return err
-		}
-
-		c.log.Info("Deleting bucket on single s3 backend", "bucket name", bucket.Name, "backend name", backendName)
-
-		return c.delete(ctx, bucket.Name, s3Backend)
-	}
-
-	// No ProviderConfigReference Name specified for bucket, we can infer that this bucket is to
-	// be deleted from all S3 Backends.
-	return c.deleteAll(ctx, bucket.Name)
-}
-
-func (c *external) delete(ctx context.Context, bucketName string, s3Backend *s3.Client) error {
-	_, err := s3Backend.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: aws.String(bucketName)})
-
-	return resource.Ignore(isNotFound, err)
-}
-
-func (c *external) deleteAll(ctx context.Context, bucketName string) error {
 	if !c.backendStore.BackendsAreStored() {
 		return errors.New(errNoS3BackendsStored)
 	}
 
-	c.log.Info("Deleting bucket on all available s3 backends", "bucket name", bucketName)
+	bucket.Status.SetConditions(xpv1.Deleting())
+
+	c.log.Info("Deleting bucket on all available s3 backends", "bucket name", bucket.Name)
 
 	g := new(errgroup.Group)
 	for _, client := range c.backendStore.GetAllBackends() {
@@ -400,8 +374,8 @@ func (c *external) deleteAll(ctx context.Context, bucketName string) error {
 		g.Go(func() error {
 			var err error
 			for i := 0; i < requestRetries; i++ {
-				err = c.delete(ctx, bucketName, cl)
-				if err == nil {
+				_, err := cl.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: aws.String(bucket.Name)})
+				if resource.Ignore(isNotFound, err) == nil {
 					break
 				}
 			}

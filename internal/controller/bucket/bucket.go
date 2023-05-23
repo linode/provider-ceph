@@ -54,6 +54,7 @@ const (
 	errListBuckets          = "cannot list Buckets"
 	errCreateBucket         = "cannot create Bucket"
 	errDeleteBucket         = "cannot delete Bucket"
+	errUpdateBucket         = "cannot update Bucket"
 	errGetCreds             = "cannot get credentials"
 	errBackendNotStored     = "s3 backend is not stored"
 	errNoS3BackendsStored   = "no s3 backends stored"
@@ -161,11 +162,11 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Check for the bucket on each backend in a separate go routine
 	allBackends := c.backendStore.GetAllBackends()
-	for s3BackendName := range allBackends {
-		go func(backendName, bucketName string) {
-			bucketExists, err := c.bucketExists(ctxC, backendName, bucketName)
+	for _, s3Backend := range allBackends {
+		go func(backend *s3.Client, bucketName string) {
+			bucketExists, err := c.bucketExists(ctxC, backend, bucketName)
 			bucketExistsResults <- bucketExistsResult{bucketExists, err}
-		}(s3BackendName, bucket.Name)
+		}(s3Backend, bucket.Name)
 	}
 
 	// Wait for any go routine to finish, if the bucket exists anywhere
@@ -290,6 +291,28 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if !ok {
 		return managed.ExternalUpdate{}, errors.New(errNotBucket)
 	}
+
+	c.log.Info("Updating bucket on all available s3 backends", "bucket name", bucket.Name)
+
+	g := new(errgroup.Group)
+	for _, s3Backend := range c.backendStore.GetAllBackends() {
+		backend := s3Backend
+		g.Go(func() error {
+			var err error
+			for i := 0; i < requestRetries; i++ {
+				err = c.update(ctx, bucket, backend)
+				if err == nil {
+					break
+				}
+			}
+
+			return err
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBucket)
+	}
+
 	bucket.Status.SetConditions(xpv1.Available())
 
 	return managed.ExternalUpdate{
@@ -297,6 +320,38 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		// external resource. These will be stored as the connection secret.
 		ConnectionDetails: managed.ConnectionDetails{},
 	}, nil
+}
+
+func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backend *s3.Client) error {
+	bucketExists, err := c.bucketExists(ctx, s3Backend, bucket.Name)
+	if err != nil {
+		return err
+	}
+	if !bucketExists {
+		return nil
+	}
+
+	if s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
+		_, err := s3Backend.PutBucketAcl(ctx, s3internal.BucketToPutBucketACLInput(bucket))
+		if err != nil {
+			return err
+		}
+	}
+
+	if bucket.Spec.ForProvider.ObjectOwnership == nil {
+		_, err := s3Backend.DeleteBucketOwnershipControls(ctx, &s3.DeleteBucketOwnershipControlsInput{
+			Bucket: aws.String(bucket.Name),
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	_, err = s3Backend.PutBucketOwnershipControls(ctx, s3internal.BucketToPutBucketOwnershipControlsInput(bucket))
+
+	return err
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
@@ -361,12 +416,8 @@ func (c *external) deleteAll(ctx context.Context, bucketName string) error {
 	return nil
 }
 
-func (c *external) bucketExists(ctx context.Context, s3BackendName, bucketName string) (bool, error) {
-	s3Backend, err := c.getStoredBackend(s3BackendName)
-	if err != nil {
-		return false, err
-	}
-	_, err = s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
+func (c *external) bucketExists(ctx context.Context, s3Backend *s3.Client, bucketName string) (bool, error) {
+	_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
 	if err != nil {
 		if isNotFound(err) {
 			return false, nil

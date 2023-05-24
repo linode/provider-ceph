@@ -246,5 +246,7 @@ jobs:
           path: _output/**
 
       - name: Publish Artifacts
-        if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != ''
+        if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != '' && ${{ github.ref }} != 'main'
         run: make publish BRANCH_NAME=${GITHUB_REF##*/}
+        if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != '' && ${{ github.ref }} == 'main'
+        run: make publish BRANCH_NAME=develop

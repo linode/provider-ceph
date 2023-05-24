@@ -13,7 +13,7 @@ TEST_KIND_NODES ?= 1.25.0,1.26.0,1.27.0
 
 LATEST_KIND_NODE ?= 1.27.0
 REPO ?= provider-ceph
-
+VERSION ?= latest
 # ====================================================================================
 # Setup Output
 

@@ -232,6 +232,10 @@ jobs:
       - name: Vendor Dependencies
         run: make vendor vendor.check
 
+      - name: Set Controller Image Version
+        run: |
+          sed -i "s/xpkg.upbound.io\/linode\/provider-ceph:VERSION/xpkg.upbound.io\/linode\/provider-ceph:${GITHUB_REF##*/}/g" package/crossplane.yaml
+
       - name: Build Artifacts
         run: make -j2 build.all
         env:

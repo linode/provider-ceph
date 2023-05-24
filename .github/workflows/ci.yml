@@ -245,10 +245,15 @@ jobs:
           name: output
           path: _output/**
 
+      - name: Get Branch Name
+        id: branch-name
+        uses: tj-actions/branch-names@v7
+
       - name: Publish Versioned Artifacts
-        if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != '' && ${{ github.ref }} != 'main'
+        if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != '' && steps.branch-name.outputs.is_default == 'true' && steps.branch-name.outputs.current_branch  != 'main'
         run: make publish BRANCH_NAME=${GITHUB_REF##*/}
 
       - name: Publish Develop Artifacts
-        if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != '' && ${{ github.ref }} == 'main'
+        if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != '' && steps.branch-name.outputs.is_default == 'true' && steps.branch-name.outputs.current_branch  == 'main'
+
         run: make publish BRANCH_NAME=develop

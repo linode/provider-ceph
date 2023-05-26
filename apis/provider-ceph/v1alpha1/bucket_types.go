@@ -72,10 +72,22 @@ type BucketParameters struct {
 	ObjectOwnership *string `json:"objectOwnership,omitempty"`
 }
 
+type BackendStatuses map[string]BackendStatus
+
+type BackendStatus string
+
+const (
+	BackendReadyStatus    BackendStatus = "Ready"
+	BackendNotReadyStatus BackendStatus = "NotReady"
+)
+
 // BucketObservation are the observable fields of a Bucket.
 type BucketObservation struct {
 	ConfigurableField string `json:"configurableField"`
 	ObservableField   string `json:"observableField,omitempty"`
+	// BackendStatuses is a map of the s3 backends on which the bucket
+	// has been created and their update status.
+	BackendStatuses BackendStatuses `json:"backendStatuses,omitempty"`
 }
 
 // A BucketSpec defines the desired state of a Bucket.

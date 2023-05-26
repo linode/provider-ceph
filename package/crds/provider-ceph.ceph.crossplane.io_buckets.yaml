@@ -305,6 +305,12 @@ spec:
               atProvider:
                 description: BucketObservation are the observable fields of a Bucket.
                 properties:
+                  backendStatuses:
+                    additionalProperties:
+                      type: string
+                    description: BackendStatuses is a map of the s3 backends on which
+                      the bucket has been created and their update status.
+                    type: object
                   configurableField:
                     type: string
                   observableField:

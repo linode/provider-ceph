@@ -295,13 +295,35 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	c.log.Info("Updating bucket on all available s3 backends", "bucket name", bucket.Name)
 
 	g := new(errgroup.Group)
-	for _, s3Backend := range c.backendStore.GetAllBackends() {
+
+	backends := newBackendStatuses()
+	if bucket.Status.AtProvider.BackendStatuses != nil {
+		backends = newBackendStatusesWithExisting(bucket.Status.AtProvider.BackendStatuses)
+	}
+
+	for backendName, s3Backend := range c.backendStore.GetAllBackends() {
 		backend := s3Backend
+		beName := backendName
 		g.Go(func() error {
 			var err error
+			backends.setBackendStatus(beName, v1alpha1.BackendNotReadyStatus)
 			for i := 0; i < requestRetries; i++ {
+				bucketExists, err := c.bucketExists(ctx, backend, bucket.Name)
+				if err != nil {
+					return err
+				}
+				if !bucketExists {
+					backends.deleteBackendFromStatuses(beName)
+
+					return nil
+				}
+
+				backends.setBackendStatus(beName, v1alpha1.BackendNotReadyStatus)
+
 				err = c.update(ctx, bucket, backend)
 				if err == nil {
+					backends.setBackendStatus(beName, v1alpha1.BackendReadyStatus)
+
 					break
 				}
 			}
@@ -309,6 +331,9 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			return err
 		})
 	}
+
+	bucket.Status.AtProvider.BackendStatuses = backends.getBackendStatuses()
+
 	if err := g.Wait(); err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBucket)
 	}
@@ -323,14 +348,6 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backend *s3.Client) error {
-	bucketExists, err := c.bucketExists(ctx, s3Backend, bucket.Name)
-	if err != nil {
-		return err
-	}
-	if !bucketExists {
-		return nil
-	}
-
 	if s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
 		_, err := s3Backend.PutBucketAcl(ctx, s3internal.BucketToPutBucketACLInput(bucket))
 		if err != nil {
@@ -349,7 +366,7 @@ func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backen
 		return nil
 	}
 
-	_, err = s3Backend.PutBucketOwnershipControls(ctx, s3internal.BucketToPutBucketOwnershipControlsInput(bucket))
+	_, err := s3Backend.PutBucketOwnershipControls(ctx, s3internal.BucketToPutBucketOwnershipControlsInput(bucket))
 
 	return err
 }
@@ -383,6 +400,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 			return err
 		})
 	}
+
 	if err := g.Wait(); err != nil {
 		return errors.Wrap(err, errDeleteBucket)
 	}

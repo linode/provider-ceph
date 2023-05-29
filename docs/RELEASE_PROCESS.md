@@ -11,7 +11,7 @@ Here is a simplified set of steps to create a release for `provider-ceph`.
    
    **Important**: Set the controller image version to the release version (e.g. v0.0.2) in `package/crossplane.yaml` https://github.com/linode/provider-ceph/blob/d851260fc3480e9b7bb36064516e289eb734a036/package/crossplane.yaml#L15
    
-   This is a required step due to an issue described here which is due to be fixed.
+   This is a required step due to issue #14 which is due to be fixed.
    
 6. **tag release**: Run the Tag action on the release branch with the desired version (e.g. v0.0.2).
 7. **build/publish**: Run the CI and Configurations action on the release branch with the version that was just tagged. The released package will be published on the upbound marketplace [here](https://marketplace.upbound.io/account/linode/provider-ceph). 

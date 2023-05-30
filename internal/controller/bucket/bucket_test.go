@@ -253,7 +253,7 @@ func TestDelete(t *testing.T) {
 				},
 			},
 			want: want{
-				err: errors.New(errBackendNotStored),
+				err: errors.New(errNoS3BackendsStored),
 			},
 		},
 		"S3 backend not referenced and none exist": {

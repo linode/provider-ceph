@@ -3,6 +3,9 @@ kind: Bucket
 metadata:
   name: bucket-for-localstack-b
 status:
+  atProvider:
+    backendStatuses:
+      localstack-b: "Ready"
   conditions:
   - reason: Available
     status: "True"

@@ -96,6 +96,13 @@ spec:
                 required:
                 - source
                 type: object
+              disableHealthCheck:
+                type: boolean
+              healthCheckIntervalSeconds:
+                default: 30
+                format: int32
+                minimum: 0
+                type: integer
               hostBase:
                 description: HostBase url specified in s3cfg.
                 type: string
@@ -145,6 +152,14 @@ spec:
                   - type
                   type: object
                 type: array
+              health:
+                description: Health of the s3 backend represented by the ProviderConfig
+                  determined by periodic health check.
+                enum:
+                - Healthy
+                - Unhealthy
+                - HealthCheckDisabled
+                type: string
               users:
                 description: Users of this provider configuration.
                 format: int64

@@ -106,6 +106,8 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 				return ctrl.Result{}, err
 			}
+
+			r.log.Info("Failed to get bucket for health check on s3 backend", "name", providerConfig.Name)
 		}
 	}
 

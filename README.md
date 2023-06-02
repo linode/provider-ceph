@@ -63,6 +63,6 @@ kind: Provider
 metadata:
   name: linode-provider-ceph
 spec:
-  package: linode/provider-ceph:v0.0.1
+  package: linode/provider-ceph:v0.0.2
 EOF
 ```

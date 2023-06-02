@@ -214,24 +214,30 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotBucket)
 	}
 
+	backends := newBackendStatuses()
+
 	bucket.Status.SetConditions(xpv1.Creating())
+	defer setBucketStatus(bucket, backends.getBackendStatuses())
+
 	// Where a bucket has a ProviderConfigReference Name, we can infer that this bucket is to be
 	// created only on this S3 Backend. An empty config reference name will be automatically set
 	// to "default".
 	if bucket.GetProviderConfigReference() != nil && bucket.GetProviderConfigReference().Name != defaultPC {
-		return c.create(ctx, bucket)
+		return c.create(ctx, bucket, backends)
 	}
 
 	// No ProviderConfigReference Name specified for bucket, we can infer that this bucket is to
 	// be created on all S3 Backends.
-	return c.createAll(ctx, bucket)
+	return c.createAll(ctx, bucket, backends)
 }
 
-func (c *external) create(ctx context.Context, bucket *v1alpha1.Bucket) (managed.ExternalCreation, error) {
+func (c *external) create(ctx context.Context, bucket *v1alpha1.Bucket, backends *backendStatuses) (managed.ExternalCreation, error) {
 	s3Backend, err := c.getStoredBackend(bucket.GetProviderConfigReference().Name)
 	if err != nil {
 		return managed.ExternalCreation{}, err
 	}
+
+	backends.setBackendStatus(bucket.GetProviderConfigReference().Name, v1alpha1.BackendNotReadyStatus)
 
 	c.log.Info("Creating bucket on single s3 backend", "bucket name", bucket.Name, "backend name", bucket.GetProviderConfigReference().Name)
 	_, err = s3Backend.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
@@ -239,51 +245,50 @@ func (c *external) create(ctx context.Context, bucket *v1alpha1.Bucket) (managed
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateBucket)
 	}
 
+	backends.setBackendStatus(bucket.GetProviderConfigReference().Name, v1alpha1.BackendReadyStatus)
+
 	return managed.ExternalCreation{}, nil
 }
 
-func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket) (managed.ExternalCreation, error) {
+func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket, backends *backendStatuses) (managed.ExternalCreation, error) {
 	if !c.backendStore.BackendsAreStored() {
 		return managed.ExternalCreation{}, errors.New(errNoS3BackendsStored)
 	}
 
 	c.log.Info("Creating bucket on all available s3 backends", "bucket name", bucket.Name)
 
-	bucketCreatedErr := make(chan error)
+	g := new(errgroup.Group)
 
 	// Create the bucket on each backend in a separate go routine
 	allBackends := c.backendStore.GetAllBackends()
-	for _, client := range allBackends {
+	for beName, client := range allBackends {
+		bn := beName
 		cl := client
-		go func(bucket *v1alpha1.Bucket) {
-			var err error
+		bucket := bucket
+
+		g.Go(func() (err error) {
+			backends.setBackendStatus(bn, v1alpha1.BackendNotReadyStatus)
 			for i := 0; i < requestRetries; i++ {
 				_, err = cl.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
 				if resource.Ignore(isAlreadyExists, err) == nil {
+					backends.setBackendStatus(bn, v1alpha1.BackendReadyStatus)
+
 					break
 				}
 			}
-			bucketCreatedErr <- err
-		}(bucket)
+
+			return err
+		})
 	}
 
-	// Wait for any go routine to finish, if the bucket was successfully
-	// created anywhere, return no error.
-	var err error
-	for i := 0; i < len(allBackends); i++ {
-		err = <-bucketCreatedErr
-		if err != nil {
-			c.log.Info(errors.Wrap(err, errCreateBucket).Error())
-
-			continue
-		}
-
-		return managed.ExternalCreation{}, nil
+	err := g.Wait()
+	if err != nil {
+		// Bucket could not be created on any backend. Return the error
+		// so that the operation can be retried.
+		return managed.ExternalCreation{}, errors.Wrap(err, errCreateBucket)
 	}
 
-	// Bucket could not be created on any backend. Return the error
-	// so that the operation can be retried.
-	return managed.ExternalCreation{}, errors.Wrap(err, errCreateBucket)
+	return managed.ExternalCreation{}, nil
 }
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
@@ -300,12 +305,12 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if bucket.Status.AtProvider.BackendStatuses != nil {
 		backends = newBackendStatusesWithExisting(bucket.Status.AtProvider.BackendStatuses)
 	}
+	defer setBucketStatus(bucket, backends.getBackendStatuses())
 
 	for backendName, s3Backend := range c.backendStore.GetAllBackends() {
 		backend := s3Backend
 		beName := backendName
 		g.Go(func() error {
-			var err error
 			backends.setBackendStatus(beName, v1alpha1.BackendNotReadyStatus)
 			for i := 0; i < requestRetries; i++ {
 				bucketExists, err := c.bucketExists(ctx, backend, bucket.Name)
@@ -328,11 +333,9 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 				}
 			}
 
-			return err
+			return nil
 		})
 	}
-
-	bucket.Status.AtProvider.BackendStatuses = backends.getBackendStatuses()
 
 	if err := g.Wait(); err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBucket)
@@ -443,4 +446,17 @@ func isAlreadyExists(err error) bool {
 	var alreadyOwnedByYou *s3types.BucketAlreadyOwnedByYou
 
 	return errors.As(err, &alreadyOwnedByYou)
+}
+
+func setBucketStatus(bucket *v1alpha1.Bucket, statuses v1alpha1.BackendStatuses) {
+	bucket.Status.SetConditions(xpv1.Unavailable())
+	bucket.Status.AtProvider.BackendStatuses = statuses
+
+	for _, status := range bucket.Status.AtProvider.BackendStatuses {
+		if status == v1alpha1.BackendReadyStatus {
+			bucket.Status.SetConditions(xpv1.Available())
+
+			break
+		}
+	}
 }

@@ -1,0 +1,8 @@
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: linode-provider-ceph
+spec:
+  package: xpkg.upbound.io/linode/provider-ceph:v0.0.3
+  controllerConfigRef:
+    name: debug-config

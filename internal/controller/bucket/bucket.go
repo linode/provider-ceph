@@ -358,20 +358,10 @@ func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backen
 		}
 	}
 
-	if bucket.Spec.ForProvider.ObjectOwnership == nil {
-		_, err := s3Backend.DeleteBucketOwnershipControls(ctx, &s3.DeleteBucketOwnershipControlsInput{
-			Bucket: aws.String(bucket.Name),
-		})
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	_, err := s3Backend.PutBucketOwnershipControls(ctx, s3internal.BucketToPutBucketOwnershipControlsInput(bucket))
-
-	return err
+	//TODO: Add functionality for bucket ownership controls, using s3 apis:
+	// - DeleteBucketOwnershipControls
+	// - PutBucketOwnershipControls
+	return nil
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {

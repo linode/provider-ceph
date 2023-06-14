@@ -1,12 +1,12 @@
 #!/bin/bash
 
 bucketname=$2
-port=$3
+address=$3
 # Check whether the bucket already exists. 
 # We suppress all output - we're interested only in the return code.
 
 bucket_exists() {
-    aws --endpoint-url=http://localhost:$port s3api head-bucket \
+    aws --endpoint-url=http://$address s3api head-bucket \
         --bucket $bucketname \
             >/dev/null 2>&1
 
@@ -20,7 +20,7 @@ bucket_exists() {
 }
 
 bucket_does_not_exist() {
-    aws --endpoint-url=http://localhost:$port s3api head-bucket \
+    aws --endpoint-url=http://$address s3api head-bucket \
         --bucket $bucketname \
             >/dev/null 2>&1
 

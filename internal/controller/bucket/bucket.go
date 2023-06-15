@@ -55,6 +55,8 @@ const (
 	errCreateBucket         = "cannot create Bucket"
 	errDeleteBucket         = "cannot delete Bucket"
 	errUpdateBucket         = "cannot update Bucket"
+	errListObjects          = "cannot list objects"
+	errDeleteObject         = "cannot delete object"
 	errGetCreds             = "cannot get credentials"
 	errBackendNotStored     = "s3 backend is not stored"
 	errNoS3BackendsStored   = "no s3 backends stored"
@@ -384,8 +386,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		g.Go(func() error {
 			var err error
 			for i := 0; i < requestRetries; i++ {
-				_, err := cl.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: aws.String(bucket.Name)})
-				if resource.Ignore(isNotFound, err) == nil {
+				if err := c.deleteBucket(ctx, cl, aws.String(bucket.Name)); err == nil {
 					break
 				}
 			}
@@ -399,6 +400,83 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	}
 
 	return nil
+}
+
+func (c *external) deleteBucket(ctx context.Context, s3Backend *s3.Client, bucketName *string) error {
+	bucketExists, err := c.bucketExists(ctx, s3Backend, *bucketName)
+	if err != nil {
+		return err
+	}
+	if !bucketExists {
+		return nil
+	}
+
+	// Delete all objects from the bucket. This is sufficient for unversioned buckets.
+	objectsInput := &s3.ListObjectsV2Input{Bucket: bucketName}
+	for {
+		objects, err := s3Backend.ListObjectsV2(ctx, objectsInput)
+		if err != nil {
+			return errors.Wrap(err, errListObjects)
+		}
+
+		for _, object := range objects.Contents {
+			if err := c.deleteObject(ctx, s3Backend, bucketName, object.Key, nil); err != nil {
+				return errors.Wrap(err, errDeleteObject)
+			}
+		}
+
+		// If the bucket contains many objects, the ListObjectsV2() call
+		// might not return all of the objects in the first listing. Check to
+		// see whether the listing was truncated. If so, retrieve the next page
+		// of objects and delete them.
+		if objects.IsTruncated {
+			objectsInput.ContinuationToken = objects.ContinuationToken
+		} else {
+			break
+		}
+	}
+
+	// Delete all object versions (required for versioned buckets).
+	objVersionsInput := &s3.ListObjectVersionsInput{Bucket: bucketName}
+	for {
+		objectVersions, err := s3Backend.ListObjectVersions(ctx, objVersionsInput)
+		if err != nil {
+			return errors.Wrap(err, errListObjects)
+		}
+
+		for _, objectVersion := range objectVersions.DeleteMarkers {
+			if err := c.deleteObject(ctx, s3Backend, bucketName, objectVersion.Key, objectVersion.VersionId); err != nil {
+				return errors.Wrap(err, errDeleteObject)
+			}
+		}
+
+		for _, objectVersion := range objectVersions.Versions {
+			if err := c.deleteObject(ctx, s3Backend, bucketName, objectVersion.Key, objectVersion.VersionId); err != nil {
+				return errors.Wrap(err, errDeleteObject)
+			}
+		}
+		if objectVersions.IsTruncated {
+			objVersionsInput.VersionIdMarker = objectVersions.NextVersionIdMarker
+			objVersionsInput.KeyMarker = objectVersions.NextKeyMarker
+		} else {
+			break
+		}
+
+	}
+
+	_, err = s3Backend.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: bucketName})
+
+	return resource.Ignore(isNotFound, err)
+}
+
+func (c *external) deleteObject(ctx context.Context, s3Backend *s3.Client, bucket, key, versionId *string) error {
+	_, err := s3Backend.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket:    bucket,
+		Key:       key,
+		VersionId: versionId,
+	})
+
+	return resource.Ignore(isNotFound, err)
 }
 
 func (c *external) bucketExists(ctx context.Context, s3Backend *s3.Client, bucketName string) (bool, error) {

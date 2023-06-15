@@ -9,22 +9,6 @@ with the following features:
 - A `Bucket` resource type that represents an S3 bucket.
 - A controller that observes `Bucket` objects and reconciles these objects with the S3 backends.
 
-## Testing
-
-The E2E test setup consists of the following:
-- A single [Kind](https://kind.sigs.k8s.io/) cluster with [Crossplane](https://www.crossplane.io/) installed and `provider-ceph` deployed.
-- Three [LocalStack](https://localstack.cloud/) instances representing the S3 backends. These are created using Docker Compose.
-
-The tests are run using [Kuttl](https://kuttl.dev/) and s3 backend operations are verified using the [AWS CLI](https://aws.amazon.com/cli/).
-
-![provider-ceph-testing drawio](https://user-images.githubusercontent.com/41484746/236199553-06990687-462a-4097-8d42-a7f7f055abbf.png)
-
-### Run Kuttl Test Suite
-
-```
-make kuttl
-```
-
 ## Developing
 Spin up the test environment, but with `provider-ceph` running locally in your terminal:
 

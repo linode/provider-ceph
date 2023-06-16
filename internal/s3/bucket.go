@@ -9,11 +9,14 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
 	errListObjects  = "cannot list objects"
 	errDeleteObject = "cannot delete object"
+
+	RequestRetries = 5
 )
 
 func BucketToCreateBucketInput(bucket *v1alpha1.Bucket) *s3.CreateBucketInput {
@@ -72,13 +75,19 @@ func DeleteBucket(ctx context.Context, s3Backend *s3.Client, bucketName *string)
 		return nil
 	}
 
+	g := new(errgroup.Group)
+
 	// Delete all objects from the bucket. This is sufficient for unversioned buckets.
-	if err := deleteBucketObjects(ctx, s3Backend, bucketName); err != nil {
-		return err
-	}
+	g.Go(func() error {
+		return deleteBucketObjects(ctx, s3Backend, bucketName)
+	})
 
 	// Delete all object versions (required for versioned buckets).
-	if err := deleteBucketObjectVersions(ctx, s3Backend, bucketName); err != nil {
+	g.Go(func() error {
+		return deleteBucketObjectVersions(ctx, s3Backend, bucketName)
+	})
+
+	if err := g.Wait(); err != nil {
 		return err
 	}
 
@@ -95,10 +104,16 @@ func deleteBucketObjects(ctx context.Context, s3Backend *s3.Client, bucketName *
 			return errors.Wrap(err, errListObjects)
 		}
 
+		g := new(errgroup.Group)
 		for _, object := range objects.Contents {
-			if err := deleteObject(ctx, s3Backend, bucketName, object.Key, nil); err != nil {
-				return errors.Wrap(err, errDeleteObject)
-			}
+			obj := object
+			g.Go(func() error {
+				return deleteObject(ctx, s3Backend, bucketName, obj.Key, nil)
+			})
+		}
+
+		if err := g.Wait(); err != nil {
+			return errors.Wrap(err, errDeleteObject)
 		}
 
 		// If the bucket contains many objects, the ListObjectsV2() call
@@ -123,16 +138,23 @@ func deleteBucketObjectVersions(ctx context.Context, s3Backend *s3.Client, bucke
 			return errors.Wrap(err, errListObjects)
 		}
 
-		for _, objectVersion := range objectVersions.DeleteMarkers {
-			if err := deleteObject(ctx, s3Backend, bucketName, objectVersion.Key, objectVersion.VersionId); err != nil {
-				return errors.Wrap(err, errDeleteObject)
-			}
+		g := new(errgroup.Group)
+		for _, deleteMarkerEntry := range objectVersions.DeleteMarkers {
+			delMark := deleteMarkerEntry
+			g.Go(func() error {
+				return deleteObject(ctx, s3Backend, bucketName, delMark.Key, delMark.VersionId)
+			})
 		}
 
 		for _, objectVersion := range objectVersions.Versions {
-			if err := deleteObject(ctx, s3Backend, bucketName, objectVersion.Key, objectVersion.VersionId); err != nil {
-				return errors.Wrap(err, errDeleteObject)
-			}
+			objVer := objectVersion
+			g.Go(func() error {
+				return deleteObject(ctx, s3Backend, bucketName, objVer.Key, objVer.VersionId)
+			})
+		}
+
+		if err := g.Wait(); err != nil {
+			return errors.Wrap(err, errDeleteObject)
 		}
 
 		// If the bucket contains many objects, the ListObjectVersionsV2() call
@@ -151,13 +173,19 @@ func deleteBucketObjectVersions(ctx context.Context, s3Backend *s3.Client, bucke
 }
 
 func deleteObject(ctx context.Context, s3Backend *s3.Client, bucket, key, versionId *string) error {
-	_, err := s3Backend.DeleteObject(ctx, &s3.DeleteObjectInput{
-		Bucket:    bucket,
-		Key:       key,
-		VersionId: versionId,
-	})
+	var err error
+	for i := 0; i < RequestRetries; i++ {
+		_, err = s3Backend.DeleteObject(ctx, &s3.DeleteObjectInput{
+			Bucket:    bucket,
+			Key:       key,
+			VersionId: versionId,
+		})
+		if resource.Ignore(isNotFound, err) == nil {
+			return nil
+		}
+	}
 
-	return resource.Ignore(isNotFound, err)
+	return err
 }
 
 func BucketExists(ctx context.Context, s3Backend *s3.Client, bucketName string) (bool, error) {

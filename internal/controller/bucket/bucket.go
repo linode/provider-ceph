@@ -64,8 +64,6 @@ const (
 	errFailedToCreateClient = "failed to create s3 client"
 
 	defaultPC = "default"
-
-	requestRetries = 5
 )
 
 // A NoOpService does nothing.
@@ -270,7 +268,7 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket, backe
 
 		g.Go(func() (err error) {
 			backends.setBackendStatus(bn, v1alpha1.BackendNotReadyStatus)
-			for i := 0; i < requestRetries; i++ {
+			for i := 0; i < s3internal.RequestRetries; i++ {
 				_, err = cl.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
 				if resource.Ignore(isAlreadyExists, err) == nil {
 					backends.setBackendStatus(bn, v1alpha1.BackendReadyStatus)
@@ -314,7 +312,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		beName := backendName
 		g.Go(func() error {
 			backends.setBackendStatus(beName, v1alpha1.BackendNotReadyStatus)
-			for i := 0; i < requestRetries; i++ {
+			for i := 0; i < s3internal.RequestRetries; i++ {
 				bucketExists, err := s3internal.BucketExists(ctx, backend, bucket.Name)
 				if err != nil {
 					return err
@@ -385,7 +383,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		cl := client
 		g.Go(func() error {
 			var err error
-			for i := 0; i < requestRetries; i++ {
+			for i := 0; i < s3internal.RequestRetries; i++ {
 				if err := s3internal.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err == nil {
 					break
 				}

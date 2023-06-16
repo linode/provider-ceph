@@ -73,6 +73,21 @@ func DeleteBucket(ctx context.Context, s3Backend *s3.Client, bucketName *string)
 	}
 
 	// Delete all objects from the bucket. This is sufficient for unversioned buckets.
+	if err := deleteBucketObjects(ctx, s3Backend, bucketName); err != nil {
+		return err
+	}
+
+	// Delete all object versions (required for versioned buckets).
+	if err := deleteBucketObjectVersions(ctx, s3Backend, bucketName); err != nil {
+		return err
+	}
+
+	_, err = s3Backend.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: bucketName})
+
+	return resource.Ignore(isNotFound, err)
+}
+
+func deleteBucketObjects(ctx context.Context, s3Backend *s3.Client, bucketName *string) error {
 	objectsInput := &s3.ListObjectsV2Input{Bucket: bucketName}
 	for {
 		objects, err := s3Backend.ListObjectsV2(ctx, objectsInput)
@@ -81,7 +96,7 @@ func DeleteBucket(ctx context.Context, s3Backend *s3.Client, bucketName *string)
 		}
 
 		for _, object := range objects.Contents {
-			if err := DeleteObject(ctx, s3Backend, bucketName, object.Key, nil); err != nil {
+			if err := deleteObject(ctx, s3Backend, bucketName, object.Key, nil); err != nil {
 				return errors.Wrap(err, errDeleteObject)
 			}
 		}
@@ -97,7 +112,10 @@ func DeleteBucket(ctx context.Context, s3Backend *s3.Client, bucketName *string)
 		}
 	}
 
-	// Delete all object versions (required for versioned buckets).
+	return nil
+}
+
+func deleteBucketObjectVersions(ctx context.Context, s3Backend *s3.Client, bucketName *string) error {
 	objVersionsInput := &s3.ListObjectVersionsInput{Bucket: bucketName}
 	for {
 		objectVersions, err := s3Backend.ListObjectVersions(ctx, objVersionsInput)
@@ -106,31 +124,33 @@ func DeleteBucket(ctx context.Context, s3Backend *s3.Client, bucketName *string)
 		}
 
 		for _, objectVersion := range objectVersions.DeleteMarkers {
-			if err := DeleteObject(ctx, s3Backend, bucketName, objectVersion.Key, objectVersion.VersionId); err != nil {
+			if err := deleteObject(ctx, s3Backend, bucketName, objectVersion.Key, objectVersion.VersionId); err != nil {
 				return errors.Wrap(err, errDeleteObject)
 			}
 		}
 
 		for _, objectVersion := range objectVersions.Versions {
-			if err := DeleteObject(ctx, s3Backend, bucketName, objectVersion.Key, objectVersion.VersionId); err != nil {
+			if err := deleteObject(ctx, s3Backend, bucketName, objectVersion.Key, objectVersion.VersionId); err != nil {
 				return errors.Wrap(err, errDeleteObject)
 			}
 		}
+
+		// If the bucket contains many objects, the ListObjectVersionsV2() call
+		// might not return all of the objects in the first listing. Check to
+		// see whether the listing was truncated. If so, retrieve the next page
+		// of objects and delete them.
 		if objectVersions.IsTruncated {
 			objVersionsInput.VersionIdMarker = objectVersions.NextVersionIdMarker
 			objVersionsInput.KeyMarker = objectVersions.NextKeyMarker
 		} else {
 			break
 		}
-
 	}
 
-	_, err = s3Backend.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: bucketName})
-
-	return resource.Ignore(isNotFound, err)
+	return nil
 }
 
-func DeleteObject(ctx context.Context, s3Backend *s3.Client, bucket, key, versionId *string) error {
+func deleteObject(ctx context.Context, s3Backend *s3.Client, bucket, key, versionId *string) error {
 	_, err := s3Backend.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket:    bucket,
 		Key:       key,

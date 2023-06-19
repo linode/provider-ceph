@@ -55,6 +55,8 @@ const (
 	errCreateBucket         = "cannot create Bucket"
 	errDeleteBucket         = "cannot delete Bucket"
 	errUpdateBucket         = "cannot update Bucket"
+	errListObjects          = "cannot list objects"
+	errDeleteObject         = "cannot delete object"
 	errGetCreds             = "cannot get credentials"
 	errBackendNotStored     = "s3 backend is not stored"
 	errNoS3BackendsStored   = "no s3 backends stored"
@@ -62,8 +64,6 @@ const (
 	errFailedToCreateClient = "failed to create s3 client"
 
 	defaultPC = "default"
-
-	requestRetries = 5
 )
 
 // A NoOpService does nothing.
@@ -164,7 +164,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	allBackends := c.backendStore.GetAllBackends()
 	for _, s3Backend := range allBackends {
 		go func(backend *s3.Client, bucketName string) {
-			bucketExists, err := c.bucketExists(ctxC, backend, bucketName)
+			bucketExists, err := s3internal.BucketExists(ctxC, backend, bucketName)
 			bucketExistsResults <- bucketExistsResult{bucketExists, err}
 		}(s3Backend, bucket.Name)
 	}
@@ -268,7 +268,7 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket, backe
 
 		g.Go(func() (err error) {
 			backends.setBackendStatus(bn, v1alpha1.BackendNotReadyStatus)
-			for i := 0; i < requestRetries; i++ {
+			for i := 0; i < s3internal.RequestRetries; i++ {
 				_, err = cl.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
 				if resource.Ignore(isAlreadyExists, err) == nil {
 					backends.setBackendStatus(bn, v1alpha1.BackendReadyStatus)
@@ -312,8 +312,8 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		beName := backendName
 		g.Go(func() error {
 			backends.setBackendStatus(beName, v1alpha1.BackendNotReadyStatus)
-			for i := 0; i < requestRetries; i++ {
-				bucketExists, err := c.bucketExists(ctx, backend, bucket.Name)
+			for i := 0; i < s3internal.RequestRetries; i++ {
+				bucketExists, err := s3internal.BucketExists(ctx, backend, bucket.Name)
 				if err != nil {
 					return err
 				}
@@ -383,9 +383,8 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		cl := client
 		g.Go(func() error {
 			var err error
-			for i := 0; i < requestRetries; i++ {
-				_, err := cl.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: aws.String(bucket.Name)})
-				if resource.Ignore(isNotFound, err) == nil {
+			for i := 0; i < s3internal.RequestRetries; i++ {
+				if err := s3internal.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err == nil {
 					break
 				}
 			}
@@ -401,20 +400,6 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	return nil
 }
 
-func (c *external) bucketExists(ctx context.Context, s3Backend *s3.Client, bucketName string) (bool, error) {
-	_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
-	if err != nil {
-		if isNotFound(err) {
-			return false, nil
-		}
-		// Some other error occurred, return false with error
-		// as we cannot verify the bucket exists.
-		return false, err
-	}
-	// Bucket exists, return true with no error.
-	return true, nil
-}
-
 func (c *external) getStoredBackend(s3BackendName string) (*s3.Client, error) {
 	s3Backend := c.backendStore.GetBackend(s3BackendName)
 	if s3Backend != nil {
@@ -422,13 +407,6 @@ func (c *external) getStoredBackend(s3BackendName string) (*s3.Client, error) {
 	}
 
 	return nil, errors.New(errBackendNotStored)
-}
-
-// isNotFound helper function to test for NotFound error
-func isNotFound(err error) bool {
-	var notFoundError *s3types.NotFound
-
-	return errors.As(err, &notFoundError)
 }
 
 // isAlreadyExists helper function to test for ErrCodeBucketAlreadyOwnedByYou error

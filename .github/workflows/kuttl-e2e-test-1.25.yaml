@@ -28,7 +28,7 @@ jobs:
       - name: Create test environment
         run: make crossplane-cluster load-package
       - name: Run kuttl tests 1.25
-        run: kubectl-kuttl test --config e2e/kuttl/provider-ceph-1.25.yaml
+        run: kubectl-kuttl test --config e2e/kuttl/stable/provider-ceph-1.25.yaml
         env:
           AWS_ACCESS_KEY_ID: 'Dummy'
           AWS_SECRET_ACCESS_KEY: 'Dummy'

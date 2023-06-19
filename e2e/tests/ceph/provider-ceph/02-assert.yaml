@@ -1,0 +1,11 @@
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: ceph-cluster-health-check
+---
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: ceph-cluster
+status:
+  health: Healthy

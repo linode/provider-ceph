@@ -1,0 +1,4 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - command: ../../../../hack/expect_bucket.sh bucket_exists ceph-cluster-health-check $CEPH_ADDRESS

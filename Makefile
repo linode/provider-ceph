@@ -130,7 +130,6 @@ crossplane-cluster: $(HELM3) cluster
 	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane
 	@$(OK) Installing Crossplane
 
-
 # Build the controller image and the provider package. 
 # Load the controller image to the Kind cluster and add the provider package
 # to the Provider.
@@ -153,9 +152,15 @@ load-package: $(KIND) build
 # Destroy Kind and localstack.
 kuttl: $(KUTTL) crossplane-cluster load-package
 	@$(INFO) Running kuttl test suite
-	@$(KUTTL) test --config e2e/kuttl/provider-ceph-1.27.yaml
+	@$(KUTTL) test --config e2e/kuttl/stable/provider-ceph-1.27.yaml
 	@$(OK) Running kuttl test suite
 	@$(MAKE) cluster-clean
+
+ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
+	@$(INFO) Creating kind cluster
+	@$(KIND) create cluster --name=$(KIND_CLUSTER_NAME)
+	@$(OK) Creating kind cluster
+	@$(KUTTL) test --config e2e/kuttl/ceph/provider-ceph-1.27.yaml
 
 # Spin up a Kind cluster and localstack and install Crossplane CRDs (not
 # containerised Crossplane componenets).

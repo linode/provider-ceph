@@ -1,10 +1,22 @@
 package s3
 
 import (
+	"context"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
+)
+
+const (
+	errListObjects  = "cannot list objects"
+	errDeleteObject = "cannot delete object"
+
+	RequestRetries = 5
 )
 
 func BucketToCreateBucketInput(bucket *v1alpha1.Bucket) *s3.CreateBucketInput {
@@ -52,4 +64,142 @@ func BucketToPutBucketOwnershipControlsInput(bucket *v1alpha1.Bucket) *s3.PutBuc
 			},
 		},
 	}
+}
+
+func DeleteBucket(ctx context.Context, s3Backend *s3.Client, bucketName *string) error {
+	bucketExists, err := BucketExists(ctx, s3Backend, *bucketName)
+	if err != nil {
+		return err
+	}
+	if !bucketExists {
+		return nil
+	}
+
+	g := new(errgroup.Group)
+
+	// Delete all objects from the bucket. This is sufficient for unversioned buckets.
+	g.Go(func() error {
+		return deleteBucketObjects(ctx, s3Backend, bucketName)
+	})
+
+	// Delete all object versions (required for versioned buckets).
+	g.Go(func() error {
+		return deleteBucketObjectVersions(ctx, s3Backend, bucketName)
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	_, err = s3Backend.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: bucketName})
+
+	return resource.Ignore(isNotFound, err)
+}
+
+func deleteBucketObjects(ctx context.Context, s3Backend *s3.Client, bucketName *string) error {
+	objectsInput := &s3.ListObjectsV2Input{Bucket: bucketName}
+	for {
+		objects, err := s3Backend.ListObjectsV2(ctx, objectsInput)
+		if err != nil {
+			return errors.Wrap(err, errListObjects)
+		}
+
+		g := new(errgroup.Group)
+		for _, object := range objects.Contents {
+			obj := object
+			g.Go(func() error {
+				return deleteObject(ctx, s3Backend, bucketName, obj.Key, nil)
+			})
+		}
+
+		if err := g.Wait(); err != nil {
+			return errors.Wrap(err, errDeleteObject)
+		}
+
+		// If the bucket contains many objects, the ListObjectsV2() call
+		// might not return all of the objects in the first listing. Check to
+		// see whether the listing was truncated. If so, retrieve the next page
+		// of objects and delete them.
+		if !objects.IsTruncated {
+			break
+		}
+
+		objectsInput.ContinuationToken = objects.ContinuationToken
+	}
+
+	return nil
+}
+
+func deleteBucketObjectVersions(ctx context.Context, s3Backend *s3.Client, bucketName *string) error {
+	objVersionsInput := &s3.ListObjectVersionsInput{Bucket: bucketName}
+	for {
+		objectVersions, err := s3Backend.ListObjectVersions(ctx, objVersionsInput)
+		if err != nil {
+			return errors.Wrap(err, errListObjects)
+		}
+
+		g := new(errgroup.Group)
+		for _, deleteMarkerEntry := range objectVersions.DeleteMarkers {
+			delMark := deleteMarkerEntry
+			g.Go(func() error {
+				return deleteObject(ctx, s3Backend, bucketName, delMark.Key, delMark.VersionId)
+			})
+		}
+
+		for _, objectVersion := range objectVersions.Versions {
+			objVer := objectVersion
+			g.Go(func() error {
+				return deleteObject(ctx, s3Backend, bucketName, objVer.Key, objVer.VersionId)
+			})
+		}
+
+		if err := g.Wait(); err != nil {
+			return errors.Wrap(err, errDeleteObject)
+		}
+
+		// If the bucket contains many objects, the ListObjectVersionsV2() call
+		// might not return all of the objects in the first listing. Check to
+		// see whether the listing was truncated. If so, retrieve the next page
+		// of objects and delete them.
+		if !objectVersions.IsTruncated {
+			break
+		}
+
+		objVersionsInput.VersionIdMarker = objectVersions.NextVersionIdMarker
+		objVersionsInput.KeyMarker = objectVersions.NextKeyMarker
+	}
+
+	return nil
+}
+
+func deleteObject(ctx context.Context, s3Backend *s3.Client, bucket, key, versionId *string) error {
+	var err error
+	for i := 0; i < RequestRetries; i++ {
+		_, err = s3Backend.DeleteObject(ctx, &s3.DeleteObjectInput{
+			Bucket:    bucket,
+			Key:       key,
+			VersionId: versionId,
+		})
+		if resource.Ignore(isNotFound, err) == nil {
+			return nil
+		}
+	}
+
+	return err
+}
+
+func BucketExists(ctx context.Context, s3Backend *s3.Client, bucketName string) (bool, error) {
+	_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
+	if err != nil {
+		return false, resource.Ignore(isNotFound, err)
+	}
+	// Bucket exists, return true with no error.
+	return true, nil
+}
+
+// isNotFound helper function to test for NotFound error
+func isNotFound(err error) bool {
+	var notFoundError *s3types.NotFound
+
+	return errors.As(err, &notFoundError)
 }

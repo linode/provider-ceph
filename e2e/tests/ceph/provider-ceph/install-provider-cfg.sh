@@ -2,7 +2,7 @@
 
 : "${AWS_ACCESS_KEY_ID?= required}"
 : "${AWS_SECRET_ACCESS_KEY?= required}"
-: "${CEPH_ADDRESS? = required}"
+: "${CEPH_ADDRESS?= required}"
 
 encoded_access_key=$(echo -n ${AWS_ACCESS_KEY_ID} | base64)
 encoded_secret_key=$(echo -n ${AWS_SECRET_ACCESS_KEY} | base64)

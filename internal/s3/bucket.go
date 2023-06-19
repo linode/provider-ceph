@@ -120,11 +120,12 @@ func deleteBucketObjects(ctx context.Context, s3Backend *s3.Client, bucketName *
 		// might not return all of the objects in the first listing. Check to
 		// see whether the listing was truncated. If so, retrieve the next page
 		// of objects and delete them.
-		if objects.IsTruncated {
-			objectsInput.ContinuationToken = objects.ContinuationToken
-		} else {
+		if !objects.IsTruncated {
 			break
 		}
+
+		objectsInput.ContinuationToken = objects.ContinuationToken
+
 	}
 
 	return nil
@@ -161,12 +162,12 @@ func deleteBucketObjectVersions(ctx context.Context, s3Backend *s3.Client, bucke
 		// might not return all of the objects in the first listing. Check to
 		// see whether the listing was truncated. If so, retrieve the next page
 		// of objects and delete them.
-		if objectVersions.IsTruncated {
-			objVersionsInput.VersionIdMarker = objectVersions.NextVersionIdMarker
-			objVersionsInput.KeyMarker = objectVersions.NextKeyMarker
-		} else {
+		if !objectVersions.IsTruncated {
 			break
 		}
+
+		objVersionsInput.VersionIdMarker = objectVersions.NextVersionIdMarker
+		objVersionsInput.KeyMarker = objectVersions.NextKeyMarker
 	}
 
 	return nil
@@ -191,12 +192,7 @@ func deleteObject(ctx context.Context, s3Backend *s3.Client, bucket, key, versio
 func BucketExists(ctx context.Context, s3Backend *s3.Client, bucketName string) (bool, error) {
 	_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
 	if err != nil {
-		if isNotFound(err) {
-			return false, nil
-		}
-		// Some other error occurred, return false with error
-		// as we cannot verify the bucket exists.
-		return false, err
+		return false, resource.Ignore(isNotFound, err)
 	}
 	// Bucket exists, return true with no error.
 	return true, nil

@@ -125,7 +125,6 @@ func deleteBucketObjects(ctx context.Context, s3Backend *s3.Client, bucketName *
 		}
 
 		objectsInput.ContinuationToken = objects.ContinuationToken
-
 	}
 
 	return nil

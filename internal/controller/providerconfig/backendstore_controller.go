@@ -62,7 +62,7 @@ func (r *BackendStoreReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if err := r.kube.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
 			r.log.Info("Marking s3 backend as inactive on backend store", "name", req.Name)
-			r.backendStore.SetBackendActive(req.Name, false)
+			r.backendStore.ToggleBackendActiveStatus(req.Name, false)
 
 			return ctrl.Result{}, nil
 		}

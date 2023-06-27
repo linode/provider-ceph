@@ -33,7 +33,7 @@ func (be *backend) isBackendActive() bool {
 	return be.active
 }
 
-func (be *backend) setBackendActive(active bool) {
+func (be *backend) toggleBackendActiveStatus(active bool) {
 	be.mu.Lock()
 	defer be.mu.Unlock()
 

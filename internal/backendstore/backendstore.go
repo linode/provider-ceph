@@ -55,12 +55,12 @@ func (b *BackendStore) IsBackendActive(backendName string) bool {
 	return false
 }
 
-func (b *BackendStore) SetBackendActive(backendName string, active bool) {
+func (b *BackendStore) ToggleBackendActiveStatus(backendName string, active bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
 	if _, ok := b.s3Backends[backendName]; ok {
-		b.s3Backends[backendName].setBackendActive(active)
+		b.s3Backends[backendName].toggleBackendActiveStatus(active)
 	}
 }
 

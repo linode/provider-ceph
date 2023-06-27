@@ -26,7 +26,7 @@ func (b *BackendStore) GetBackendClient(backendName string) *s3.Client {
 	defer b.mu.RUnlock()
 
 	if _, ok := b.s3Backends[backendName]; ok {
-		return b.s3Backends[backendName].getBackendClient()
+		return b.s3Backends[backendName].s3Client
 	}
 
 	return nil
@@ -49,7 +49,7 @@ func (b *BackendStore) IsBackendActive(backendName string) bool {
 	defer b.mu.RUnlock()
 
 	if _, ok := b.s3Backends[backendName]; ok {
-		return b.s3Backends[backendName].isBackendActive()
+		return b.s3Backends[backendName].active
 	}
 
 	return false
@@ -60,7 +60,7 @@ func (b *BackendStore) ToggleBackendActiveStatus(backendName string, active bool
 	defer b.mu.Unlock()
 
 	if _, ok := b.s3Backends[backendName]; ok {
-		b.s3Backends[backendName].toggleBackendActiveStatus(active)
+		b.s3Backends[backendName].active = active
 	}
 }
 

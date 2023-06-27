@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/pkg/test"
@@ -112,7 +113,7 @@ func TestObserve(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			e := external{backendStore: tc.fields.backendStore}
+			e := external{backendStore: tc.fields.backendStore, log: logging.NewNopLogger()}
 			got, err := e.Observe(context.Background(), tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Observe(...): -want error, +got error:\n%s\n", tc.reason, diff)
@@ -193,7 +194,7 @@ func TestCreate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			e := external{backendStore: tc.fields.backendStore}
+			e := external{backendStore: tc.fields.backendStore, log: logging.NewNopLogger()}
 			got, err := e.Create(context.Background(), tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Create(...): -want error, +got error:\n%s\n", tc.reason, diff)
@@ -273,7 +274,7 @@ func TestDelete(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			e := external{backendStore: tc.fields.backendStore}
+			e := external{backendStore: tc.fields.backendStore, log: logging.NewNopLogger()}
 			err := e.Delete(context.Background(), tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Delete(...): -want error, +got error:\n%s\n", tc.reason, diff)

@@ -19,7 +19,6 @@ package providerconfig
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
@@ -62,21 +61,8 @@ func (r *BackendStoreReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	providerConfig := &apisv1alpha1.ProviderConfig{}
 	if err := r.kube.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
-			// Delete the healthcheck bucket from the backend, before deleting the
-			// backend from the store. This is handled here instead of in the
-			// healthcheck-controller to avoid a race condition between
-			// deleting the bucket from the backend and deleting the backend from
-			// the store. Ideally this deletion would be handled when the bucket
-			// object is garbage collected, however the bucket controller's Delete
-			// method is not triggered by garbage collected buckets.
-			// TODO: Investigate this behaviour on garbage collection.
-			hcBucketName := req.Name + healthCheckSuffix
-			r.log.Info("Deleting health check bucket", "name", hcBucketName)
-			if err := s3internal.DeleteBucket(ctx, r.backendStore.GetBackend(req.Name), aws.String(hcBucketName)); err != nil {
-				return ctrl.Result{}, err
-			}
-			r.log.Info("Deleting s3 backend from backend store", "name", req.Name)
-			r.backendStore.DeleteBackend(req.Name)
+			r.log.Info("Marking s3 backend as inactive on backend store", "name", req.Name)
+			r.backendStore.ToggleBackendActiveStatus(req.Name, false)
 
 			return ctrl.Result{}, nil
 		}
@@ -99,7 +85,7 @@ func (r *BackendStoreReconciler) addOrUpdateBackend(ctx context.Context, pc *api
 		return errors.Wrap(err, errCreateClient)
 	}
 
-	r.backendStore.AddOrUpdateBackend(pc.Name, s3client)
+	r.backendStore.AddOrUpdateBackend(pc.Name, s3client, true)
 
 	return nil
 }

@@ -149,8 +149,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	type bucketExistsResult struct {
-		err          error
 		bucketExists bool
+		err          error
 	}
 
 	bucketExistsResults := make(chan bucketExistsResult)

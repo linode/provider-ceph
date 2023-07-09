@@ -5,8 +5,8 @@ import "sync"
 // onceMap is used by the health-check controller to ensure
 // initial checks are only carried out once for each backend.
 type onceMap struct {
-	mu      sync.RWMutex
 	onceMap map[string]*sync.Once
+	mu      sync.RWMutex
 }
 
 func newOnceMap() *onceMap {

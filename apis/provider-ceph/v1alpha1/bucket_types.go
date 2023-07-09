@@ -30,9 +30,6 @@ type BucketParameters struct {
 	// The canned ACL to apply to the bucket.
 	ACL *string `json:"acl,omitempty"`
 
-	// Specifies the Region where the bucket will be created.
-	LocationConstraint string `json:"locationConstraint,omitempty"`
-
 	// Allows grantee the read, write, read ACP, and write ACP permissions on the
 	// bucket.
 	GrantFullControl *string `json:"grantFullControl,omitempty"`
@@ -70,6 +67,9 @@ type BucketParameters struct {
 	// don't specify an ACL or bucket owner full control ACLs, such as the bucket-owner-full-control
 	// canned ACL or an equivalent form of this ACL expressed in the XML format.
 	ObjectOwnership *string `json:"objectOwnership,omitempty"`
+
+	// Specifies the Region where the bucket will be created.
+	LocationConstraint string `json:"locationConstraint,omitempty"`
 }
 
 type BackendStatuses map[string]BackendStatus
@@ -83,23 +83,23 @@ const (
 
 // BucketObservation are the observable fields of a Bucket.
 type BucketObservation struct {
-	ConfigurableField string `json:"configurableField"`
-	ObservableField   string `json:"observableField,omitempty"`
 	// BackendStatuses is a map of the s3 backends on which the bucket
 	// has been created and their update status.
-	BackendStatuses BackendStatuses `json:"backendStatuses,omitempty"`
+	BackendStatuses   BackendStatuses `json:"backendStatuses,omitempty"`
+	ConfigurableField string          `json:"configurableField"`
+	ObservableField   string          `json:"observableField,omitempty"`
 }
 
 // A BucketSpec defines the desired state of a Bucket.
 type BucketSpec struct {
-	xpv1.ResourceSpec `json:",inline"`
 	ForProvider       BucketParameters `json:"forProvider"`
+	xpv1.ResourceSpec `json:",inline"`
 }
 
 // A BucketStatus represents the observed state of a Bucket.
 type BucketStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
 	AtProvider          BucketObservation `json:"atProvider,omitempty"`
+	xpv1.ResourceStatus `json:",inline"`
 }
 
 // +kubebuilder:object:root=true
@@ -112,11 +112,10 @@ type BucketStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,ceph}
 type Bucket struct {
+	Spec              BucketSpec   `json:"spec"`
+	Status            BucketStatus `json:"status,omitempty"`
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   BucketSpec   `json:"spec"`
-	Status BucketStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

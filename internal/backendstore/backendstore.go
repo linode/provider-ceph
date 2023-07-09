@@ -11,8 +11,8 @@ type s3Backends map[string]*s3.Client
 
 // BackendStore stores the active s3 backends.
 type BackendStore struct {
-	mu         sync.RWMutex
 	s3Backends s3Backends
+	mu         sync.RWMutex
 }
 
 func NewBackendStore() *BackendStore {

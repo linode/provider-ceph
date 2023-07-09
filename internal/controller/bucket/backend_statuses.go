@@ -7,8 +7,8 @@ import (
 )
 
 type backendStatuses struct {
-	mu       sync.RWMutex
 	backends v1alpha1.BackendStatuses
+	mu       sync.RWMutex
 }
 
 func newBackendStatuses() *backendStatuses {

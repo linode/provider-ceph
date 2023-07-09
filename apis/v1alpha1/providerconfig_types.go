@@ -48,11 +48,10 @@ type ProviderConfigSpec struct {
 
 // ProviderCredentials required to authenticate.
 type ProviderCredentials struct {
+	xpv1.CommonCredentialSelectors `json:",inline"`
 	// Source of the provider credentials.
 	// +kubebuilder:validation:Enum=None;Secret;InjectedIdentity;Environment;Filesystem
 	Source xpv1.CredentialsSource `json:"source"`
-
-	xpv1.CommonCredentialSelectors `json:",inline"`
 }
 
 type HealthStatus string
@@ -65,12 +64,12 @@ const (
 
 // A ProviderConfigStatus reflects the observed state of a ProviderConfig.
 type ProviderConfigStatus struct {
-	xpv1.ProviderConfigStatus `json:",inline"`
 
 	// Health of the s3 backend represented by the ProviderConfig determined
 	// by periodic health check.
 	//+kubebuilder:validation:Enum=Healthy;Unhealthy;HealthCheckDisabled
-	Health HealthStatus `json:"health,omitempty"`
+	Health                    HealthStatus `json:"health,omitempty"`
+	xpv1.ProviderConfigStatus `json:",inline"`
 }
 
 // +kubebuilder:object:root=true
@@ -81,11 +80,11 @@ type ProviderConfigStatus struct {
 // +kubebuilder:printcolumn:name="SECRET-NAME",type="string",JSONPath=".spec.credentials.secretRef.name",priority=1
 // +kubebuilder:resource:scope=Cluster
 type ProviderConfig struct {
+	Status            ProviderConfigStatus `json:"status,omitempty"`
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ProviderConfigSpec   `json:"spec"`
-	Status ProviderConfigStatus `json:"status,omitempty"`
+	Spec ProviderConfigSpec `json:"spec"`
 }
 
 // +kubebuilder:object:root=true

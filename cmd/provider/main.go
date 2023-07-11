@@ -58,9 +58,12 @@ func main() {
 		leaderElection = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()
 		leaderRenew    = app.Flag("leader-renew", "Set leader election renewal.").Short('r').Default("10s").OverrideDefaultFromEnvar("LEADER_ELECTION_RENEW").Duration()
 
-		syncInterval     = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
-		pollInterval     = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("1m").Duration()
-		maxReconcileRate = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("10").Int()
+		syncInterval         = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
+		pollInterval         = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("1m").Duration()
+		reconcileConcurrency = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("10").Int()
+		maxReconcileRate     = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("100").Int()
+
+		kubeClientRate = app.Flag("kube-client-rate", "The global maximum rate per second at how many requests the client can do.").Default("1000").Int()
 
 		namespace                  = app.Flag("namespace", "Namespace used to set as default scope in default secret store config.").Default("crossplane-system").Envar("POD_NAMESPACE").String()
 		enableExternalSecretStores = app.Flag("enable-external-secret-stores", "Enable support for ExternalSecretStores.").Default("false").Envar("ENABLE_EXTERNAL_SECRET_STORES").Bool()
@@ -133,13 +136,15 @@ func main() {
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
 
+	cfg = ratelimiter.LimitRESTConfig(cfg, *kubeClientRate)
+
 	const oneDotTwo = 1.2
 	const two = 2
 
 	leaseDuration := time.Duration(int(oneDotTwo*float64(*leaderRenew))) * time.Second
 	leaderRetryDuration := *leaderRenew / two
 
-	mgr, err := ctrl.NewManager(ratelimiter.LimitRESTConfig(cfg, *maxReconcileRate), ctrl.Options{
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		SyncPeriod: syncInterval,
 
 		LeaderElection:             *leaderElection,
@@ -155,7 +160,7 @@ func main() {
 
 	o := controller.Options{
 		Logger:                  log,
-		MaxConcurrentReconciles: *maxReconcileRate,
+		MaxConcurrentReconciles: *reconcileConcurrency,
 		PollInterval:            *pollInterval,
 		GlobalRateLimiter:       ratelimiter.NewGlobal(*maxReconcileRate),
 		Features:                &feature.Flags{},

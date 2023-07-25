@@ -225,8 +225,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	// Where a bucket has a ProviderConfigReference Name, we can infer that this bucket is to be
 	// created only on this S3 Backend. An empty config reference name will be automatically set
 	// to "default".
-	backendName := bucket.GetProviderConfigReference().Name
-	if bucket.GetProviderConfigReference() != nil && backendName != defaultPC {
+	if bucket.GetProviderConfigReference() != nil && bucket.GetProviderConfigReference().Name != defaultPC {
 		backendName := bucket.GetProviderConfigReference().Name
 
 		pc := &apisv1alpha1.ProviderConfig{}
@@ -293,6 +292,7 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket, backe
 
 		if pc.Spec.DisableHealthCheck {
 			c.log.Info("Health check is disabled on backend - health-check-bucket will not be created", "backend name", beName)
+
 			continue
 		}
 

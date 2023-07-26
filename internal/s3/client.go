@@ -2,7 +2,6 @@ package s3
 
 import (
 	"context"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -10,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/utils"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 )
 
 func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec) (*s3.Client, error) {
-	hostBase := resolveHostBase(pcSpec.HostBase, pcSpec.UseHTTPS)
+	hostBase := utils.ResolveHostBase(pcSpec.HostBase, pcSpec.UseHTTPS)
 
 	endpointResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
@@ -42,19 +42,4 @@ func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1
 	return s3.NewFromConfig(sessionConfig, func(o *s3.Options) {
 		o.UsePathStyle = true
 	}), nil
-}
-
-func resolveHostBase(hostBase string, useHTTPS bool) string {
-	httpsPrefix := "https://"
-	httpPrefix := "http://"
-	// Remove prefix in either case if it has been specified.
-	// Let useHTTPS option take precedence.
-	hostBase = strings.TrimPrefix(hostBase, httpPrefix)
-	hostBase = strings.TrimPrefix(hostBase, httpsPrefix)
-
-	if useHTTPS {
-		return httpsPrefix + hostBase
-	}
-
-	return httpPrefix + hostBase
 }

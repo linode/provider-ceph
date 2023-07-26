@@ -16,6 +16,13 @@ limitations under the License.
 
 package utils
 
+import "strings"
+
+const (
+	AccessKey = "access_key"
+	SecretKey = "secret_key"
+)
+
 func RemoveStringFromSlice(slice []string, str string) []string {
 	updated := make([]string, 0)
 	for _, s := range slice {
@@ -25,4 +32,19 @@ func RemoveStringFromSlice(slice []string, str string) []string {
 	}
 
 	return updated
+}
+
+func ResolveHostBase(hostBase string, useHTTPS bool) string {
+	httpsPrefix := "https://"
+	httpPrefix := "http://"
+	// Remove prefix in either case if it has been specified.
+	// Let useHTTPS option take precedence.
+	hostBase = strings.TrimPrefix(hostBase, httpPrefix)
+	hostBase = strings.TrimPrefix(hostBase, httpsPrefix)
+
+	if useHTTPS {
+		return httpsPrefix + hostBase
+	}
+
+	return httpPrefix + hostBase
 }

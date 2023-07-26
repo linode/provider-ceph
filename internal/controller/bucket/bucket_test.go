@@ -20,16 +20,18 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/pkg/errors"
-
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/pkg/test"
+	"github.com/google/go-cmp/cmp"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/pkg/errors"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // Unlike many Kubernetes projects Crossplane does not use third party testing
@@ -174,7 +176,7 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			want: want{
-				err: errors.New(errBackendNotStored),
+				err: errors.Wrap(errors.New(`providerconfigs.ceph.crossplane.io "s3-backend-1" not found`), errGetPC),
 			},
 		},
 		"S3 backend not referenced and none exist": {
@@ -193,8 +195,12 @@ func TestCreate(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			pc := &apisv1alpha1.ProviderConfig{}
+			s := scheme.Scheme
+			s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, pc)
+			cl := fake.NewClientBuilder().WithScheme(s).Build()
 
-			e := external{backendStore: tc.fields.backendStore, log: logging.NewNopLogger()}
+			e := external{kubeClient: cl, backendStore: tc.fields.backendStore, log: logging.NewNopLogger()}
 			got, err := e.Create(context.Background(), tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Create(...): -want error, +got error:\n%s\n", tc.reason, diff)

@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"golang.org/x/sync/errgroup"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -129,12 +130,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	return &external{backendStore: c.backendStore.GetBackendStore(), log: c.log}, nil
+	return &external{kubeClient: c.kube, backendStore: c.backendStore.GetBackendStore(), log: c.log}, nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
+	kubeClient   client.Client
 	backendStore *backendstore.BackendStore
 	log          logging.Logger
 }
@@ -224,6 +226,19 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	// created only on this S3 Backend. An empty config reference name will be automatically set
 	// to "default".
 	if bucket.GetProviderConfigReference() != nil && bucket.GetProviderConfigReference().Name != defaultPC {
+		backendName := bucket.GetProviderConfigReference().Name
+
+		pc := &apisv1alpha1.ProviderConfig{}
+		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: backendName}, pc); err != nil {
+			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
+		}
+
+		if pc.Spec.DisableHealthCheck {
+			c.log.Info("Health check is disabled on backend - health-check-bucket will not be created", "backend name", backendName)
+
+			return managed.ExternalCreation{}, nil
+		}
+
 		return c.create(ctx, bucket, backends)
 	}
 
@@ -270,11 +285,23 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket, backe
 	// Create the bucket on each backend in a separate go routine
 	allBackends := c.backendStore.GetAllBackends()
 	for beName := range allBackends {
+		pc := &apisv1alpha1.ProviderConfig{}
+		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
+			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
+		}
+
+		if pc.Spec.DisableHealthCheck {
+			c.log.Info("Health check is disabled on backend - health-check-bucket will not be created", "backend name", beName)
+
+			continue
+		}
+
 		if !c.backendStore.IsBackendActive(beName) {
 			c.log.Info("Backend is marked inactive - bucket will not be created on backend", "bucket name", bucket.Name, "backend name", beName)
 
 			continue
 		}
+
 		bn := beName
 		cl := c.backendStore.GetBackendClient(beName)
 		if cl == nil {

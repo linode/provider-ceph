@@ -56,6 +56,7 @@ const (
 	errCreateBucket         = "cannot create Bucket"
 	errDeleteBucket         = "cannot delete Bucket"
 	errUpdateBucket         = "cannot update Bucket"
+	errLinkBucketToUser     = "cannot link Bucket to user"
 	errListObjects          = "cannot list objects"
 	errDeleteObject         = "cannot delete object"
 	errGetCreds             = "cannot get credentials"
@@ -164,18 +165,18 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	defer cancel()
 
 	// Check for the bucket on each backend in a separate go routine
-	allBackendClients := c.backendStore.GetAllBackendClients()
-	for _, backendClient := range allBackendClients {
-		go func(backendClient *s3.Client, bucketName string) {
-			bucketExists, err := s3internal.BucketExists(ctxC, backendClient, bucketName)
+	allBackendS3Clients := c.backendStore.GetAllBackendS3Clients()
+	for _, backendS3Client := range allBackendS3Clients {
+		go func(backendS3Client *s3.Client, bucketName string) {
+			bucketExists, err := s3internal.BucketExists(ctxC, backendS3Client, bucketName)
 			bucketExistsResults <- bucketExistsResult{bucketExists, err}
-		}(backendClient, bucket.Name)
+		}(backendS3Client, bucket.Name)
 	}
 
 	// Wait for any go routine to finish, if the bucket exists anywhere
 	// return 'ResourceExists: true' as resulting calls to Create or Delete
 	// are idempotent.
-	for i := 0; i < len(allBackendClients); i++ {
+	for i := 0; i < len(allBackendS3Clients); i++ {
 		result := <-bucketExistsResults
 		if result.err != nil {
 			c.log.Info(errors.Wrap(result.err, errGetBucket).Error())
@@ -249,8 +250,13 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) create(ctx context.Context, bucket *v1alpha1.Bucket, backends *backendStatuses) (managed.ExternalCreation, error) {
 	backendName := bucket.GetProviderConfigReference().Name
-	backendClient := c.backendStore.GetBackendClient(backendName)
-	if backendClient == nil {
+	backendS3Client := c.backendStore.GetBackendS3Client(backendName)
+	if backendS3Client == nil {
+		return managed.ExternalCreation{}, errors.New(errBackendNotStored)
+	}
+
+	backendRgwAdminClient := c.backendStore.GetBackendRgwAdminClient(backendName)
+	if backendRgwAdminClient == nil {
 		return managed.ExternalCreation{}, errors.New(errBackendNotStored)
 	}
 
@@ -263,10 +269,16 @@ func (c *external) create(ctx context.Context, bucket *v1alpha1.Bucket, backends
 	}
 
 	c.log.Info("Creating bucket on single s3 backend", "bucket name", bucket.Name, "backend name", bucket.GetProviderConfigReference().Name)
-	_, err := backendClient.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
+	_, err := backendS3Client.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
 	if resource.Ignore(isAlreadyExists, err) != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateBucket)
 	}
+
+	/*
+		if err := backendRgwAdminClient.BucketLink(ctx, ...); err != nil {
+			return managed.ExternalCreation{}, errors.Wrap(err, errLinkBucketToUser)
+		}
+	*/
 
 	backends.setBackendStatus(bucket.GetProviderConfigReference().Name, v1alpha1.BackendReadyStatus)
 
@@ -303,19 +315,32 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket, backe
 		}
 
 		bn := beName
-		cl := c.backendStore.GetBackendClient(beName)
-		if cl == nil {
-			c.log.Info("Backend client not found for backend - bucket cannot be created on backend", "bucket name", bucket.Name, "backend name", beName)
+		s3Client := c.backendStore.GetBackendS3Client(beName)
+		if s3Client == nil {
+			c.log.Info("S3 client not found for backend - bucket cannot be created on backend", "bucket name", bucket.Name, "backend name", beName)
 
 			continue
 		}
+
+		rgwAdmClient := c.backendStore.GetBackendRgwAdminClient(beName)
+		if rgwAdmClient == nil {
+			c.log.Info("radosgw-admin client not found for backend - bucket will not be created on backend", "bucket name", bucket.Name, "backend name", beName)
+
+			continue
+		}
+
 		bucket := bucket
 
 		g.Go(func() (err error) {
 			backends.setBackendStatus(bn, v1alpha1.BackendNotReadyStatus)
 			for i := 0; i < s3internal.RequestRetries; i++ {
-				_, err = cl.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
+				_, err = s3Client.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
 				if resource.Ignore(isAlreadyExists, err) == nil {
+					/*
+						if err = rgwAdmClient.BucketLink(ctx,...); err != nil {
+							break
+						}
+					*/
 					backends.setBackendStatus(bn, v1alpha1.BackendReadyStatus)
 
 					break
@@ -379,7 +404,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 			continue
 		}
 
-		cl := c.backendStore.GetBackendClient(backendName)
+		cl := c.backendStore.GetBackendS3Client(backendName)
 		if cl == nil {
 			c.log.Info("Backend client not found for backend - bucket cannot be updated on backend", "bucket name", bucket.Name, "backend name", backendName)
 
@@ -456,7 +481,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	c.log.Info("Deleting bucket on all available s3 backends", "bucket name", bucket.Name)
 
 	g := new(errgroup.Group)
-	for _, client := range c.backendStore.GetAllBackendClients() {
+	for _, client := range c.backendStore.GetAllBackendS3Clients() {
 		cl := client
 		g.Go(func() error {
 			var err error

@@ -33,13 +33,15 @@ import (
 
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/radosgwadmin"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
 const (
-	errCreateClient     = "cannot create s3 client"
-	errGetSecret        = "cannot get Secret"
-	errBackendNotStored = "s3 backend is not stored"
+	errCreateS3Client       = "cannot create s3 client"
+	errCreateRgwAdminClient = "cannot create rgw admin client"
+	errGetSecret            = "cannot get Secret"
+	errBackendNotStored     = "s3 backend is not stored"
 )
 
 func newBackendStoreReconciler(k client.Client, o controller.Options, s *backendstore.BackendStore) *BackendStoreReconciler {
@@ -80,12 +82,17 @@ func (r *BackendStoreReconciler) addOrUpdateBackend(ctx context.Context, pc *api
 		return err
 	}
 
-	s3client, err := s3internal.NewClient(ctx, secret.Data, &pc.Spec)
+	s3Client, err := s3internal.NewClient(ctx, secret.Data, &pc.Spec)
 	if err != nil {
-		return errors.Wrap(err, errCreateClient)
+		return errors.Wrap(err, errCreateS3Client)
 	}
 
-	r.backendStore.AddOrUpdateBackend(pc.Name, s3client, true)
+	rgwAdminClient, err := radosgwadmin.NewClient(secret.Data, &pc.Spec)
+	if err != nil {
+		return errors.Wrap(err, errCreateRgwAdminClient)
+	}
+
+	r.backendStore.AddOrUpdateBackend(pc.Name, s3Client, rgwAdminClient, true)
 
 	return nil
 }

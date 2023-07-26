@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	rgw "github.com/myENA/radosgwadmin"
 )
 
 // s3Backends is a map of S3 backend name (eg ceph cluster name) to backend.
@@ -21,7 +22,7 @@ func NewBackendStore() *BackendStore {
 	}
 }
 
-func (b *BackendStore) GetBackendClient(backendName string) *s3.Client {
+func (b *BackendStore) GetBackendS3Client(backendName string) *s3.Client {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
@@ -32,13 +33,36 @@ func (b *BackendStore) GetBackendClient(backendName string) *s3.Client {
 	return nil
 }
 
-func (b *BackendStore) GetAllBackendClients() []*s3.Client {
+func (b *BackendStore) GetAllBackendS3Clients() []*s3.Client {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	// Create a new clients slice hold a copy of the backend clients
+	// Create a new clients slice hold a copy of the backend s3 clients
 	clients := make([]*s3.Client, 0)
 	for _, v := range b.s3Backends {
 		clients = append(clients, v.s3Client)
+	}
+
+	return clients
+}
+
+func (b *BackendStore) GetBackendRgwAdminClient(backendName string) *rgw.AdminAPI {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if _, ok := b.s3Backends[backendName]; ok {
+		return b.s3Backends[backendName].rgwAdminClient
+	}
+
+	return nil
+}
+
+func (b *BackendStore) GetAllBackendRgwAdminClients() []*rgw.AdminAPI {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	// Create a new clients slice hold a copy of the backend rgw admin clients
+	clients := make([]*rgw.AdminAPI, 0)
+	for _, v := range b.s3Backends {
+		clients = append(clients, v.rgwAdminClient)
 	}
 
 	return clients
@@ -71,11 +95,11 @@ func (b *BackendStore) DeleteBackend(backendName string) {
 	delete(b.s3Backends, backendName)
 }
 
-func (b *BackendStore) AddOrUpdateBackend(backendName string, backendClient *s3.Client, active bool) {
+func (b *BackendStore) AddOrUpdateBackend(backendName string, backendClient *s3.Client, rgwAdminClient *rgw.AdminAPI, active bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	b.s3Backends[backendName] = newBackend(backendClient, active)
+	b.s3Backends[backendName] = newBackend(backendClient, rgwAdminClient, active)
 }
 
 func (b *BackendStore) GetBackend(backendName string) *backend {

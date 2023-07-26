@@ -152,10 +152,10 @@ func (r *HealthCheckReconciler) cleanup(ctx context.Context, req ctrl.Request, h
 	// 1. Delete the ProviderConfig's entry in the reconciler's onceMap.
 	r.onceMap.deleteEntry(req.Name)
 	// 2. Delete the health check bucket from the s3 backend.
-	backendClient := r.backendStore.GetBackendClient(req.Name)
-	if backendClient != nil {
+	s3Client := r.backendStore.GetBackendS3Client(req.Name)
+	if s3Client != nil {
 		r.log.Info("Deleting health check bucket", "name", hcBucket.Name)
-		if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(hcBucket.Name)); err != nil {
+		if err := s3internal.DeleteBucket(ctx, s3Client, aws.String(hcBucket.Name)); err != nil {
 			return err
 		}
 	}
@@ -199,15 +199,15 @@ func (r *HealthCheckReconciler) createHealthCheckBucket(ctx context.Context, pro
 }
 
 func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, hcBucket *v1alpha1.Bucket) error {
-	s3BackendClient := r.backendStore.GetBackendClient(providerConfig.Name)
-	if s3BackendClient == nil {
+	s3Client := r.backendStore.GetBackendS3Client(providerConfig.Name)
+	if s3Client == nil {
 		return errors.New(errBackendNotStored)
 	}
 
 	// Assume the status is Unhealthy until we can verify otherwise.
 	providerConfig.Status.Health = apisv1alpha1.HealthStatusUnhealthy
 
-	_, putErr := s3BackendClient.PutObject(ctx, &s3.PutObjectInput{
+	_, putErr := s3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(hcBucket.Name),
 		Key:    aws.String(healthCheckFile),
 		Body:   strings.NewReader(time.Now().Format(time.RFC850)),
@@ -220,7 +220,7 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 		return errors.Wrap(putErr, errPutHealthCheckFile)
 	}
 
-	_, getErr := s3BackendClient.GetObject(ctx, &s3.GetObjectInput{
+	_, getErr := s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(hcBucket.Name),
 		Key:    aws.String(healthCheckFile),
 	})
@@ -265,11 +265,11 @@ func (r *HealthCheckReconciler) bucketExistsRetry(ctx context.Context, s3Backend
 }
 
 func (r *HealthCheckReconciler) bucketExists(ctx context.Context, s3BackendName, bucketName string) error {
-	s3BackendClient := r.backendStore.GetBackendClient(s3BackendName)
-	if s3BackendClient == nil {
+	s3Client := r.backendStore.GetBackendS3Client(s3BackendName)
+	if s3Client == nil {
 		return errors.New(errBackendNotStored)
 	}
-	_, err := s3BackendClient.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
+	_, err := s3Client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
 	if err != nil {
 		return err
 	}

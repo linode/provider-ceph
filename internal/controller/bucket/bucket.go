@@ -233,7 +233,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
 		}
 
-		if pc.Spec.DisableHealthCheck {
+		if isHealthCheckBucket(bucket) && pc.Spec.DisableHealthCheck {
 			c.log.Info("Health check is disabled on backend - health-check-bucket will not be created", "backend name", backendName)
 
 			return managed.ExternalCreation{}, nil
@@ -273,6 +273,7 @@ func (c *external) create(ctx context.Context, bucket *v1alpha1.Bucket, backends
 	return managed.ExternalCreation{}, nil
 }
 
+//nolint:gocyclo,cyclop,nolintlint // Function requires numerous checks.
 func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket, backends *backendStatuses) (managed.ExternalCreation, error) {
 	if !c.backendStore.BackendsAreStored() {
 		return managed.ExternalCreation{}, errors.New(errNoS3BackendsStored)
@@ -290,7 +291,7 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket, backe
 			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
 		}
 
-		if pc.Spec.DisableHealthCheck {
+		if isHealthCheckBucket(bucket) && pc.Spec.DisableHealthCheck {
 			c.log.Info("Health check is disabled on backend - health-check-bucket will not be created", "backend name", beName)
 
 			continue
@@ -302,15 +303,15 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket, backe
 			continue
 		}
 
-		bn := beName
 		cl := c.backendStore.GetBackendClient(beName)
 		if cl == nil {
 			c.log.Info("Backend client not found for backend - bucket cannot be created on backend", "bucket name", bucket.Name, "backend name", beName)
 
 			continue
 		}
-		bucket := bucket
 
+		bucket := bucket
+		bn := beName
 		g.Go(func() (err error) {
 			backends.setBackendStatus(bn, v1alpha1.BackendNotReadyStatus)
 			for i := 0; i < s3internal.RequestRetries; i++ {

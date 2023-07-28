@@ -443,7 +443,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	}
 
 	if isHealthCheckBucket(bucket) {
-		c.log.Info("Delete is NOOP for health check bucket - delete is performed by health-check-controller", "bucket", bucket.Name)
+		c.log.Info("Delete is NOOP for health check bucket as it is owned by, and garbage collected on deletion of its related providerconfig", "bucket", bucket.Name)
 
 		return nil
 	}

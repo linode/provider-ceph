@@ -93,15 +93,6 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if providerConfig.Spec.DisableHealthCheck {
-		if err := r.cleanup(ctx, req, hcBucket); err != nil {
-			return ctrl.Result{}, err
-		}
-
-		// Delete the bucket directly as cleanup only removes a finalizer.
-		if err := r.kubeClient.Delete(ctx, hcBucket); err != nil {
-			return ctrl.Result{}, resource.Ignore(kerrors.IsNotFound, err)
-		}
-
 		providerConfig.Status.Health = apisv1alpha1.HealthStatusDisabled
 		if err := r.kubeClient.Status().Update(ctx, providerConfig); err != nil {
 			return ctrl.Result{}, errors.Wrap(err, errGetHealthCheckFile)

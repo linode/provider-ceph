@@ -73,7 +73,6 @@ type HealthCheckReconciler struct {
 	log          logging.Logger
 }
 
-//nolint:gocyclo,cyclop // Reconcile functions are inherently complex.
 func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	r.log.Info("Reconciling health of s3 backend", "name", req.Name)
 

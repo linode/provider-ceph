@@ -94,7 +94,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if providerConfig.Spec.DisableHealthCheck {
 		providerConfig.Status.Health = apisv1alpha1.HealthStatusDisabled
 		if err := r.kubeClient.Status().Update(ctx, providerConfig); err != nil {
-			return ctrl.Result{}, errors.Wrap(err, errGetHealthCheckFile)
+			return ctrl.Result{}, errors.Wrap(err, errUpdateHealth)
 		}
 
 		return ctrl.Result{}, nil

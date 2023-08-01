@@ -342,6 +342,10 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if !ok {
 		return managed.ExternalUpdate{}, errors.New(errNotBucket)
 	}
+	// Fetch the latest version of the bucket to help mitigate "object has been modified" errors.
+	if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: bucket.Name}, bucket); err != nil {
+		return managed.ExternalUpdate{}, errors.Wrap(err, errGetBucket)
+	}
 
 	if isHealthCheckBucket(bucket) {
 		c.log.Info("Update is NOOP for health check bucket - updates performed by heath-check-controller", "bucket", bucket.Name)

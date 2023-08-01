@@ -92,6 +92,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if providerConfig.Spec.DisableHealthCheck {
+		r.log.Info("Health check is disabled for s3 backend", "name", req.Name)
 		providerConfig.Status.Health = apisv1alpha1.HealthStatusDisabled
 		if err := r.kubeClient.Status().Update(ctx, providerConfig); err != nil {
 			return ctrl.Result{}, errors.Wrap(err, errUpdateHealth)

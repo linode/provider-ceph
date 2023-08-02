@@ -131,7 +131,8 @@ func TestCreate(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		backendStore *backendstore.BackendStore
+		backendStore    *backendstore.BackendStore
+		backendStatuses *backendStatuses
 	}
 
 	type args struct {
@@ -151,7 +152,8 @@ func TestCreate(t *testing.T) {
 	}{
 		"Invalid managed resource": {
 			fields: fields{
-				backendStore: backendstore.NewBackendStore(),
+				backendStore:    backendstore.NewBackendStore(),
+				backendStatuses: newBackendStatuses(),
 			},
 			args: args{
 				mg: unexpectedItem,
@@ -162,7 +164,8 @@ func TestCreate(t *testing.T) {
 		},
 		"S3 backend reference does not exist": {
 			fields: fields{
-				backendStore: backendstore.NewBackendStore(),
+				backendStore:    backendstore.NewBackendStore(),
+				backendStatuses: newBackendStatuses(),
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
@@ -181,7 +184,8 @@ func TestCreate(t *testing.T) {
 		},
 		"S3 backend not referenced and none exist": {
 			fields: fields{
-				backendStore: backendstore.NewBackendStore(),
+				backendStore:    backendstore.NewBackendStore(),
+				backendStatuses: newBackendStatuses(),
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{},
@@ -199,8 +203,12 @@ func TestCreate(t *testing.T) {
 			s := scheme.Scheme
 			s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, pc)
 			cl := fake.NewClientBuilder().WithScheme(s).Build()
-
-			e := external{kubeClient: cl, backendStore: tc.fields.backendStore, log: logging.NewNopLogger()}
+			e := external{
+				kubeClient:      cl,
+				backendStore:    tc.fields.backendStore,
+				backendStatuses: tc.fields.backendStatuses,
+				log:             logging.NewNopLogger(),
+			}
 			got, err := e.Create(context.Background(), tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Create(...): -want error, +got error:\n%s\n", tc.reason, diff)

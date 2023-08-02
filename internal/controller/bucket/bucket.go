@@ -86,11 +86,12 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore)
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnecter(&connector{
-			kube:         mgr.GetClient(),
-			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn: newNoOpService,
-			backendStore: s,
-			log:          o.Logger.WithValues("controller", name),
+			kube:            mgr.GetClient(),
+			usage:           resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
+			newServiceFn:    newNoOpService,
+			backendStore:    s,
+			backendStatuses: newBackendStatuses(),
+			log:             o.Logger.WithValues("controller", name),
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
@@ -113,11 +114,12 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore)
 // A connector is expected to produce an ExternalClient when its Connect method
 // is called.
 type connector struct {
-	kube         client.Client
-	usage        resource.Tracker
-	newServiceFn func(creds []byte) (interface{}, error)
-	backendStore *backendstore.BackendStore
-	log          logging.Logger
+	kube            client.Client
+	usage           resource.Tracker
+	newServiceFn    func(creds []byte) (interface{}, error)
+	backendStore    *backendstore.BackendStore
+	backendStatuses *backendStatuses
+	log             logging.Logger
 }
 
 // Connect typically produces an ExternalClient by:
@@ -130,15 +132,21 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	return &external{kubeClient: c.kube, backendStore: c.backendStore.GetBackendStore(), log: c.log}, nil
+	return &external{
+			kubeClient:      c.kube,
+			backendStore:    c.backendStore.GetBackendStore(),
+			backendStatuses: c.backendStatuses,
+			log:             c.log},
+		nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	kubeClient   client.Client
-	backendStore *backendstore.BackendStore
-	log          logging.Logger
+	kubeClient      client.Client
+	backendStore    *backendstore.BackendStore
+	backendStatuses *backendStatuses
+	log             logging.Logger
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -217,10 +225,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotBucket)
 	}
 
-	backends := newBackendStatuses()
-
 	bucket.Status.SetConditions(xpv1.Creating())
-	defer setBucketStatus(bucket, backends.getBackendStatuses())
+	defer setBucketStatus(bucket, c.backendStatuses.getBackendStatuses()) // backends.getBackendStatuses())
 
 	// Where a bucket has a ProviderConfigReference Name, we can infer that this bucket is to be
 	// created only on this S3 Backend. An empty config reference name will be automatically set
@@ -239,22 +245,22 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			return managed.ExternalCreation{}, nil
 		}
 
-		return c.create(ctx, bucket, backends)
+		return c.create(ctx, bucket)
 	}
 
 	// No ProviderConfigReference Name specified for bucket, we can infer that this bucket is to
 	// be created on all S3 Backends.
-	return c.createAll(ctx, bucket, backends)
+	return c.createAll(ctx, bucket)
 }
 
-func (c *external) create(ctx context.Context, bucket *v1alpha1.Bucket, backends *backendStatuses) (managed.ExternalCreation, error) {
+func (c *external) create(ctx context.Context, bucket *v1alpha1.Bucket) (managed.ExternalCreation, error) {
 	backendName := bucket.GetProviderConfigReference().Name
 	backendClient := c.backendStore.GetBackendClient(backendName)
 	if backendClient == nil {
 		return managed.ExternalCreation{}, errors.New(errBackendNotStored)
 	}
 
-	backends.setBackendStatus(backendName, v1alpha1.BackendNotReadyStatus)
+	c.backendStatuses.setBackendStatus(backendName, v1alpha1.BackendNotReadyStatus)
 
 	if !c.backendStore.IsBackendActive(backendName) {
 		c.log.Info("Backend is marked inactive - bucket will not be created on backend", "bucket name", bucket.Name, "backend name", bucket.GetProviderConfigReference().Name)
@@ -268,13 +274,13 @@ func (c *external) create(ctx context.Context, bucket *v1alpha1.Bucket, backends
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateBucket)
 	}
 
-	backends.setBackendStatus(bucket.GetProviderConfigReference().Name, v1alpha1.BackendReadyStatus)
+	c.backendStatuses.setBackendStatus(bucket.GetProviderConfigReference().Name, v1alpha1.BackendReadyStatus)
 
 	return managed.ExternalCreation{}, nil
 }
 
 //nolint:gocyclo,cyclop,nolintlint // Function requires numerous checks.
-func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket, backends *backendStatuses) (managed.ExternalCreation, error) {
+func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket) (managed.ExternalCreation, error) {
 	if !c.backendStore.BackendsAreStored() {
 		return managed.ExternalCreation{}, errors.New(errNoS3BackendsStored)
 	}
@@ -313,11 +319,11 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket, backe
 		bucket := bucket
 		bn := beName
 		g.Go(func() (err error) {
-			backends.setBackendStatus(bn, v1alpha1.BackendNotReadyStatus)
+			c.backendStatuses.setBackendStatus(bn, v1alpha1.BackendNotReadyStatus)
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				_, err = cl.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
 				if resource.Ignore(isAlreadyExists, err) == nil {
-					backends.setBackendStatus(bn, v1alpha1.BackendReadyStatus)
+					c.backendStatuses.setBackendStatus(bn, v1alpha1.BackendReadyStatus)
 
 					break
 				}
@@ -369,11 +375,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error {
 	c.log.Info("Updating bucket on all available s3 backends", "bucket name", bucket.Name)
 
-	backendStatuses := newBackendStatuses()
-	if bucket.Status.AtProvider.BackendStatuses != nil {
-		backendStatuses = newBackendStatusesWithExisting(bucket.Status.AtProvider.BackendStatuses)
-	}
-	defer setBucketStatus(bucket, backendStatuses.getBackendStatuses())
+	defer setBucketStatus(bucket, c.backendStatuses.getBackendStatuses())
 
 	g := new(errgroup.Group)
 
@@ -393,23 +395,23 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 
 		beName := backendName
 		g.Go(func() error {
-			backendStatuses.setBackendStatus(beName, v1alpha1.BackendNotReadyStatus)
+			c.backendStatuses.setBackendStatus(beName, v1alpha1.BackendNotReadyStatus)
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				bucketExists, err := s3internal.BucketExists(ctx, cl, bucket.Name)
 				if err != nil {
 					return err
 				}
 				if !bucketExists {
-					backendStatuses.deleteBackendFromStatuses(beName)
+					c.backendStatuses.deleteBackendFromStatuses(beName)
 
 					return nil
 				}
 
-				backendStatuses.setBackendStatus(beName, v1alpha1.BackendNotReadyStatus)
+				c.backendStatuses.setBackendStatus(beName, v1alpha1.BackendNotReadyStatus)
 
 				err = c.update(ctx, bucket, cl)
 				if err == nil {
-					backendStatuses.setBackendStatus(beName, v1alpha1.BackendReadyStatus)
+					c.backendStatuses.setBackendStatus(beName, v1alpha1.BackendReadyStatus)
 
 					break
 				}

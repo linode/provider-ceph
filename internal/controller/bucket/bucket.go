@@ -226,7 +226,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	bucket.Status.SetConditions(xpv1.Creating())
-	defer setBucketStatus(bucket, c.backendStatuses.getBackendStatuses()) // backends.getBackendStatuses())
+	defer setBucketStatus(bucket, c.backendStatuses.getBackendStatuses())
 
 	// Where a bucket has a ProviderConfigReference Name, we can infer that this bucket is to be
 	// created only on this S3 Backend. An empty config reference name will be automatically set

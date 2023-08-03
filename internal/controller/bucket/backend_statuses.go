@@ -17,12 +17,6 @@ func newBackendStatuses() *backendStatuses {
 	}
 }
 
-func newBackendStatusesWithExisting(b v1alpha1.BackendStatuses) *backendStatuses {
-	return &backendStatuses{
-		backends: b,
-	}
-}
-
 func (b *backendStatuses) setBackendStatus(backendName string, status v1alpha1.BackendStatus) {
 	b.mu.Lock()
 	defer b.mu.Unlock()

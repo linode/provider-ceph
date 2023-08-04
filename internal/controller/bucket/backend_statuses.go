@@ -35,7 +35,10 @@ func (b *backendStatuses) getBackendStatuses() v1alpha1.BackendStatuses {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	be := b.backends
+	be := make(v1alpha1.BackendStatuses)
+	for k, v := range b.backends {
+		be[k] = v
+	}
 
 	return be
 }

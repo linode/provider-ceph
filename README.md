@@ -36,7 +36,7 @@ guide may also be of use.
 Install the provider by using the Upbound CLI after changing the image tag to the latest release:
 
 ```
-up ctp provider install linode/provider-ceph:v0.0.1
+up ctp provider install linode/provider-ceph:v0.0.5
 ```
 
 Alternatively, you can use declarative installation:
@@ -47,6 +47,6 @@ kind: Provider
 metadata:
   name: linode-provider-ceph
 spec:
-  package: linode/provider-ceph:v0.0.1
+  package: linode/provider-ceph:v0.0.5
 EOF
 ```

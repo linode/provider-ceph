@@ -32,8 +32,8 @@ func (b *backendStatuses) deleteBackendFromStatuses(backendName string) {
 }
 
 func (b *backendStatuses) getBackendStatuses() v1alpha1.BackendStatuses {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 
 	be := b.backends
 

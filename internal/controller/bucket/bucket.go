@@ -226,7 +226,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	bucket.Status.SetConditions(xpv1.Creating())
-	defer setBucketStatus(bucket, c.backendStatuses.getBackendStatuses())
+	defer c.setBucketStatus(bucket)
 
 	// Where a bucket has a ProviderConfigReference Name, we can infer that this bucket is to be
 	// created only on this S3 Backend. An empty config reference name will be automatically set
@@ -375,7 +375,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error {
 	c.log.Info("Updating bucket on all available s3 backends", "bucket name", bucket.Name)
 
-	defer setBucketStatus(bucket, c.backendStatuses.getBackendStatuses())
+	defer c.setBucketStatus(bucket)
 
 	g := new(errgroup.Group)
 
@@ -491,9 +491,9 @@ func isAlreadyExists(err error) bool {
 	return errors.As(err, &alreadyOwnedByYou)
 }
 
-func setBucketStatus(bucket *v1alpha1.Bucket, statuses v1alpha1.BackendStatuses) {
+func (c *external) setBucketStatus(bucket *v1alpha1.Bucket) {
 	bucket.Status.SetConditions(xpv1.Unavailable())
-	bucket.Status.AtProvider.BackendStatuses = statuses
+	bucket.Status.AtProvider.BackendStatuses = c.backendStatuses.getBackendStatuses()
 
 	for _, status := range bucket.Status.AtProvider.BackendStatuses {
 		if status == v1alpha1.BackendReadyStatus {

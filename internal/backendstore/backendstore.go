@@ -45,6 +45,27 @@ func (b *BackendStore) GetAllBackendClients() []*s3.Client {
 	return clients
 }
 
+func (b *BackendStore) GetBackendClients(beNames []string) []*s3.Client {
+	requestedBackends := map[string]bool{}
+	for p := range beNames {
+		requestedBackends[beNames[p]] = true
+	}
+
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	// Create a new clients slice hold a copy of the backend clients
+	clients := make([]*s3.Client, 0)
+	for k, v := range b.s3Backends {
+		if _, ok := requestedBackends[k]; !ok {
+			continue
+		}
+		clients = append(clients, v.s3Client)
+	}
+
+	return clients
+}
+
 func (b *BackendStore) IsBackendActive(backendName string) bool {
 	b.mu.RLock()
 	defer b.mu.RUnlock()

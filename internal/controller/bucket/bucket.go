@@ -172,8 +172,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	ctxC, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	if len(bucket.Spec.Providers) == 0 {
+		bucket.Spec.Providers = []string{defaultPC}
+	}
+
 	// Check for the bucket on each backend in a separate go routine
-	allBackendClients := c.backendStore.GetAllBackendClients()
+	allBackendClients := c.backendStore.GetBackendClients(bucket.Spec.Providers)
 	for _, backendClient := range allBackendClients {
 		go func(backendClient *s3.Client, bucketName string) {
 			bucketExists, err := s3internal.BucketExists(ctxC, backendClient, bucketName)
@@ -420,7 +424,12 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	c.log.Info("Deleting bucket on all available s3 backends", "bucket name", bucket.Name)
 
 	g := new(errgroup.Group)
-	for _, client := range c.backendStore.GetAllBackendClients() {
+
+	if len(bucket.Spec.Providers) == 0 {
+		bucket.Spec.Providers = []string{defaultPC}
+	}
+
+	for _, client := range c.backendStore.GetBackendClients(bucket.Spec.Providers) {
 		cl := client
 		g.Go(func() error {
 			var err error

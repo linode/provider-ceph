@@ -80,6 +80,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	hcBucket := &v1alpha1.Bucket{}
 	hcBucket.SetName(req.Name + healthCheckSuffix)
 	hcBucket.SetNamespace(req.Namespace)
+	hcBucket.Spec.Providers = []string{req.Name}
 
 	providerConfig := &apisv1alpha1.ProviderConfig{}
 	if err := r.kubeClient.Get(ctx, req.NamespacedName, providerConfig); err != nil {

@@ -33,8 +33,9 @@ func (b *BackendStore) GetBackendClient(backendName string) *s3.Client {
 }
 
 func (b *BackendStore) GetAllBackendClients() []*s3.Client {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
 	// Create a new clients slice hold a copy of the backend clients
 	clients := make([]*s3.Client, 0)
 	for _, v := range b.s3Backends {
@@ -81,6 +82,7 @@ func (b *BackendStore) AddOrUpdateBackend(backendName string, backendClient *s3.
 func (b *BackendStore) GetBackend(backendName string) *backend {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
+
 	if backend, ok := b.s3Backends[backendName]; ok {
 		return backend
 	}
@@ -91,9 +93,32 @@ func (b *BackendStore) GetBackend(backendName string) *backend {
 func (b *BackendStore) GetAllBackends() s3Backends {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
+
 	// Create a new s3Backends to hold a copy of the backends
 	backends := make(s3Backends, len(b.s3Backends))
 	for k, v := range b.s3Backends {
+		backends[k] = v
+	}
+
+	return backends
+}
+
+func (b *BackendStore) GetBackends(beNames []string) s3Backends {
+	requestedBackends := map[string]bool{}
+	for p := range beNames {
+		requestedBackends[beNames[p]] = true
+	}
+
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	// Create a new s3Backends to hold a copy of the backends
+	backends := make(s3Backends, 0)
+	for k, v := range b.s3Backends {
+		if _, ok := requestedBackends[k]; !ok {
+			continue
+		}
+
 		backends[k] = v
 	}
 

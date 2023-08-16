@@ -13,3 +13,19 @@ status:
   - reason: ReconcileSuccess
     status: "True"
     type: Synced
+---
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: test-bucket-default
+status:
+  atProvider:
+    backendStatuses:
+      default: "Ready"
+  conditions:
+  - reason: Available
+    status: "True"
+    type: Ready
+  - reason: ReconcileSuccess
+    status: "True"
+    type: Synced

@@ -37,7 +37,8 @@ import (
 )
 
 const (
-	errCreateClient     = "cannot create s3 client"
+	errCreateClient = "cannot create s3 client"
+	// #nosec
 	errGetSecret        = "cannot get Secret"
 	errBackendNotStored = "s3 backend is not stored"
 )

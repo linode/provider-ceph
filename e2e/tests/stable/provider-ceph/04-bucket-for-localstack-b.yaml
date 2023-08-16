@@ -3,6 +3,6 @@ kind: Bucket
 metadata:
   name: bucket-for-localstack-b
 spec:
+  providers:
+  - localstack-b
   forProvider: {}
-  providerConfigRef:
-    name: localstack-b

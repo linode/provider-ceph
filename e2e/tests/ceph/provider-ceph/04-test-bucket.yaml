@@ -3,6 +3,13 @@ kind: Bucket
 metadata:
   name: test-bucket
 spec:
-  forProvider: {}
-  providerConfigRef:
-    name: ceph-cluster
+  providers:
+  - ceph-cluster
+  forProvider: {} 
+---
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: test-bucket-all
+spec:
+  forProvider: {} 

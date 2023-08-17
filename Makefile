@@ -245,14 +245,6 @@ help-special: crossplane.help
 
 .PHONY: crossplane.help help-special aws
 
-# Install Earthly to run CI pipelines.
-EARTHLY ?= $(shell pwd)/bin/earthly
-earthly:
-ifeq (,$(wildcard $(EARTHLY)))
-	curl -sL https://github.com/earthly/earthly/releases/download/v0.7.1/earthly-linux-amd64 -o $(EARTHLY)
-	chmod +x $(EARTHLY)
-endif
-
 # Install Docker Compose to run localstack.
 COMPOSE ?= $(shell pwd)/bin/docker-compose
 compose:

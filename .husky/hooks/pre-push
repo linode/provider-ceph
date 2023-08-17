@@ -16,5 +16,4 @@ fi
 make generate
 git diff --exit-code --quiet || (git status && exit 1)
 
-make earthly
-$PWD/bin/earthly -P +all
+make lint go.test.unit

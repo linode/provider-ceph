@@ -162,24 +162,80 @@ func TestCreate(t *testing.T) {
 				err: errors.New(errNotBucket),
 			},
 		},
-		"S3 backend reference does not exist": {
+		"S3 backends missing": {
 			fields: fields{
 				backendStore:    backendstore.NewBackendStore(),
 				backendStatuses: newBackendStatuses(),
 			},
 			args: args{
+				mg: &v1alpha1.Bucket{},
+			},
+			want: want{
+				err: errors.New(errNoS3BackendsStored),
+			},
+		},
+		"S3 backend reference does not exist": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-0", nil, false)
+
+					return bs
+				}(),
+				backendStatuses: newBackendStatuses(),
+			},
+			args: args{
 				mg: &v1alpha1.Bucket{
 					Spec: v1alpha1.BucketSpec{
-						ResourceSpec: v1.ResourceSpec{
-							ProviderConfigReference: &v1.Reference{
-								Name: "s3-backend-1",
-							},
-						},
+						Providers: []string{"s3-backend-1"},
 					},
 				},
 			},
 			want: want{
-				err: errors.Wrap(errors.New(`providerconfigs.ceph.crossplane.io "s3-backend-1" not found`), errGetPC),
+				err: errors.New(errNoS3BackendsRegistered),
+			},
+		},
+		"S3 backend reference inactive": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-0", nil, true)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, false)
+
+					return bs
+				}(),
+				backendStatuses: newBackendStatuses(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{"s3-backend-0", "s3-backend-1"},
+					},
+				},
+			},
+			want: want{
+				err: errors.New(errMissingS3Backend),
+			},
+		},
+		"S3 backend reference missing": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-0", nil, true)
+
+					return bs
+				}(),
+				backendStatuses: newBackendStatuses(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{"s3-backend-0", "s3-backend-1"},
+					},
+				},
+			},
+			want: want{
+				err: errors.New(errMissingS3Backend),
 			},
 		},
 		"S3 backend not referenced and none exist": {
@@ -195,13 +251,17 @@ func TestCreate(t *testing.T) {
 			},
 		},
 	}
+
+	pc := &apisv1alpha1.ProviderConfig{}
+	s := scheme.Scheme
+	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, pc)
+
 	for name, tc := range cases {
 		tc := tc
+
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			pc := &apisv1alpha1.ProviderConfig{}
-			s := scheme.Scheme
-			s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, pc)
+
 			cl := fake.NewClientBuilder().WithScheme(s).Build()
 			e := external{
 				kubeClient:      cl,
@@ -209,7 +269,9 @@ func TestCreate(t *testing.T) {
 				backendStatuses: tc.fields.backendStatuses,
 				log:             logging.NewNopLogger(),
 			}
+
 			got, err := e.Create(context.Background(), tc.args.mg)
+
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Create(...): -want error, +got error:\n%s\n", tc.reason, diff)
 			}

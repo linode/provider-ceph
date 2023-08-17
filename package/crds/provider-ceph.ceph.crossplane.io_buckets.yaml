@@ -202,6 +202,10 @@ spec:
                 required:
                 - name
                 type: object
+              providers:
+                items:
+                  type: string
+                type: array
               publishConnectionDetailsTo:
                 description: PublishConnectionDetailsTo specifies the connection secret
                   config which contains a name, metadata and a reference to secret

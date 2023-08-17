@@ -13,3 +13,22 @@ status:
   - reason: ReconcileSuccess
     status: "True"
     type: Synced
+---
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: test-bucket-all
+status:
+  atProvider:
+    backendStatuses:
+      ceph-cluster: "Ready"
+      localstack-a: "Ready"
+      localstack-b: "Ready"
+      localstack-c: "Ready"
+  conditions:
+  - reason: Available
+    status: "True"
+    type: Ready
+  - reason: ReconcileSuccess
+    status: "True"
+    type: Synced

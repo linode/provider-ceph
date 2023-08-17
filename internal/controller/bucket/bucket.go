@@ -47,25 +47,25 @@ import (
 )
 
 const (
-	errNotBucket            = "managed resource is not a Bucket custom resource"
-	errTrackPCUsage         = "cannot track ProviderConfig usage"
-	errGetPC                = "cannot get ProviderConfig"
-	errListPC               = "cannot list ProviderConfigs"
-	errGetBucket            = "cannot get Bucket"
-	errListBuckets          = "cannot list Buckets"
-	errCreateBucket         = "cannot create Bucket"
-	errDeleteBucket         = "cannot delete Bucket"
-	errUpdateBucket         = "cannot update Bucket"
-	errListObjects          = "cannot list objects"
-	errDeleteObject         = "cannot delete object"
-	errGetCreds             = "cannot get credentials"
-	errBackendNotStored     = "s3 backend is not stored"
-	errBackendInactive      = "s3 backend is inactive"
-	errNoS3BackendsStored   = "no s3 backends stored"
-	errCodeBucketNotFound   = "NotFound"
-	errFailedToCreateClient = "failed to create s3 client"
-
-	defaultPC = "default"
+	errNotBucket              = "managed resource is not a Bucket custom resource"
+	errTrackPCUsage           = "cannot track ProviderConfig usage"
+	errGetPC                  = "cannot get ProviderConfig"
+	errListPC                 = "cannot list ProviderConfigs"
+	errGetBucket              = "cannot get Bucket"
+	errListBuckets            = "cannot list Buckets"
+	errCreateBucket           = "cannot create Bucket"
+	errDeleteBucket           = "cannot delete Bucket"
+	errUpdateBucket           = "cannot update Bucket"
+	errListObjects            = "cannot list objects"
+	errDeleteObject           = "cannot delete object"
+	errGetCreds               = "cannot get credentials"
+	errBackendNotStored       = "s3 backend is not stored"
+	errBackendInactive        = "s3 backend is inactive"
+	errNoS3BackendsStored     = "no s3 backends stored"
+	errNoS3BackendsRegistered = "no s3 backends registered"
+	errMissingS3Backend       = "missing s3 backends"
+	errCodeBucketNotFound     = "NotFound"
+	errFailedToCreateClient   = "failed to create s3 client"
 )
 
 // A NoOpService does nothing.
@@ -134,7 +134,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 
 	return &external{
 			kubeClient:      c.kube,
-			backendStore:    c.backendStore.GetBackendStore(),
+			backendStore:    c.backendStore,
 			backendStatuses: c.backendStatuses,
 			log:             c.log},
 		nil
@@ -171,8 +171,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	ctxC, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	if len(bucket.Spec.Providers) == 0 {
+		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
+	}
+
 	// Check for the bucket on each backend in a separate go routine
-	allBackendClients := c.backendStore.GetAllBackendClients()
+	allBackendClients := c.backendStore.GetBackendClients(bucket.Spec.Providers)
 	for _, backendClient := range allBackendClients {
 		go func(backendClient *s3.Client, bucketName string) {
 			bucketExists, err := s3internal.BucketExists(ctxC, backendClient, bucketName)
@@ -219,6 +223,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}, nil
 }
 
+//nolint:gocyclo,cyclop,nolintlint // Function requires numerous checks.
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
@@ -227,60 +232,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	bucket.Status.SetConditions(xpv1.Creating())
 	defer c.setBucketStatus(bucket)
-
-	// Where a bucket has a ProviderConfigReference Name, we can infer that this bucket is to be
-	// created only on this S3 Backend. An empty config reference name will be automatically set
-	// to "default".
-	if bucket.GetProviderConfigReference() != nil && bucket.GetProviderConfigReference().Name != defaultPC {
-		backendName := bucket.GetProviderConfigReference().Name
-
-		pc := &apisv1alpha1.ProviderConfig{}
-		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: backendName}, pc); err != nil {
-			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
-		}
-
-		if isHealthCheckBucket(bucket) && pc.Spec.DisableHealthCheck {
-			c.log.Info("Health check is disabled on backend - health-check-bucket will not be created", "backend name", backendName)
-
-			return managed.ExternalCreation{}, nil
-		}
-
-		return c.create(ctx, bucket)
-	}
-
-	// No ProviderConfigReference Name specified for bucket, we can infer that this bucket is to
-	// be created on all S3 Backends.
-	return c.createAll(ctx, bucket)
-}
-
-func (c *external) create(ctx context.Context, bucket *v1alpha1.Bucket) (managed.ExternalCreation, error) {
-	backendName := bucket.GetProviderConfigReference().Name
-	backendClient := c.backendStore.GetBackendClient(backendName)
-	if backendClient == nil {
-		return managed.ExternalCreation{}, errors.New(errBackendNotStored)
-	}
-
-	c.backendStatuses.setBackendStatus(backendName, v1alpha1.BackendNotReadyStatus)
-
-	if !c.backendStore.IsBackendActive(backendName) {
-		c.log.Info("Backend is marked inactive - bucket will not be created on backend", "bucket name", bucket.Name, "backend name", bucket.GetProviderConfigReference().Name)
-
-		return managed.ExternalCreation{}, nil
-	}
-
-	c.log.Info("Creating bucket on single s3 backend", "bucket name", bucket.Name, "backend name", bucket.GetProviderConfigReference().Name)
-	_, err := backendClient.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
-	if resource.Ignore(isAlreadyExists, err) != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errCreateBucket)
-	}
-
-	c.backendStatuses.setBackendStatus(bucket.GetProviderConfigReference().Name, v1alpha1.BackendReadyStatus)
-
-	return managed.ExternalCreation{}, nil
-}
-
-//nolint:gocyclo,cyclop,nolintlint // Function requires numerous checks.
-func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket) (managed.ExternalCreation, error) {
 	if !c.backendStore.BackendsAreStored() {
 		return managed.ExternalCreation{}, errors.New(errNoS3BackendsStored)
 	}
@@ -289,9 +240,19 @@ func (c *external) createAll(ctx context.Context, bucket *v1alpha1.Bucket) (mana
 
 	g := new(errgroup.Group)
 
+	if len(bucket.Spec.Providers) == 0 {
+		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
+	}
+
 	// Create the bucket on each backend in a separate go routine
-	allBackends := c.backendStore.GetAllBackends()
-	for beName := range allBackends {
+	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
+	if len(activeBackends) == 0 {
+		return managed.ExternalCreation{}, errors.New(errNoS3BackendsRegistered)
+	} else if len(activeBackends) != len(bucket.Spec.Providers) {
+		return managed.ExternalCreation{}, errors.New(errMissingS3Backend)
+	}
+
+	for beName := range activeBackends {
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
@@ -379,7 +340,14 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 
 	g := new(errgroup.Group)
 
-	for backendName := range c.backendStore.GetAllBackends() {
+	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
+	if len(activeBackends) == 0 {
+		return errors.New(errNoS3BackendsRegistered)
+	} else if len(activeBackends) != len(bucket.Spec.Providers) {
+		return errors.New(errMissingS3Backend)
+	}
+
+	for backendName := range activeBackends {
 		if !c.backendStore.IsBackendActive(backendName) {
 			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", "bucket name", bucket.Name, "backend name", backendName)
 
@@ -463,7 +431,12 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	c.log.Info("Deleting bucket on all available s3 backends", "bucket name", bucket.Name)
 
 	g := new(errgroup.Group)
-	for _, client := range c.backendStore.GetAllBackendClients() {
+
+	if len(bucket.Spec.Providers) == 0 {
+		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
+	}
+
+	for _, client := range c.backendStore.GetBackendClients(bucket.Spec.Providers) {
 		cl := client
 		g.Go(func() error {
 			var err error

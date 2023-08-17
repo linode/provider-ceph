@@ -92,6 +92,8 @@ type BucketObservation struct {
 
 // A BucketSpec defines the desired state of a Bucket.
 type BucketSpec struct {
+	// +optional
+	Providers         []string         `json:"providers"`
 	ForProvider       BucketParameters `json:"forProvider"`
 	xpv1.ResourceSpec `json:",inline"`
 }

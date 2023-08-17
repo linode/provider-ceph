@@ -17,11 +17,14 @@ status:
 apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
 kind: Bucket
 metadata:
-  name: test-bucket-default
+  name: test-bucket-all
 status:
   atProvider:
     backendStatuses:
-      default: "Ready"
+      ceph-cluster: "Ready"
+      localstack-a: "Ready"
+      localstack-b: "Ready"
+      localstack-c: "Ready"
   conditions:
   - reason: Available
     status: "True"

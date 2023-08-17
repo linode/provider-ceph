@@ -63,10 +63,9 @@ const (
 	errBackendInactive        = "s3 backend is inactive"
 	errNoS3BackendsStored     = "no s3 backends stored"
 	errNoS3BackendsRegistered = "no s3 backends registered"
+	errMissingS3Backend       = "missing s3 backends"
 	errCodeBucketNotFound     = "NotFound"
 	errFailedToCreateClient   = "failed to create s3 client"
-
-	defaultPC = "default"
 )
 
 // A NoOpService does nothing.
@@ -135,7 +134,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 
 	return &external{
 			kubeClient:      c.kube,
-			backendStore:    c.backendStore.GetBackendStore(),
+			backendStore:    c.backendStore,
 			backendStatuses: c.backendStatuses,
 			log:             c.log},
 		nil
@@ -173,7 +172,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	defer cancel()
 
 	if len(bucket.Spec.Providers) == 0 {
-		bucket.Spec.Providers = []string{defaultPC}
+		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
 	}
 
 	// Check for the bucket on each backend in a separate go routine
@@ -242,17 +241,18 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	g := new(errgroup.Group)
 
 	if len(bucket.Spec.Providers) == 0 {
-		bucket.Spec.Providers = []string{defaultPC}
+		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
 	}
 
 	// Create the bucket on each backend in a separate go routine
-	allBackends := c.backendStore.GetBackends(bucket.Spec.Providers)
-
-	if len(allBackends) == 0 {
+	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
+	if len(activeBackends) == 0 {
 		return managed.ExternalCreation{}, errors.New(errNoS3BackendsRegistered)
+	} else if len(activeBackends) != len(bucket.Spec.Providers) {
+		return managed.ExternalCreation{}, errors.New(errMissingS3Backend)
 	}
 
-	for beName := range allBackends {
+	for beName := range activeBackends {
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
@@ -340,7 +340,14 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 
 	g := new(errgroup.Group)
 
-	for backendName := range c.backendStore.GetBackends(bucket.Spec.Providers) {
+	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
+	if len(activeBackends) == 0 {
+		return errors.New(errNoS3BackendsRegistered)
+	} else if len(activeBackends) != len(bucket.Spec.Providers) {
+		return errors.New(errMissingS3Backend)
+	}
+
+	for backendName := range activeBackends {
 		if !c.backendStore.IsBackendActive(backendName) {
 			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", "bucket name", bucket.Name, "backend name", backendName)
 
@@ -426,7 +433,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	g := new(errgroup.Group)
 
 	if len(bucket.Spec.Providers) == 0 {
-		bucket.Spec.Providers = []string{defaultPC}
+		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
 	}
 
 	for _, client := range c.backendStore.GetBackendClients(bucket.Spec.Providers) {

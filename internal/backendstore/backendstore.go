@@ -124,7 +124,7 @@ func (b *BackendStore) GetAllBackends() s3Backends {
 	return backends
 }
 
-func (b *BackendStore) GetBackends(beNames []string) s3Backends {
+func (b *BackendStore) GetActiveBackends(beNames []string) s3Backends {
 	requestedBackends := map[string]bool{}
 	for p := range beNames {
 		requestedBackends[beNames[p]] = true
@@ -136,7 +136,7 @@ func (b *BackendStore) GetBackends(beNames []string) s3Backends {
 	// Create a new s3Backends to hold a copy of the backends
 	backends := make(s3Backends, 0)
 	for k, v := range b.s3Backends {
-		if _, ok := requestedBackends[k]; !ok {
+		if _, ok := requestedBackends[k]; !ok || !v.active {
 			continue
 		}
 
@@ -146,11 +146,20 @@ func (b *BackendStore) GetBackends(beNames []string) s3Backends {
 	return backends
 }
 
-func (b *BackendStore) GetBackendStore() *BackendStore {
+func (b *BackendStore) GetAllActiveBackendNames() []string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	return b
+	backends := make([]string, 0)
+	for k, v := range b.s3Backends {
+		if !v.active {
+			continue
+		}
+
+		backends = append(backends, k)
+	}
+
+	return backends
 }
 
 func (b *BackendStore) BackendsAreStored() bool {

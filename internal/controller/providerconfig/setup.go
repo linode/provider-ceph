@@ -9,7 +9,6 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // Setup adds controllers to reconcile the backend store and backend health.
@@ -41,6 +40,6 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore)
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
 		For(&apisv1alpha1.ProviderConfig{}).
-		Watches(&source.Kind{Type: &apisv1alpha1.ProviderConfigUsage{}}, &resource.EnqueueRequestForProviderConfig{}).
+		Watches(&apisv1alpha1.ProviderConfigUsage{}, &resource.EnqueueRequestForProviderConfig{}).
 		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
 }

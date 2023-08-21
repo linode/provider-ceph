@@ -44,6 +44,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/features"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
+	"github.com/linode/provider-ceph/pkg/utils"
 )
 
 const (
@@ -258,7 +259,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
 		}
 
-		if isHealthCheckBucket(bucket) && pc.Spec.DisableHealthCheck {
+		if utils.IsHealthCheckBucket(bucket) && pc.Spec.DisableHealthCheck {
 			c.log.Info("Health check is disabled on backend - health-check-bucket will not be created", "backend name", beName)
 
 			continue
@@ -314,7 +315,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.Wrap(err, errGetBucket)
 	}
 
-	if isHealthCheckBucket(bucket) {
+	if utils.IsHealthCheckBucket(bucket) {
 		c.log.Info("Update is NOOP for health check bucket - updates performed by heath-check-controller", "bucket", bucket.Name)
 
 		return managed.ExternalUpdate{}, nil
@@ -416,7 +417,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.New(errNotBucket)
 	}
 
-	if isHealthCheckBucket(bucket) {
+	if utils.IsHealthCheckBucket(bucket) {
 		c.log.Info("Delete is NOOP for health check bucket as it is owned by, and garbage collected on deletion of its related providerconfig", "bucket", bucket.Name)
 
 		return nil
@@ -475,14 +476,4 @@ func (c *external) setBucketStatus(bucket *v1alpha1.Bucket) {
 			break
 		}
 	}
-}
-
-func isHealthCheckBucket(bucket *v1alpha1.Bucket) bool {
-	if val, ok := bucket.GetLabels()[s3internal.HealthCheckLabelKey]; ok {
-		if val == s3internal.HealthCheckLabelVal {
-			return true
-		}
-	}
-
-	return false
 }

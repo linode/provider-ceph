@@ -16,6 +16,13 @@ limitations under the License.
 
 package utils
 
+import "github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+
+const (
+	HealthCheckLabelKey = "provider-ceph.crossplane.io"
+	HealthCheckLabelVal = "health-check-bucket"
+)
+
 func RemoveStringFromSlice(slice []string, str string) []string {
 	updated := make([]string, 0)
 	for _, s := range slice {
@@ -25,4 +32,14 @@ func RemoveStringFromSlice(slice []string, str string) []string {
 	}
 
 	return updated
+}
+
+func IsHealthCheckBucket(bucket *v1alpha1.Bucket) bool {
+	if val, ok := bucket.GetLabels()[HealthCheckLabelKey]; ok {
+		if val == HealthCheckLabelVal {
+			return true
+		}
+	}
+
+	return false
 }

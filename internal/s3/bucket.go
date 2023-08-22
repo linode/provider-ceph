@@ -16,9 +16,7 @@ const (
 	errListObjects  = "cannot list objects"
 	errDeleteObject = "cannot delete object"
 
-	RequestRetries      = 5
-	HealthCheckLabelKey = "provider-ceph.crossplane.io"
-	HealthCheckLabelVal = "health-check-bucket"
+	RequestRetries = 5
 )
 
 func BucketToCreateBucketInput(bucket *v1alpha1.Bucket) *s3.CreateBucketInput {

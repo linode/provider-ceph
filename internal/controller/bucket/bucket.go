@@ -443,7 +443,6 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 			var err error
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				if err = c.delete(ctx, cl, bucket); err == nil {
-
 					break
 				}
 			}

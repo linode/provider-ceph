@@ -237,8 +237,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNoS3BackendsStored)
 	}
 
-	c.log.Info("Creating bucket on all available s3 backends", "bucket name", bucket.Name)
-
 	g := new(errgroup.Group)
 
 	if len(bucket.Spec.Providers) == 0 {
@@ -254,6 +252,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	for beName := range activeBackends {
+		c.log.Info("Creating bucket", "bucket name", bucket.Name, "backend name", beName)
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
@@ -335,8 +334,6 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error {
-	c.log.Info("Updating bucket on all available s3 backends", "bucket name", bucket.Name)
-
 	defer c.setBucketStatus(bucket)
 
 	g := new(errgroup.Group)
@@ -349,6 +346,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 	}
 
 	for backendName := range activeBackends {
+		c.log.Info("Updating bucket", "bucket name", bucket.Name, "backend name", backendName)
 		if !c.backendStore.IsBackendActive(backendName) {
 			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", "bucket name", bucket.Name, "backend name", backendName)
 

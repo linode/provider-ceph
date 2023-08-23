@@ -2,6 +2,9 @@ apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
 kind: Bucket
 metadata:
   name: test-bucket
+  finalizers:
+  - "finalizer.managedresource.crossplane.io"
+  - "bucket-in-use.provider-ceph.crossplane.io"
 status:
   atProvider:
     backendStatuses:
@@ -18,6 +21,9 @@ apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
 kind: Bucket
 metadata:
   name: test-bucket-all
+  finalizers:
+  - "finalizer.managedresource.crossplane.io"
+  - "bucket-in-use.provider-ceph.crossplane.io"
 status:
   atProvider:
     backendStatuses:

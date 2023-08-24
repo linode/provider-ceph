@@ -2,6 +2,9 @@ apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
 kind: Bucket
 metadata:
   name: bucket-for-localstack-b
+  finalizers:
+  - "finalizer.managedresource.crossplane.io"
+  - "bucket-in-use.provider-ceph.crossplane.io"
 status:
   atProvider:
     backendStatuses:

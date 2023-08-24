@@ -31,12 +31,21 @@ func (b *backendStatuses) deleteBackendFromStatuses(backendName string) {
 	delete(b.backends, backendName)
 }
 
-func (b *backendStatuses) getBackendStatuses() v1alpha1.BackendStatuses {
+func (b *backendStatuses) getBackendStatuses(beNames []string) v1alpha1.BackendStatuses {
+	requestedBackends := map[string]bool{}
+	for p := range beNames {
+		requestedBackends[beNames[p]] = true
+	}
+
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
 	be := make(v1alpha1.BackendStatuses)
 	for k, v := range b.backends {
+		if _, ok := requestedBackends[k]; !ok {
+			continue
+		}
+
 		be[k] = v
 	}
 

@@ -29,6 +29,7 @@ import (
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/connection"
@@ -67,6 +68,8 @@ const (
 	errMissingS3Backend       = "missing s3 backends"
 	errCodeBucketNotFound     = "NotFound"
 	errFailedToCreateClient   = "failed to create s3 client"
+
+	inUseFinalizer = "bucket-in-use.provider-ceph.crossplane.io"
 )
 
 // A NoOpService does nothing.
@@ -237,8 +240,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNoS3BackendsStored)
 	}
 
-	c.log.Info("Creating bucket on all available s3 backends", "bucket name", bucket.Name)
-
 	g := new(errgroup.Group)
 
 	if len(bucket.Spec.Providers) == 0 {
@@ -254,6 +255,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	for beName := range activeBackends {
+		c.log.Info("Creating bucket", "bucket name", bucket.Name, "backend name", beName)
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
@@ -335,8 +337,6 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error {
-	c.log.Info("Updating bucket on all available s3 backends", "bucket name", bucket.Name)
-
 	defer c.setBucketStatus(bucket)
 
 	g := new(errgroup.Group)
@@ -349,6 +349,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 	}
 
 	for backendName := range activeBackends {
+		c.log.Info("Updating bucket", "bucket name", bucket.Name, "backend name", backendName)
 		if !c.backendStore.IsBackendActive(backendName) {
 			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", "bucket name", bucket.Name, "backend name", backendName)
 
@@ -408,6 +409,12 @@ func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backen
 	//TODO: Add functionality for bucket ownership controls, using s3 apis:
 	// - DeleteBucketOwnershipControls
 	// - PutBucketOwnershipControls
+	if controllerutil.AddFinalizer(bucket, inUseFinalizer) {
+		// we need to update the object to add the finalizer otherwise it is only added
+		// to the object's managed fields and does not block deletion.
+		return c.kubeClient.Update(ctx, bucket)
+	}
+
 	return nil
 }
 
@@ -442,7 +449,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		g.Go(func() error {
 			var err error
 			for i := 0; i < s3internal.RequestRetries; i++ {
-				if err = s3internal.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err == nil {
+				if err = c.delete(ctx, cl, bucket); err == nil {
 					break
 				}
 			}
@@ -458,6 +465,21 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	return nil
 }
 
+func (c *external) delete(ctx context.Context, s3Backend *s3.Client, bucket *v1alpha1.Bucket) error {
+	if err := s3internal.DeleteBucket(ctx, s3Backend, aws.String(bucket.Name)); err != nil {
+		return err
+	}
+
+	// update object to remove in-use finalizer and allow deletion
+	if controllerutil.RemoveFinalizer(bucket, inUseFinalizer) {
+		// we need to update the object to add the finalizer otherwise it is only added
+		// to the object's managed fields and does not block deletion.
+		return c.kubeClient.Update(ctx, bucket)
+	}
+
+	return nil
+}
+
 // isAlreadyExists helper function to test for ErrCodeBucketAlreadyOwnedByYou error
 func isAlreadyExists(err error) bool {
 	var alreadyOwnedByYou *s3types.BucketAlreadyOwnedByYou
@@ -467,7 +489,7 @@ func isAlreadyExists(err error) bool {
 
 func (c *external) setBucketStatus(bucket *v1alpha1.Bucket) {
 	bucket.Status.SetConditions(xpv1.Unavailable())
-	backendStatuses := c.backendStatuses.getBackendStatuses()
+	backendStatuses := c.backendStatuses.getBackendStatuses(bucket.Spec.Providers)
 	bucket.Status.AtProvider.BackendStatuses = backendStatuses
 	for _, status := range backendStatuses {
 		if status == v1alpha1.BackendReadyStatus {

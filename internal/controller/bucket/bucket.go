@@ -29,6 +29,7 @@ import (
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/connection"
@@ -408,7 +409,13 @@ func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backen
 	//TODO: Add functionality for bucket ownership controls, using s3 apis:
 	// - DeleteBucketOwnershipControls
 	// - PutBucketOwnershipControls
-	return c.addFinalizer(ctx, bucket, inUseFinalizer)
+	if controllerutil.AddFinalizer(bucket, inUseFinalizer) {
+		// we need to update the object to add the finalizer otherwise it is only added
+		// to the object's managed fields and does not block deletion.
+		return c.kubeClient.Update(ctx, bucket)
+	}
+
+	return nil
 }
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
@@ -464,10 +471,13 @@ func (c *external) delete(ctx context.Context, s3Backend *s3.Client, bucket *v1a
 	}
 
 	// update object to remove in-use finalizer and allow deletion
-	finalizers := utils.RemoveStringFromSlice(bucket.GetFinalizers(), inUseFinalizer)
-	bucket.SetFinalizers(finalizers)
+	if controllerutil.RemoveFinalizer(bucket, inUseFinalizer) {
+		// we need to update the object to add the finalizer otherwise it is only added
+		// to the object's managed fields and does not block deletion.
+		return c.kubeClient.Update(ctx, bucket)
+	}
 
-	return c.kubeClient.Update(ctx, bucket)
+	return nil
 }
 
 // isAlreadyExists helper function to test for ErrCodeBucketAlreadyOwnedByYou error
@@ -488,19 +498,4 @@ func (c *external) setBucketStatus(bucket *v1alpha1.Bucket) {
 			break
 		}
 	}
-}
-
-func (c *external) addFinalizer(ctx context.Context, bucket *v1alpha1.Bucket, finalizer string) error {
-	existingFinalizers := bucket.GetFinalizers()
-	for _, existingFinalizer := range existingFinalizers {
-		if existingFinalizer == finalizer {
-			return nil
-		}
-	}
-
-	bucket.SetFinalizers(append(existingFinalizers, finalizer))
-
-	// we need to update the object to add the finalizer otherwise it is only added
-	// to the object's managed fields and does not block deletion.
-	return c.kubeClient.Update(ctx, bucket)
 }

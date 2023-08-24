@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	commonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
@@ -161,11 +162,12 @@ func (r *HealthCheckReconciler) cleanup(ctx context.Context, req ctrl.Request, h
 	// 'Normal' buckets are given the managed-resource finalizer in order to prevent the associated
 	// provider config from being deleted whilst it is still in use. However, health check buckets are
 	// treated differently as they are owned by the provider config.
-	finalizers := utils.RemoveStringFromSlice(hcBucket.GetFinalizers(), managed.FinalizerName)
-	finalizers = utils.RemoveStringFromSlice(finalizers, healthCheckFinalizer)
-	hcBucket.SetFinalizers(finalizers)
+	if controllerutil.RemoveFinalizer(hcBucket, managed.FinalizerName) ||
+		controllerutil.RemoveFinalizer(hcBucket, healthCheckFinalizer) {
+		return r.kubeClient.Update(ctx, hcBucket)
+	}
 
-	return r.kubeClient.Update(ctx, hcBucket)
+	return nil
 }
 
 func (r *HealthCheckReconciler) createHealthCheckBucket(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, hcBucket *v1alpha1.Bucket) error {

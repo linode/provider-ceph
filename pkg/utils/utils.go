@@ -23,17 +23,6 @@ const (
 	HealthCheckLabelVal = "health-check-bucket"
 )
 
-func RemoveStringFromSlice(slice []string, str string) []string {
-	updated := make([]string, 0)
-	for _, s := range slice {
-		if s != str {
-			updated = append(updated, s)
-		}
-	}
-
-	return updated
-}
-
 func IsHealthCheckBucket(bucket *v1alpha1.Bucket) bool {
 	if val, ok := bucket.GetLabels()[HealthCheckLabelKey]; ok {
 		if val == HealthCheckLabelVal {

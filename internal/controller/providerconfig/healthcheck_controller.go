@@ -162,12 +162,10 @@ func (r *HealthCheckReconciler) cleanup(ctx context.Context, req ctrl.Request, h
 	// 'Normal' buckets are given the managed-resource finalizer in order to prevent the associated
 	// provider config from being deleted whilst it is still in use. However, health check buckets are
 	// treated differently as they are owned by the provider config.
-	if controllerutil.RemoveFinalizer(hcBucket, managed.FinalizerName) ||
-		controllerutil.RemoveFinalizer(hcBucket, healthCheckFinalizer) {
-		return r.kubeClient.Update(ctx, hcBucket)
-	}
+	controllerutil.RemoveFinalizer(hcBucket, managed.FinalizerName)
+	controllerutil.RemoveFinalizer(hcBucket, healthCheckFinalizer)
 
-	return nil
+	return r.kubeClient.Update(ctx, hcBucket)
 }
 
 func (r *HealthCheckReconciler) createHealthCheckBucket(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, hcBucket *v1alpha1.Bucket) error {

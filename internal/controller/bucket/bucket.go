@@ -449,7 +449,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		g.Go(func() error {
 			var err error
 			for i := 0; i < s3internal.RequestRetries; i++ {
-				if err = c.delete(ctx, cl, bucket); err == nil {
+				if err := s3internal.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err != nil {
 					break
 				}
 			}
@@ -460,14 +460,6 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 	if err := g.Wait(); err != nil {
 		return errors.Wrap(err, errDeleteBucket)
-	}
-
-	return nil
-}
-
-func (c *external) delete(ctx context.Context, s3Backend *s3.Client, bucket *v1alpha1.Bucket) error {
-	if err := s3internal.DeleteBucket(ctx, s3Backend, aws.String(bucket.Name)); err != nil {
-		return err
 	}
 
 	// update object to remove in-use finalizer and allow deletion

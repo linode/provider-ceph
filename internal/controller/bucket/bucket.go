@@ -223,7 +223,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		// Return false when the external resource does not exist. This lets
 		// the managed resource reconciler know that it needs to call Create to
 		// (re)create the resource, or that it has successfully been deleted.
-		ResourceExists: false,
+		// If the bucket's CustomResourceOnly flag has been set, no further
+		// action is needed.
+		ResourceExists: bucket.Spec.CustomResourceOnly,
 	}, nil
 }
 
@@ -236,6 +238,13 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	bucket.Status.SetConditions(xpv1.Creating())
 	defer c.setBucketStatus(bucket)
+
+	if bucket.Spec.CustomResourceOnly {
+		c.log.Info("Bucket is in CustomResourceOnly state - no buckets to be created on backends", "bucket name", bucket.Name)
+
+		return managed.ExternalCreation{}, nil
+	}
+
 	if !c.backendStore.BackendsAreStored() {
 		return managed.ExternalCreation{}, errors.New(errNoS3BackendsStored)
 	}
@@ -321,6 +330,12 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		c.log.Info("Update is NOOP for health check bucket - updates performed by heath-check-controller", "bucket", bucket.Name)
 
 		return managed.ExternalUpdate{}, nil
+	}
+
+	if bucket.Spec.CustomResourceOnly {
+		c.log.Info("Bucket is in CustomResourceOnly state - remove any existing buckets from backends", "bucket name", bucket.Name)
+
+		return managed.ExternalUpdate{}, c.Delete(ctx, mg)
 	}
 
 	if err := c.updateAll(ctx, bucket); err != nil {
@@ -430,28 +445,43 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return nil
 	}
 
+	// There are two scenarios where the bucket status needs to be updated during a
+	// Delete invocation:
+	// 1. The caller attempts to delete the CR and an error occurs during the call to
+	// the bucket's backends. In this case the bucket may be successfully deleted
+	// from some backends, but not from others. As such, we must update the bucket CR
+	// status accordingly as Delete has ultimately failed and the 'in-use' finalizer
+	// will not be removed.
+	// 2. The caller attempts to delete the bucket from it's backends without deleting
+	// the bucket CR. This is done by setting the CustomResourceOnly flag on the bucket
+	// CR spec. If the deletion is successful or unsuccessful, the bucket CR status must be
+	// updated.
+	defer c.setBucketStatus(bucket)
+
 	if !c.backendStore.BackendsAreStored() {
 		return errors.New(errNoS3BackendsStored)
 	}
 
 	bucket.Status.SetConditions(xpv1.Deleting())
 
-	c.log.Info("Deleting bucket on all available s3 backends", "bucket name", bucket.Name)
-
 	g := new(errgroup.Group)
 
-	if len(bucket.Spec.Providers) == 0 {
-		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
+	activeBackends := bucket.Spec.Providers
+	if len(activeBackends) == 0 {
+		activeBackends = c.backendStore.GetAllActiveBackendNames()
 	}
 
-	for _, client := range c.backendStore.GetBackendClients(bucket.Spec.Providers) {
-		cl := client
+	for _, backendName := range activeBackends {
+		c.log.Info("Deleting bucket", "bucket name", bucket.Name, "backend name", backendName)
+		cl := c.backendStore.GetBackendClient(backendName)
+		beName := backendName
 		g.Go(func() error {
 			var err error
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				if err := s3internal.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err != nil {
 					break
 				}
+				c.backendStatuses.deleteBackendFromStatuses(beName)
 			}
 
 			return err
@@ -481,6 +511,12 @@ func isAlreadyExists(err error) bool {
 
 func (c *external) setBucketStatus(bucket *v1alpha1.Bucket) {
 	bucket.Status.SetConditions(xpv1.Unavailable())
+	if bucket.Spec.CustomResourceOnly {
+		bucket.Status.AtProvider.BackendStatuses = make(v1alpha1.BackendStatuses)
+
+		return
+	}
+
 	backendStatuses := c.backendStatuses.getBackendStatuses(bucket.Spec.Providers)
 	bucket.Status.AtProvider.BackendStatuses = backendStatuses
 	for _, status := range backendStatuses {

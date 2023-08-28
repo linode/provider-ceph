@@ -51,6 +51,14 @@ spec:
           spec:
             description: A BucketSpec defines the desired state of a Bucket.
             properties:
+              customResourceOnly:
+                description: CustomResourceOnly allows the user to create a Bucket
+                  CR without creating buckets on any S3 backends. If an existing bucket
+                  CR is updated with CustomResourceOnly=true, then provider-ceph attempts
+                  to remove any existing buckets from the existing S3 backends and
+                  the Bucket CR's status is updated accordingly. This flag overrides
+                  'Providers'.
+                type: boolean
               deletionPolicy:
                 default: Delete
                 description: 'DeletionPolicy specifies what will happen to the underlying
@@ -213,6 +221,8 @@ spec:
                 - name
                 type: object
               providers:
+                description: Providers is a list of ProviderConfig names representing
+                  S3 backends on which the bucket is to be created.
                 items:
                   type: string
                 type: array

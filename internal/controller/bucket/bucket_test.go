@@ -131,8 +131,8 @@ func TestCreate(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		backendStore    *backendstore.BackendStore
-		backendStatuses *backendStatuses
+		backendStore   *backendstore.BackendStore
+		bucketBackends *bucketBackends
 	}
 
 	type args struct {
@@ -152,8 +152,8 @@ func TestCreate(t *testing.T) {
 	}{
 		"Invalid managed resource": {
 			fields: fields{
-				backendStore:    backendstore.NewBackendStore(),
-				backendStatuses: newBackendStatuses(),
+				backendStore:   backendstore.NewBackendStore(),
+				bucketBackends: newBucketBackends(),
 			},
 			args: args{
 				mg: unexpectedItem,
@@ -164,8 +164,8 @@ func TestCreate(t *testing.T) {
 		},
 		"S3 backends missing": {
 			fields: fields{
-				backendStore:    backendstore.NewBackendStore(),
-				backendStatuses: newBackendStatuses(),
+				backendStore:   backendstore.NewBackendStore(),
+				bucketBackends: newBucketBackends(),
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{},
@@ -182,7 +182,7 @@ func TestCreate(t *testing.T) {
 
 					return bs
 				}(),
-				backendStatuses: newBackendStatuses(),
+				bucketBackends: newBucketBackends(),
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
@@ -204,7 +204,7 @@ func TestCreate(t *testing.T) {
 
 					return bs
 				}(),
-				backendStatuses: newBackendStatuses(),
+				bucketBackends: newBucketBackends(),
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
@@ -225,7 +225,7 @@ func TestCreate(t *testing.T) {
 
 					return bs
 				}(),
-				backendStatuses: newBackendStatuses(),
+				bucketBackends: newBucketBackends(),
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
@@ -240,8 +240,8 @@ func TestCreate(t *testing.T) {
 		},
 		"S3 backend not referenced and none exist": {
 			fields: fields{
-				backendStore:    backendstore.NewBackendStore(),
-				backendStatuses: newBackendStatuses(),
+				backendStore:   backendstore.NewBackendStore(),
+				bucketBackends: newBucketBackends(),
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{},
@@ -264,10 +264,10 @@ func TestCreate(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithScheme(s).Build()
 			e := external{
-				kubeClient:      cl,
-				backendStore:    tc.fields.backendStore,
-				backendStatuses: tc.fields.backendStatuses,
-				log:             logging.NewNopLogger(),
+				kubeClient:     cl,
+				backendStore:   tc.fields.backendStore,
+				bucketBackends: tc.fields.bucketBackends,
+				log:            logging.NewNopLogger(),
 			}
 
 			got, err := e.Create(context.Background(), tc.args.mg)

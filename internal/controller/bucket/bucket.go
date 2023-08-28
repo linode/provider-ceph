@@ -478,7 +478,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		g.Go(func() error {
 			var err error
 			for i := 0; i < s3internal.RequestRetries; i++ {
-				if err := s3internal.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err != nil {
+				if err = s3internal.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err != nil {
 					break
 				}
 				c.bucketBackends.deleteBucketBackend(bucket.Name, beName)

@@ -350,7 +350,7 @@ func TestDelete(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			e := external{backendStore: tc.fields.backendStore, log: logging.NewNopLogger()}
+			e := external{backendStore: tc.fields.backendStore, bucketBackends: newBucketBackends(), log: logging.NewNopLogger()}
 			err := e.Delete(context.Background(), tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Delete(...): -want error, +got error:\n%s\n", tc.reason, diff)

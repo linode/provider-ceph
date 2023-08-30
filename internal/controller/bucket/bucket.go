@@ -510,10 +510,10 @@ func isAlreadyExists(err error) bool {
 
 func (c *external) setBucketStatus(bucket *v1alpha1.Bucket) {
 	bucket.Status.SetConditions(xpv1.Unavailable())
-	bucketBackends := c.bucketBackends.getBucketBackendStatuses(bucket.Name, bucket.Spec.Providers)
-	bucket.Status.AtProvider.BackendStatuses = bucketBackends
-	for _, status := range bucketBackends {
-		if status == v1alpha1.BackendReadyStatus {
+	bucketBackendStatuses := c.bucketBackends.getBucketBackendStatuses(bucket.Name, bucket.Spec.Providers)
+	bucket.Status.AtProvider.BackendStatuses = bucketBackendStatuses
+	for _, backendStatus := range bucketBackendStatuses {
+		if backendStatus == v1alpha1.BackendReadyStatus {
 			bucket.Status.SetConditions(xpv1.Available())
 
 			break

@@ -223,9 +223,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		// Return false when the external resource does not exist. This lets
 		// the managed resource reconciler know that it needs to call Create to
 		// (re)create the resource, or that it has successfully been deleted.
-		// If the bucket's CustomResourceOnly flag has been set, no further
-		// action is needed.
-		ResourceExists: bucket.Spec.CustomResourceOnly,
+		// If the bucket's Disabled flag has been set, no further action is needed.
+		ResourceExists: bucket.Spec.Disabled,
 	}, nil
 }
 
@@ -239,8 +238,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	bucket.Status.SetConditions(xpv1.Creating())
 	defer c.setBucketStatus(bucket)
 
-	if bucket.Spec.CustomResourceOnly {
-		c.log.Info("Bucket is in CustomResourceOnly state - no buckets to be created on backends", "bucket name", bucket.Name)
+	if bucket.Spec.Disabled {
+		c.log.Info("Bucket is disabled - no buckets to be created on backends", "bucket name", bucket.Name)
 
 		return managed.ExternalCreation{}, nil
 	}
@@ -332,8 +331,8 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, nil
 	}
 
-	if bucket.Spec.CustomResourceOnly {
-		c.log.Info("Bucket is in CustomResourceOnly state - remove any existing buckets from backends", "bucket name", bucket.Name)
+	if bucket.Spec.Disabled {
+		c.log.Info("Bucket is disabled - remove any existing buckets from backends", "bucket name", bucket.Name)
 
 		return managed.ExternalUpdate{}, c.Delete(ctx, mg)
 	}
@@ -453,7 +452,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	// status accordingly as Delete has ultimately failed and the 'in-use' finalizer
 	// will not be removed.
 	// 2. The caller attempts to delete the bucket from it's backends without deleting
-	// the bucket CR. This is done by setting the CustomResourceOnly flag on the bucket
+	// the bucket CR. This is done by setting the Disabled flag on the bucket
 	// CR spec. If the deletion is successful or unsuccessful, the bucket CR status must be
 	// updated.
 	defer c.setBucketStatus(bucket)

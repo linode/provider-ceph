@@ -5,5 +5,5 @@ metadata:
 spec:
   providers:
   - localstack-b
-  customResourceOnly: true
+  disabled: true
   forProvider: {}

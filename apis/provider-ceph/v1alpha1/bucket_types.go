@@ -97,14 +97,14 @@ type BucketSpec struct {
 	// S3 backends on which the bucket is to be created.
 	Providers   []string         `json:"providers"`
 	ForProvider BucketParameters `json:"forProvider"`
-	// CustomResourceOnly allows the user to create a Bucket CR without
-	// creating buckets on any S3 backends. If an existing bucket CR is
-	// updated with CustomResourceOnly=true, then provider-ceph attempts
-	// to remove any existing buckets from the existing S3 backends and
-	// the Bucket CR's status is updated accordingly.
+	// Disabled allows the user to create a Bucket CR without creating
+	// buckets on any S3 backends. If an existing bucket CR is updated
+	// with Disabled=true, then provider-ceph attempts to remove any
+	// existing buckets from the existing S3 backends and the Bucket
+	// CR's status is updated accordingly.
 	// This flag overrides 'Providers'.
-	CustomResourceOnly bool `json:"customResourceOnly,omitempty"`
-	xpv1.ResourceSpec  `json:",inline"`
+	Disabled          bool `json:"disabled,omitempty"`
+	xpv1.ResourceSpec `json:",inline"`
 }
 
 // A BucketStatus represents the observed state of a Bucket.

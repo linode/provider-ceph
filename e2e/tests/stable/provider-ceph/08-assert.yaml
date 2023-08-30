@@ -3,7 +3,7 @@ kind: Bucket
 metadata:
   name: bucket-for-localstack-b
 spec:
-  customResourceOnly: true
+  disabled: true
 status:
   atProvider:
     configurableField: ""

@@ -528,9 +528,14 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 
 				err = c.update(ctx, bucket, cl)
 				if err == nil {
-					bucketBackends.setBucketBackendStatus(bucket.Name, beName, v1alpha1.BackendReadyStatus)
+					// Check to see if this backend has been marked as 'Unhealthy'. It may be 'Unknown' due to
+					// the healthcheck being disabled. In which case we can only assume the backend is healthy
+					// and mark the bucket as 'Ready' for this backend.
+					if c.backendStore.GetBackendHealthStatus(beName) == apisv1alpha1.HealthStatusUnhealthy {
+						break
+					}
 
-					break
+					bucketBackends.setBucketBackendStatus(bucket.Name, beName, v1alpha1.BackendReadyStatus)
 				}
 			}
 

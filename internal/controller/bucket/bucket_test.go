@@ -177,7 +177,7 @@ func TestCreate(t *testing.T) {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-0", nil, false)
+					bs.AddOrUpdateBackend("s3-backend-0", nil, false, apisv1alpha1.HealthStatusUnknown)
 
 					return bs
 				}(),
@@ -197,8 +197,8 @@ func TestCreate(t *testing.T) {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-0", nil, true)
-					bs.AddOrUpdateBackend("s3-backend-1", nil, false)
+					bs.AddOrUpdateBackend("s3-backend-0", nil, true, apisv1alpha1.HealthStatusUnknown)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, false, apisv1alpha1.HealthStatusUnknown)
 
 					return bs
 				}(),
@@ -218,7 +218,7 @@ func TestCreate(t *testing.T) {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-0", nil, true)
+					bs.AddOrUpdateBackend("s3-backend-0", nil, true, apisv1alpha1.HealthStatusUnknown)
 
 					return bs
 				}(),

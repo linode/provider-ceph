@@ -59,7 +59,7 @@ type HealthStatus string
 const (
 	HealthStatusHealthy   = "Healthy"
 	HealthStatusUnhealthy = "Unhealthy"
-	HealthStatusDisabled  = "HealthCheckDisabled"
+	HealthStatusUnknown   = "Unknown"
 )
 
 // A ProviderConfigStatus reflects the observed state of a ProviderConfig.

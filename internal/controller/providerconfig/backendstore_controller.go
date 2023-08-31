@@ -86,7 +86,13 @@ func (r *BackendStoreReconciler) addOrUpdateBackend(ctx context.Context, pc *api
 		return errors.Wrap(err, errCreateClient)
 	}
 
-	r.backendStore.AddOrUpdateBackend(pc.Name, s3client, true)
+	var health apisv1alpha1.HealthStatus
+	health = apisv1alpha1.HealthStatusUnknown
+	if pc.Status.Health != "" {
+		health = pc.Status.Health
+	}
+
+	r.backendStore.AddOrUpdateBackend(pc.Name, s3client, true, health)
 
 	return nil
 }

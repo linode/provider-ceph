@@ -52,27 +52,27 @@ import (
 )
 
 const (
-	errNotBucket              = "managed resource is not a Bucket custom resource"
-	errTrackPCUsage           = "cannot track ProviderConfig usage"
-	errCacheInit              = "cannot init Bucket cache"
-	errGetPC                  = "cannot get ProviderConfig"
-	errListPC                 = "cannot list ProviderConfigs"
-	errGetBucket              = "cannot get Bucket"
-	errListBuckets            = "cannot list Buckets"
-	errCreateBucket           = "cannot create Bucket"
-	errDeleteBucket           = "cannot delete Bucket"
-	errUpdateBucket           = "cannot update Bucket"
-	errListObjects            = "cannot list objects"
-	errDeleteObject           = "cannot delete object"
-	errGetCreds               = "cannot get credentials"
-	errBackendNotStored       = "s3 backend is not stored"
-	errBackendInactive        = "s3 backend is inactive"
-	errNoS3BackendsStored     = "no s3 backends stored"
-	errNoS3BackendsRegistered = "no s3 backends registered"
-	errMissingS3Backend       = "missing s3 backends"
-	errCodeBucketNotFound     = "NotFound"
-	errFailedToCreateClient   = "failed to create s3 client"
-	errBucketCreationOnGoing  = "bucket creation on going"
+	errNotBucket                = "managed resource is not a Bucket custom resource"
+	errTrackPCUsage             = "cannot track ProviderConfig usage"
+	errCacheInit                = "cannot init Bucket cache"
+	errGetPC                    = "cannot get ProviderConfig"
+	errListPC                   = "cannot list ProviderConfigs"
+	errGetBucket                = "cannot get Bucket"
+	errListBuckets              = "cannot list Buckets"
+	errCreateBucket             = "cannot create Bucket"
+	errDeleteBucket             = "cannot delete Bucket"
+	errUpdateBucket             = "cannot update Bucket"
+	errListObjects              = "cannot list objects"
+	errDeleteObject             = "cannot delete object"
+	errGetCreds                 = "cannot get credentials"
+	errBackendNotStored         = "s3 backend is not stored"
+	errBackendInactive          = "s3 backend is inactive"
+	errNoS3BackendsStored       = "no s3 backends stored"
+	errNoS3BackendsRegistered   = "no s3 backends registered"
+	errMissingS3Backend         = "missing s3 backends"
+	errCodeBucketNotFound       = "NotFound"
+	errFailedToCreateClient     = "failed to create s3 client"
+	errBucketCreationInProgress = "bucket creation in progress"
 
 	inUseFinalizer = "bucket-in-use.provider-ceph.crossplane.io"
 )
@@ -401,6 +401,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, nil
 	}
 
+	return c.waitForCreation(ctx, bucket, errChan, errorsLeft, &wg)
+}
+
+func (c *external) waitForCreation(ctx context.Context, bucket *v1alpha1.Bucket, errChan chan error, errorsLeft int, wg *sync.WaitGroup) (managed.ExternalCreation, error) {
 	var err error
 
 WAIT:
@@ -446,9 +450,9 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	latestVersion, err := c.bucketCache.Get(string(bucket.UID))
 	if latestVersion != nil || !errors.Is(err, bigcache.ErrEntryNotFound) {
-		c.log.Info("Bucket creation on going", "bucket_name", bucket.Name, "error", err)
+		c.log.Info("Bucket creation in progress", "bucket_name", bucket.Name, "error", err)
 
-		return managed.ExternalUpdate{}, errors.New(errBucketCreationOnGoing)
+		return managed.ExternalUpdate{}, errors.New(errBucketCreationInProgress)
 	}
 
 	if utils.IsHealthCheckBucket(bucket) {

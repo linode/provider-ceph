@@ -64,6 +64,7 @@ func (r *BackendStoreReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if kerrors.IsNotFound(err) {
 			r.log.Info("Marking s3 backend as inactive on backend store", "name", req.Name)
 			r.backendStore.ToggleBackendActiveStatus(req.Name, false)
+			r.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
 
 			return ctrl.Result{}, nil
 		}

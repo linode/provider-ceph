@@ -19,7 +19,9 @@ package bucket
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/allegro/bigcache/v3"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
@@ -131,8 +133,7 @@ func TestCreate(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		backendStore   *backendstore.BackendStore
-		bucketBackends *bucketBackends
+		backendStore *backendstore.BackendStore
 	}
 
 	type args struct {
@@ -152,8 +153,7 @@ func TestCreate(t *testing.T) {
 	}{
 		"Invalid managed resource": {
 			fields: fields{
-				backendStore:   backendstore.NewBackendStore(),
-				bucketBackends: newBucketBackends(),
+				backendStore: backendstore.NewBackendStore(),
 			},
 			args: args{
 				mg: unexpectedItem,
@@ -164,8 +164,7 @@ func TestCreate(t *testing.T) {
 		},
 		"S3 backends missing": {
 			fields: fields{
-				backendStore:   backendstore.NewBackendStore(),
-				bucketBackends: newBucketBackends(),
+				backendStore: backendstore.NewBackendStore(),
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{},
@@ -182,7 +181,6 @@ func TestCreate(t *testing.T) {
 
 					return bs
 				}(),
-				bucketBackends: newBucketBackends(),
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
@@ -204,7 +202,6 @@ func TestCreate(t *testing.T) {
 
 					return bs
 				}(),
-				bucketBackends: newBucketBackends(),
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
@@ -225,7 +222,6 @@ func TestCreate(t *testing.T) {
 
 					return bs
 				}(),
-				bucketBackends: newBucketBackends(),
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
@@ -240,8 +236,7 @@ func TestCreate(t *testing.T) {
 		},
 		"S3 backend not referenced and none exist": {
 			fields: fields{
-				backendStore:   backendstore.NewBackendStore(),
-				bucketBackends: newBucketBackends(),
+				backendStore: backendstore.NewBackendStore(),
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{},
@@ -262,12 +257,17 @@ func TestCreate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
+			cache, err := bigcache.New(context.Background(), bigcache.DefaultConfig(time.Hour))
+			if err != nil {
+				t.Fatalf("\nfailed to create cache: %s", err.Error())
+			}
+
 			cl := fake.NewClientBuilder().WithScheme(s).Build()
 			e := external{
-				kubeClient:     cl,
-				backendStore:   tc.fields.backendStore,
-				bucketBackends: tc.fields.bucketBackends,
-				log:            logging.NewNopLogger(),
+				kubeClient:   cl,
+				backendStore: tc.fields.backendStore,
+				bucketCache:  cache,
+				log:          logging.NewNopLogger(),
 			}
 
 			got, err := e.Create(context.Background(), tc.args.mg)
@@ -350,7 +350,7 @@ func TestDelete(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			e := external{backendStore: tc.fields.backendStore, bucketBackends: newBucketBackends(), log: logging.NewNopLogger()}
+			e := external{backendStore: tc.fields.backendStore, log: logging.NewNopLogger()}
 			err := e.Delete(context.Background(), tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Delete(...): -want error, +got error:\n%s\n", tc.reason, diff)

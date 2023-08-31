@@ -93,8 +93,17 @@ type BucketObservation struct {
 // A BucketSpec defines the desired state of a Bucket.
 type BucketSpec struct {
 	// +optional
-	Providers         []string         `json:"providers"`
-	ForProvider       BucketParameters `json:"forProvider"`
+	// Providers is a list of ProviderConfig names representing
+	// S3 backends on which the bucket is to be created.
+	Providers   []string         `json:"providers"`
+	ForProvider BucketParameters `json:"forProvider"`
+	// Disabled allows the user to create a Bucket CR without creating
+	// buckets on any S3 backends. If an existing bucket CR is updated
+	// with Disabled=true, then provider-ceph attempts to remove any
+	// existing buckets from the existing S3 backends and the Bucket
+	// CR's status is updated accordingly.
+	// This flag overrides 'Providers'.
+	Disabled          bool `json:"disabled,omitempty"`
 	xpv1.ResourceSpec `json:",inline"`
 }
 

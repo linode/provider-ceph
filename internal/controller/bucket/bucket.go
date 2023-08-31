@@ -90,12 +90,12 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore)
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnecter(&connector{
-			kube:            mgr.GetClient(),
-			usage:           resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn:    newNoOpService,
-			backendStore:    s,
-			backendStatuses: newBackendStatuses(),
-			log:             o.Logger.WithValues("controller", name),
+			kube:           mgr.GetClient(),
+			usage:          resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
+			newServiceFn:   newNoOpService,
+			backendStore:   s,
+			bucketBackends: newBucketBackends(),
+			log:            o.Logger.WithValues("controller", name),
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
@@ -118,12 +118,12 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore)
 // A connector is expected to produce an ExternalClient when its Connect method
 // is called.
 type connector struct {
-	kube            client.Client
-	usage           resource.Tracker
-	newServiceFn    func(creds []byte) (interface{}, error)
-	backendStore    *backendstore.BackendStore
-	backendStatuses *backendStatuses
-	log             logging.Logger
+	kube           client.Client
+	usage          resource.Tracker
+	newServiceFn   func(creds []byte) (interface{}, error)
+	backendStore   *backendstore.BackendStore
+	bucketBackends *bucketBackends
+	log            logging.Logger
 }
 
 // Connect typically produces an ExternalClient by:
@@ -137,20 +137,20 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	return &external{
-			kubeClient:      c.kube,
-			backendStore:    c.backendStore,
-			backendStatuses: c.backendStatuses,
-			log:             c.log},
+			kubeClient:     c.kube,
+			backendStore:   c.backendStore,
+			bucketBackends: c.bucketBackends,
+			log:            c.log},
 		nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	kubeClient      client.Client
-	backendStore    *backendstore.BackendStore
-	backendStatuses *backendStatuses
-	log             logging.Logger
+	kubeClient     client.Client
+	backendStore   *backendstore.BackendStore
+	bucketBackends *bucketBackends
+	log            logging.Logger
 }
 
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -223,7 +223,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		// Return false when the external resource does not exist. This lets
 		// the managed resource reconciler know that it needs to call Create to
 		// (re)create the resource, or that it has successfully been deleted.
-		ResourceExists: false,
+		// If the bucket's Disabled flag has been set, no further action is needed.
+		ResourceExists: bucket.Spec.Disabled,
 	}, nil
 }
 
@@ -236,6 +237,13 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	bucket.Status.SetConditions(xpv1.Creating())
 	defer c.setBucketStatus(bucket)
+
+	if bucket.Spec.Disabled {
+		c.log.Info("Bucket is disabled - no buckets to be created on backends", "bucket name", bucket.Name)
+
+		return managed.ExternalCreation{}, nil
+	}
+
 	if !c.backendStore.BackendsAreStored() {
 		return managed.ExternalCreation{}, errors.New(errNoS3BackendsStored)
 	}
@@ -283,11 +291,11 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		bucket := bucket
 		bn := beName
 		g.Go(func() (err error) {
-			c.backendStatuses.setBackendStatus(bn, v1alpha1.BackendNotReadyStatus)
+			c.bucketBackends.setBucketBackendStatus(bucket.Name, bn, v1alpha1.BackendNotReadyStatus)
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				_, err = cl.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(bucket))
 				if resource.Ignore(isAlreadyExists, err) == nil {
-					c.backendStatuses.setBackendStatus(bn, v1alpha1.BackendReadyStatus)
+					c.bucketBackends.setBucketBackendStatus(bucket.Name, bn, v1alpha1.BackendReadyStatus)
 
 					break
 				}
@@ -321,6 +329,12 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		c.log.Info("Update is NOOP for health check bucket - updates performed by heath-check-controller", "bucket", bucket.Name)
 
 		return managed.ExternalUpdate{}, nil
+	}
+
+	if bucket.Spec.Disabled {
+		c.log.Info("Bucket is disabled - remove any existing buckets from backends", "bucket name", bucket.Name)
+
+		return managed.ExternalUpdate{}, c.Delete(ctx, mg)
 	}
 
 	if err := c.updateAll(ctx, bucket); err != nil {
@@ -365,23 +379,23 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 
 		beName := backendName
 		g.Go(func() error {
-			c.backendStatuses.setBackendStatus(beName, v1alpha1.BackendNotReadyStatus)
+			c.bucketBackends.setBucketBackendStatus(bucket.Name, beName, v1alpha1.BackendNotReadyStatus)
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				bucketExists, err := s3internal.BucketExists(ctx, cl, bucket.Name)
 				if err != nil {
 					return err
 				}
 				if !bucketExists {
-					c.backendStatuses.deleteBackendFromStatuses(beName)
+					c.bucketBackends.deleteBucketBackend(bucket.Name, beName)
 
 					return nil
 				}
 
-				c.backendStatuses.setBackendStatus(beName, v1alpha1.BackendNotReadyStatus)
+				c.bucketBackends.setBucketBackendStatus(bucket.Name, beName, v1alpha1.BackendNotReadyStatus)
 
 				err = c.update(ctx, bucket, cl)
 				if err == nil {
-					c.backendStatuses.setBackendStatus(beName, v1alpha1.BackendReadyStatus)
+					c.bucketBackends.setBucketBackendStatus(bucket.Name, beName, v1alpha1.BackendReadyStatus)
 
 					break
 				}
@@ -430,28 +444,43 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return nil
 	}
 
+	// There are two scenarios where the bucket status needs to be updated during a
+	// Delete invocation:
+	// 1. The caller attempts to delete the CR and an error occurs during the call to
+	// the bucket's backends. In this case the bucket may be successfully deleted
+	// from some backends, but not from others. As such, we must update the bucket CR
+	// status accordingly as Delete has ultimately failed and the 'in-use' finalizer
+	// will not be removed.
+	// 2. The caller attempts to delete the bucket from it's backends without deleting
+	// the bucket CR. This is done by setting the Disabled flag on the bucket
+	// CR spec. If the deletion is successful or unsuccessful, the bucket CR status must be
+	// updated.
+	defer c.setBucketStatus(bucket)
+
 	if !c.backendStore.BackendsAreStored() {
 		return errors.New(errNoS3BackendsStored)
 	}
 
 	bucket.Status.SetConditions(xpv1.Deleting())
 
-	c.log.Info("Deleting bucket on all available s3 backends", "bucket name", bucket.Name)
-
 	g := new(errgroup.Group)
 
-	if len(bucket.Spec.Providers) == 0 {
-		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
+	activeBackends := bucket.Spec.Providers
+	if len(activeBackends) == 0 {
+		activeBackends = c.backendStore.GetAllActiveBackendNames()
 	}
 
-	for _, client := range c.backendStore.GetBackendClients(bucket.Spec.Providers) {
-		cl := client
+	for _, backendName := range activeBackends {
+		c.log.Info("Deleting bucket", "bucket name", bucket.Name, "backend name", backendName)
+		cl := c.backendStore.GetBackendClient(backendName)
+		beName := backendName
 		g.Go(func() error {
 			var err error
 			for i := 0; i < s3internal.RequestRetries; i++ {
-				if err = c.delete(ctx, cl, bucket); err == nil {
+				if err = s3internal.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err != nil {
 					break
 				}
+				c.bucketBackends.deleteBucketBackend(bucket.Name, beName)
 			}
 
 			return err
@@ -460,14 +489,6 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 	if err := g.Wait(); err != nil {
 		return errors.Wrap(err, errDeleteBucket)
-	}
-
-	return nil
-}
-
-func (c *external) delete(ctx context.Context, s3Backend *s3.Client, bucket *v1alpha1.Bucket) error {
-	if err := s3internal.DeleteBucket(ctx, s3Backend, aws.String(bucket.Name)); err != nil {
-		return err
 	}
 
 	// update object to remove in-use finalizer and allow deletion
@@ -489,10 +510,10 @@ func isAlreadyExists(err error) bool {
 
 func (c *external) setBucketStatus(bucket *v1alpha1.Bucket) {
 	bucket.Status.SetConditions(xpv1.Unavailable())
-	backendStatuses := c.backendStatuses.getBackendStatuses(bucket.Spec.Providers)
-	bucket.Status.AtProvider.BackendStatuses = backendStatuses
-	for _, status := range backendStatuses {
-		if status == v1alpha1.BackendReadyStatus {
+	bucketBackendStatuses := c.bucketBackends.getBucketBackendStatuses(bucket.Name, bucket.Spec.Providers)
+	bucket.Status.AtProvider.BackendStatuses = bucketBackendStatuses
+	for _, backendStatus := range bucketBackendStatuses {
+		if backendStatus == v1alpha1.BackendReadyStatus {
 			bucket.Status.SetConditions(xpv1.Available())
 
 			break

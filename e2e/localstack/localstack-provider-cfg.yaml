@@ -26,6 +26,7 @@ spec:
       namespace: crossplane-system
       name: localstack
       key: credentials
+  disableHealthCheck: true
 ---
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
@@ -40,6 +41,7 @@ spec:
       namespace: crossplane-system
       name: localstack
       key: credentials
+  disableHealthCheck: true
 ---
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
@@ -54,3 +56,4 @@ spec:
       namespace: crossplane-system
       name: localstack
       key: credentials
+  disableHealthCheck: true

@@ -64,6 +64,13 @@ spec:
                 - Orphan
                 - Delete
                 type: string
+              disabled:
+                description: Disabled allows the user to create a Bucket CR without
+                  creating buckets on any S3 backends. If an existing bucket CR is
+                  updated with Disabled=true, then provider-ceph attempts to remove
+                  any existing buckets from the existing S3 backends and the Bucket
+                  CR's status is updated accordingly. This flag overrides 'Providers'.
+                type: boolean
               forProvider:
                 description: BucketParameters are the configurable fields of a Bucket.
                 properties:
@@ -213,6 +220,8 @@ spec:
                 - name
                 type: object
               providers:
+                description: Providers is a list of ProviderConfig names representing
+                  S3 backends on which the bucket is to be created.
                 items:
                   type: string
                 type: array

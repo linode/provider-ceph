@@ -236,7 +236,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}, nil
 }
 
-//nolint:gocognit,gocyclo,cyclop,nolintlint // Function requires numerous checks.
+//nolint:maintidx,gocognit,gocyclo,cyclop,nolintlint // Function requires numerous checks.
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
@@ -279,23 +279,18 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	lock := sync.Mutex{}
 	errorsLeft := 0
 	errChan := make(chan error, len(activeBackends))
-	originalBucket := bucket.DeepCopy()
 
 	for beName := range activeBackends {
-		if status, ok := bucket.Status.AtProvider.BackendStatuses[beName]; ok && status == v1alpha1.BackendReadyStatus {
-			c.log.Info("Bucket already exists on backend", "bucket name", bucket.Name, "backend name", beName)
-
-			continue
-		}
+		originalBucket := bucket.DeepCopy()
 
 		cl := c.backendStore.GetBackendClient(beName)
 		if cl == nil {
-			c.log.Info("Backend client not found for backend - bucket cannot be created on backend", "bucket name", bucket.Name, "backend name", beName)
+			c.log.Info("Backend client not found for backend - bucket cannot be created on backend", "bucket name", originalBucket.Name, "backend name", beName)
 
 			continue
 		}
 
-		c.log.Info("Creating bucket", "bucket name", bucket.Name, "backend name", beName)
+		c.log.Info("Creating bucket", "bucket name", originalBucket.Name, "backend name", beName)
 
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
@@ -315,6 +310,14 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		go func() {
 			defer wg.Done()
 
+			if status, ok := originalBucket.Status.AtProvider.BackendStatuses[beName]; ok && status == v1alpha1.BackendReadyStatus {
+				c.log.Info("Bucket already exists on backend", "bucket name", originalBucket.Name, "backend name", beName)
+
+				errChan <- nil
+
+				return
+			}
+
 			var err error
 
 			for i := 0; i < s3internal.RequestRetries; i++ {
@@ -325,7 +328,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			}
 
 			if err != nil {
-				c.log.Info("Failed to create bucket on backend", "backend name", beName, "bucket_name", bucket.Name)
+				c.log.Info("Failed to create bucket on backend", "backend name", beName, "bucket_name", originalBucket.Name)
 
 				errChan <- err
 
@@ -335,9 +338,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			lock.Lock()
 			defer lock.Unlock()
 
-			latestVersion, err := c.bucketCache.Get(string(bucket.UID))
+			latestVersion, err := c.bucketCache.Get(string(originalBucket.UID))
 			if err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
-				c.log.Info("Failed to get bucket from cache", "backend name", beName, "bucket_name", bucket.Name)
+				c.log.Info("Failed to get bucket from cache", "backend name", beName, "bucket_name", originalBucket.Name)
 
 				errChan <- err
 
@@ -346,7 +349,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			bucketToUpdate := originalBucket
 			if latestVersion == nil || bucketToUpdate.ObjectMeta.ResourceVersion != string(latestVersion) {
-				c.log.Info("Bucket version is obsolete", "bucket_name", bucket.Name)
+				c.log.Info("Bucket version is obsolete", "bucket_name", originalBucket.Name)
 
 				bucketToUpdate = &v1alpha1.Bucket{}
 
@@ -359,7 +362,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 				}
 			}
 
-			bucket.Status.SetConditions(xpv1.Available())
+			bucketToUpdate.Status.SetConditions(xpv1.Available())
 
 			if bucketToUpdate.Status.AtProvider.BackendStatuses == nil {
 				bucketToUpdate.Status.AtProvider.BackendStatuses = v1alpha1.BackendStatuses{}
@@ -374,8 +377,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 				return
 			}
 
-			if err := c.bucketCache.Set(string(bucket.UID), []byte(bucketToUpdate.ObjectMeta.ResourceVersion)); err != nil {
-				c.log.Info("Failed to set bucket in cache", "backend name", beName, "bucket_name", bucket.Name)
+			if err := c.bucketCache.Set(string(originalBucket.UID), []byte(bucketToUpdate.ObjectMeta.ResourceVersion)); err != nil {
+				c.log.Info("Failed to set bucket in cache", "backend name", beName, "bucket_name", originalBucket.Name)
 
 				errChan <- err
 
@@ -384,6 +387,18 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			errChan <- nil
 		}()
+	}
+
+	if errorsLeft == 0 {
+		c.log.Info("Failed to find any backend for bucket", "bucket_name", bucket.Name)
+
+		if err := c.bucketCache.Delete(string(bucket.UID)); err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
+			c.log.Info("Failed to delete bucket from cache", "bucket_name", bucket.Name)
+
+			return managed.ExternalCreation{}, err
+		}
+
+		return managed.ExternalCreation{}, nil
 	}
 
 	var err error
@@ -411,10 +426,8 @@ WAIT:
 			go func() {
 				wg.Wait()
 
-				if err := c.bucketCache.Delete(string(bucket.UID)); err != nil {
-					if !errors.Is(err, bigcache.ErrEntryNotFound) {
-						c.log.Info("Failed to delete bucket from cache", "bucket_name", bucket.Name)
-					}
+				if err := c.bucketCache.Delete(string(bucket.UID)); err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
+					c.log.Info("Failed to delete bucket from cache", "bucket_name", bucket.Name)
 				}
 			}()
 

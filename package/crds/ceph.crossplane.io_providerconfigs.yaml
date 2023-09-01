@@ -157,7 +157,7 @@ spec:
                 enum:
                 - Healthy
                 - Unhealthy
-                - HealthCheckDisabled
+                - Unknown
                 type: string
               users:
                 description: Users of this provider configuration.

@@ -95,7 +95,7 @@ func (b *BackendStore) GetBackendHealthStatus(backendName string) v1alpha1.Healt
 		return b.s3Backends[backendName].health
 	}
 
-	return v1alpha1.HealthStatusUnhealthy
+	return v1alpha1.HealthStatusUnknown
 }
 
 func (b *BackendStore) SetBackendHealthStatus(backendName string, health v1alpha1.HealthStatus) {

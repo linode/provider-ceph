@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/linode/provider-ceph/apis/v1alpha1"
 )
 
 // s3Backends is a map of S3 backend name (eg ceph cluster name) to backend.
@@ -86,6 +87,26 @@ func (b *BackendStore) ToggleBackendActiveStatus(backendName string, active bool
 	}
 }
 
+func (b *BackendStore) GetBackendHealthStatus(backendName string) v1alpha1.HealthStatus {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if _, ok := b.s3Backends[backendName]; ok {
+		return b.s3Backends[backendName].health
+	}
+
+	return v1alpha1.HealthStatusUnknown
+}
+
+func (b *BackendStore) SetBackendHealthStatus(backendName string, health v1alpha1.HealthStatus) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if _, ok := b.s3Backends[backendName]; ok {
+		b.s3Backends[backendName].health = health
+	}
+}
+
 func (b *BackendStore) DeleteBackend(backendName string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -93,11 +114,11 @@ func (b *BackendStore) DeleteBackend(backendName string) {
 	delete(b.s3Backends, backendName)
 }
 
-func (b *BackendStore) AddOrUpdateBackend(backendName string, backendClient *s3.Client, active bool) {
+func (b *BackendStore) AddOrUpdateBackend(backendName string, backendClient *s3.Client, active bool, health v1alpha1.HealthStatus) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	b.s3Backends[backendName] = newBackend(backendClient, active)
+	b.s3Backends[backendName] = newBackend(backendClient, active, health)
 }
 
 func (b *BackendStore) GetBackend(backendName string) *backend {

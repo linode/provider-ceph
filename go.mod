@@ -3,7 +3,6 @@ module github.com/linode/provider-ceph
 go 1.20
 
 require (
-	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/aws/aws-sdk-go-v2 v1.20.2
 	github.com/aws/aws-sdk-go-v2/config v1.18.34
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.33

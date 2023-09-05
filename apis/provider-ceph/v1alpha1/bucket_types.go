@@ -79,7 +79,6 @@ type BackendStatus string
 const (
 	BackendReadyStatus    BackendStatus = "Ready"
 	BackendNotReadyStatus BackendStatus = "NotReady"
-	BackendDeletingStatus BackendStatus = "Deleting"
 )
 
 // BucketObservation are the observable fields of a Bucket.

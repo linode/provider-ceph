@@ -60,7 +60,7 @@ func main() {
 
 		syncInterval         = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
 		pollInterval         = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("1m").Duration()
-		reconcileConcurrency = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("1").Int()
+		reconcileConcurrency = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("10").Int()
 		maxReconcileRate     = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("100").Int()
 
 		kubeClientRate = app.Flag("kube-client-rate", "The global maximum rate per second at how many requests the client can do.").Default("1000").Int()

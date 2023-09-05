@@ -19,9 +19,7 @@ package bucket
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/allegro/bigcache/v3"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
@@ -257,16 +255,10 @@ func TestCreate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			cache, err := bigcache.New(context.Background(), bigcache.DefaultConfig(time.Hour))
-			if err != nil {
-				t.Fatalf("\nfailed to create cache: %s", err.Error())
-			}
-
 			cl := fake.NewClientBuilder().WithScheme(s).Build()
 			e := external{
 				kubeClient:   cl,
 				backendStore: tc.fields.backendStore,
-				bucketCache:  cache,
 				log:          logging.NewNopLogger(),
 			}
 

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"golang.org/x/sync/errgroup"
+	"gopkg.in/alecthomas/kingpin.v2"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -76,6 +77,15 @@ const (
 
 	inUseFinalizer = "bucket-in-use.provider-ceph.crossplane.io"
 )
+
+var bucketCache *bigcache.BigCache
+
+func init() {
+	var err error
+
+	bucketCache, err = bigcache.New(context.Background(), bigcache.DefaultConfig(time.Hour))
+	kingpin.FatalIfError(err, "Cannot init bucket cache")
+}
 
 // A NoOpService does nothing.
 type NoOpService struct{}
@@ -139,15 +149,9 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	cache, err := bigcache.New(ctx, bigcache.DefaultConfig(time.Hour))
-	if err != nil {
-		return nil, errors.Wrap(err, errCacheInit)
-	}
-
 	return &external{
 			kubeClient:   c.kube,
 			backendStore: c.backendStore,
-			bucketCache:  cache,
 			log:          c.log},
 		nil
 }
@@ -157,7 +161,6 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 type external struct {
 	kubeClient   client.Client
 	backendStore *backendstore.BackendStore
-	bucketCache  *bigcache.BigCache
 	log          logging.Logger
 }
 
@@ -257,7 +260,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	// This solution expects we have one leader of the controllers.
-	if err := c.bucketCache.Set(string(bucket.UID), []byte(bucket.ObjectMeta.ResourceVersion)); err != nil {
+	if err := bucketCache.Set(string(bucket.UID), []byte(bucket.ObjectMeta.ResourceVersion)); err != nil {
 		return managed.ExternalCreation{}, err
 	}
 
@@ -338,7 +341,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			lock.Lock()
 			defer lock.Unlock()
 
-			latestVersion, err := c.bucketCache.Get(string(originalBucket.UID))
+			latestVersion, err := bucketCache.Get(string(originalBucket.UID))
 			if err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
 				c.log.Info("Failed to get bucket from cache", "backend name", beName, "bucket_name", originalBucket.Name)
 
@@ -377,7 +380,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 				return
 			}
 
-			if err := c.bucketCache.Set(string(originalBucket.UID), []byte(bucketToUpdate.ObjectMeta.ResourceVersion)); err != nil {
+			if err := bucketCache.Set(string(originalBucket.UID), []byte(bucketToUpdate.ObjectMeta.ResourceVersion)); err != nil {
 				c.log.Info("Failed to set bucket in cache", "backend name", beName, "bucket_name", originalBucket.Name)
 
 				errChan <- err
@@ -392,7 +395,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if errorsLeft == 0 {
 		c.log.Info("Failed to find any backend for bucket", "bucket_name", bucket.Name)
 
-		if err := c.bucketCache.Delete(string(bucket.UID)); err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
+		if err := bucketCache.Delete(string(bucket.UID)); err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
 			c.log.Info("Failed to delete bucket from cache", "bucket_name", bucket.Name)
 
 			return managed.ExternalCreation{}, err
@@ -430,7 +433,7 @@ WAIT:
 			go func() {
 				wg.Wait()
 
-				if err := c.bucketCache.Delete(string(bucket.UID)); err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
+				if err := bucketCache.Delete(string(bucket.UID)); err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
 					c.log.Info("Failed to delete bucket from cache", "bucket_name", bucket.Name)
 				}
 			}()
@@ -448,7 +451,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotBucket)
 	}
 
-	latestVersion, err := c.bucketCache.Get(string(bucket.UID))
+	latestVersion, err := bucketCache.Get(string(bucket.UID))
 	if latestVersion != nil || !errors.Is(err, bigcache.ErrEntryNotFound) {
 		c.log.Info("Bucket creation in progress", "bucket_name", bucket.Name, "error", err)
 

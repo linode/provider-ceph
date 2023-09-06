@@ -372,7 +372,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			}
 			bucketToUpdate.Status.AtProvider.BackendStatuses[beName] = v1alpha1.BackendReadyStatus
 
-			if err := c.kubeClient.Update(ctx, bucketToUpdate); err != nil {
+			if err := c.kubeClient.Status().Update(ctx, bucketToUpdate); err != nil {
 				c.log.Info("Failed to update bucket", "backend name", beName, "bucket_name", bucketToUpdate.Name)
 
 				errChan <- err

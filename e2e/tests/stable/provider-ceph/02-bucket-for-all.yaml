@@ -1,10 +1,18 @@
 apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
 kind: Bucket
 metadata:
-  name: bucket-for-all
+  name: bucket-for-all-prov-set
 spec:
   providers:
   - localstack-a
   - localstack-b
   - localstack-c
+  forProvider: {}
+---
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: bucket-for-all-prov-empty
+spec:
+  autoPause: true
   forProvider: {}

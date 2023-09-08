@@ -18,11 +18,11 @@ package bucket
 
 import (
 	"context"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
-	"gopkg.in/alecthomas/kingpin.v2"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -43,7 +43,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
-	"github.com/allegro/bigcache/v3"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -76,16 +75,9 @@ const (
 	errBucketCreationInProgress = "bucket creation in progress"
 
 	inUseFinalizer = "bucket-in-use.provider-ceph.crossplane.io"
+
+	defaultOperationTimeout = time.Second * 10
 )
-
-var bucketCache *bigcache.BigCache
-
-func init() {
-	var err error
-
-	bucketCache, err = bigcache.New(context.Background(), bigcache.DefaultConfig(time.Hour))
-	kingpin.FatalIfError(err, "Cannot init bucket cache")
-}
 
 // A NoOpService does nothing.
 type NoOpService struct{}
@@ -95,7 +87,7 @@ var (
 )
 
 // Setup adds a controller that reconciles Bucket managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore) error {
+func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore, autoPauseBucket bool) error {
 	name := managed.ControllerName(v1alpha1.BucketGroupKind)
 
 	cps := []managed.ConnectionPublisher{managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())}
@@ -105,11 +97,12 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore)
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnecter(&connector{
-			kube:         mgr.GetClient(),
-			usage:        resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn: newNoOpService,
-			backendStore: s,
-			log:          o.Logger.WithValues("controller", name),
+			kube:            mgr.GetClient(),
+			autoPauseBucket: autoPauseBucket,
+			usage:           resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
+			newServiceFn:    newNoOpService,
+			backendStore:    s,
+			log:             o.Logger.WithValues("controller", name),
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
@@ -132,11 +125,12 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore)
 // A connector is expected to produce an ExternalClient when its Connect method
 // is called.
 type connector struct {
-	kube         client.Client
-	usage        resource.Tracker
-	newServiceFn func(creds []byte) (interface{}, error)
-	backendStore *backendstore.BackendStore
-	log          logging.Logger
+	kube            client.Client
+	autoPauseBucket bool
+	usage           resource.Tracker
+	newServiceFn    func(creds []byte) (interface{}, error)
+	backendStore    *backendstore.BackendStore
+	log             logging.Logger
 }
 
 // Connect typically produces an ExternalClient by:
@@ -150,104 +144,141 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	return &external{
-			kubeClient:   c.kube,
-			backendStore: c.backendStore,
-			log:          c.log},
+			kubeClient:      c.kube,
+			autoPauseBucket: c.autoPauseBucket,
+			backendStore:    c.backendStore,
+			log:             c.log},
 		nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	kubeClient   client.Client
-	backendStore *backendstore.BackendStore
-	log          logging.Logger
+	kubeClient      client.Client
+	autoPauseBucket bool
+	backendStore    *backendstore.BackendStore
+	log             logging.Logger
 }
 
+//nolint:gocognit,gocyclo,cyclop // Function requires numerous checks.
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
 		return managed.ExternalObservation{}, errors.New(errNotBucket)
 	}
 
-	if !c.backendStore.BackendsAreStored() {
-		return managed.ExternalObservation{}, errors.New(errNoS3BackendsStored)
+	if len(bucket.Status.AtProvider.BackendStatuses) == 0 {
+		return managed.ExternalObservation{
+			ResourceExists:   false,
+			ResourceUpToDate: true,
+		}, nil
 	}
 
-	type bucketExistsResult struct {
-		bucketExists bool
-		err          error
+	available := false
+	for _, c := range bucket.Status.Conditions {
+		if c.Type == xpv1.TypeReady && c.Reason == xpv1.ReasonAvailable && c.Status == corev1.ConditionTrue {
+			available = true
+
+			break
+		}
 	}
-
-	bucketExistsResults := make(chan bucketExistsResult)
-
-	// Create a new context and cancel it when we have either found the bucket
-	// somewhere or cannot find it anywhere.
-	ctxC, cancel := context.WithCancel(ctx)
-	defer cancel()
+	if !available && !utils.IsHealthCheckBucket(bucket) {
+		return managed.ExternalObservation{
+			ResourceExists:   true,
+			ResourceUpToDate: false,
+		}, nil
+	}
 
 	if len(bucket.Spec.Providers) == 0 {
 		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
 	}
 
-	// Check for the bucket on each backend in a separate go routine
 	allBackendClients := c.backendStore.GetBackendClients(bucket.Spec.Providers)
+
+	missing := len(bucket.Spec.Providers)
+	for _, provider := range bucket.Spec.Providers {
+		if _, ok := allBackendClients[provider]; !ok {
+			missing--
+		}
+		if status := bucket.Status.AtProvider.BackendStatuses[provider]; status == v1alpha1.BackendReadyStatus {
+			missing--
+		}
+	}
+	if missing != 0 {
+		return managed.ExternalObservation{
+			ResourceExists:   true,
+			ResourceUpToDate: false,
+		}, nil
+	}
+
+	if !c.backendStore.BackendsAreStored() {
+		return managed.ExternalObservation{}, errors.New(errNoS3BackendsStored)
+	}
+
+	// Create a new context and cancel it when we have either found the bucket
+	// somewhere or cannot find it anywhere.
+	ctxC, cancel := context.WithTimeout(ctx, defaultOperationTimeout)
+	defer cancel()
+
+	g := new(errgroup.Group)
+
+	backendError := atomic.Bool{}
+	// Check for the bucket on each backend in a separate go routine
 	for _, backendClient := range allBackendClients {
-		go func(backendClient *s3.Client, bucketName string) {
-			bucketExists, err := s3internal.BucketExists(ctxC, backendClient, bucketName)
-			bucketExistsResults <- bucketExistsResult{bucketExists, err}
-		}(backendClient, bucket.Name)
+		backendClient := backendClient
+		g.Go(func() error {
+			bucketExists, err := s3internal.BucketExists(ctxC, backendClient, bucket.Name)
+			if err != nil {
+				c.log.Info(errors.Wrap(err, errGetBucket).Error())
+
+				backendError.Store(true)
+
+				// If we have a connectivity issue it doesn't make sense to reconcile the bucket immediately.
+				return nil
+			} else if !bucketExists {
+				return errors.New("missing bucket")
+			}
+
+			return nil
+		})
 	}
 
-	// Wait for any go routine to finish, if the bucket exists anywhere
-	// return 'ResourceExists: true' as resulting calls to Create or Delete
-	// are idempotent.
-	for i := 0; i < len(allBackendClients); i++ {
-		result := <-bucketExistsResults
-		if result.err != nil {
-			c.log.Info(errors.Wrap(result.err, errGetBucket).Error())
+	resourceUpToDate := !bucket.Spec.Disabled
+	if err := g.Wait(); err != nil {
+		resourceUpToDate = false
+	}
 
-			continue
-		}
+	var pauseError error
 
-		if result.bucketExists {
-			return managed.ExternalObservation{
-				// Return false when the external resource does not exist. This lets
-				// the managed resource reconciler know that it needs to call Create to
-				// (re)create the resource, or that it has successfully been deleted.
-				ResourceExists: true,
+	paused := bucket.Annotations["crossplane.io/paused"]
+	if paused == "" &&
+		(bucket.Spec.AutoPause || c.autoPauseBucket) &&
+		resourceUpToDate &&
+		!utils.IsHealthCheckBucket(bucket) &&
+		!backendError.Load() {
+		bucket.Annotations["crossplane.io/paused"] = "true"
 
-				// Return false when the external resource exists, but it not up to date
-				// with the desired managed resource state. This lets the managed
-				// resource reconciler know that it needs to call Update.
-				ResourceUpToDate: false,
-
-				// Return any details that may be required to connect to the external
-				// resource. These will be stored as the connection secret.
-				ConnectionDetails: managed.ConnectionDetails{},
-			}, nil
+		pauseError = c.kubeClient.Update(ctx, bucket)
+		if pauseError != nil {
+			c.log.Info("Failed to set pause annotation", "bucket_name", bucket.Name)
 		}
 	}
 
-	// bucket not found anywhere.
 	return managed.ExternalObservation{
-		// Return false when the external resource does not exist. This lets
-		// the managed resource reconciler know that it needs to call Create to
-		// (re)create the resource, or that it has successfully been deleted.
-		// If the bucket's Disabled flag has been set, no further action is needed.
-		ResourceExists: bucket.Spec.Disabled,
-	}, nil
+		ResourceExists:   true,
+		ResourceUpToDate: resourceUpToDate,
+	}, pauseError
 }
 
 //nolint:maintidx,gocognit,gocyclo,cyclop,nolintlint // Function requires numerous checks.
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotBucket)
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, defaultOperationTimeout)
+	defer cancel()
 
 	if bucket.Spec.Disabled {
 		c.log.Info("Bucket is disabled - no buckets to be created on backends", "bucket name", bucket.Name)
@@ -257,11 +288,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	if !c.backendStore.BackendsAreStored() {
 		return managed.ExternalCreation{}, errors.New(errNoS3BackendsStored)
-	}
-
-	// This solution expects we have one leader of the controllers.
-	if err := bucketCache.Set(string(bucket.UID), []byte(bucket.ObjectMeta.ResourceVersion)); err != nil {
-		return managed.ExternalCreation{}, err
 	}
 
 	if len(bucket.Spec.Providers) == 0 {
@@ -276,12 +302,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errMissingS3Backend)
 	}
 
-	bucket.Status.SetConditions(xpv1.Creating())
-
-	wg := sync.WaitGroup{}
-	lock := sync.Mutex{}
+	updated := atomic.Bool{}
 	errorsLeft := 0
 	errChan := make(chan error, len(activeBackends))
+	readyChan := make(chan string)
 
 	for beName := range activeBackends {
 		originalBucket := bucket.DeepCopy()
@@ -306,21 +330,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			continue
 		}
 
-		wg.Add(1)
 		errorsLeft++
 
 		beName := beName
 		go func() {
-			defer wg.Done()
-
-			if status, ok := originalBucket.Status.AtProvider.BackendStatuses[beName]; ok && status == v1alpha1.BackendReadyStatus {
-				c.log.Info("Bucket already exists on backend", "bucket name", originalBucket.Name, "backend name", beName)
-
-				errChan <- nil
-
-				return
-			}
-
 			var err error
 
 			for i := 0; i < s3internal.RequestRetries; i++ {
@@ -338,56 +351,15 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 				return
 			}
 
-			lock.Lock()
-			defer lock.Unlock()
+			if !updated.CompareAndSwap(false, true) {
+				c.log.Info("Bucket already updated", "bucket_name", originalBucket.Name)
 
-			latestVersion, err := bucketCache.Get(string(originalBucket.UID))
-			if err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
-				c.log.Info("Failed to get bucket from cache", "backend name", beName, "bucket_name", originalBucket.Name)
-
-				errChan <- err
+				errChan <- nil
 
 				return
 			}
 
-			bucketToUpdate := originalBucket
-			if latestVersion == nil || bucketToUpdate.ObjectMeta.ResourceVersion != string(latestVersion) {
-				c.log.Info("Bucket version is obsolete", "bucket_name", originalBucket.Name)
-
-				bucketToUpdate = &v1alpha1.Bucket{}
-
-				if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: bucketToUpdate.Name}, bucketToUpdate); err != nil {
-					c.log.Info("Failed to fetch latest bucket", "backend name", beName, "bucket_name", bucketToUpdate.Name)
-
-					errChan <- err
-
-					return
-				}
-			}
-
-			bucketToUpdate.Status.SetConditions(xpv1.Available())
-
-			if bucketToUpdate.Status.AtProvider.BackendStatuses == nil {
-				bucketToUpdate.Status.AtProvider.BackendStatuses = v1alpha1.BackendStatuses{}
-			}
-			bucketToUpdate.Status.AtProvider.BackendStatuses[beName] = v1alpha1.BackendReadyStatus
-
-			if err := c.kubeClient.Status().Update(ctx, bucketToUpdate); err != nil {
-				c.log.Info("Failed to update bucket", "backend name", beName, "bucket_name", bucketToUpdate.Name)
-
-				errChan <- err
-
-				return
-			}
-
-			if err := bucketCache.Set(string(originalBucket.UID), []byte(bucketToUpdate.ObjectMeta.ResourceVersion)); err != nil {
-				c.log.Info("Failed to set bucket in cache", "backend name", beName, "bucket_name", originalBucket.Name)
-
-				errChan <- err
-
-				return
-			}
-
+			readyChan <- beName
 			errChan <- nil
 		}()
 	}
@@ -395,19 +367,13 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if errorsLeft == 0 {
 		c.log.Info("Failed to find any backend for bucket", "bucket_name", bucket.Name)
 
-		if err := bucketCache.Delete(string(bucket.UID)); err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
-			c.log.Info("Failed to delete bucket from cache", "bucket_name", bucket.Name)
-
-			return managed.ExternalCreation{}, err
-		}
-
 		return managed.ExternalCreation{}, nil
 	}
 
-	return c.waitForCreation(ctx, bucket, errChan, errorsLeft, &wg)
+	return c.waitForCreation(ctx, bucket, readyChan, errChan, errorsLeft)
 }
 
-func (c *external) waitForCreation(ctx context.Context, bucket *v1alpha1.Bucket, errChan chan error, errorsLeft int, wg *sync.WaitGroup) (managed.ExternalCreation, error) {
+func (c *external) waitForCreation(ctx context.Context, bucket *v1alpha1.Bucket, readyChan <-chan string, errChan <-chan error, errorsLeft int) (managed.ExternalCreation, error) {
 	var err error
 
 WAIT:
@@ -417,6 +383,20 @@ WAIT:
 			c.log.Info("Context timeout", "bucket_name", bucket.Name)
 
 			return managed.ExternalCreation{}, ctx.Err()
+		case beName := <-readyChan:
+			c.log.Info("Bucket created", "backend name", beName, "bucket_name", bucket.Name)
+
+			bucket.Status.SetConditions(xpv1.Available())
+			bucket.Status.AtProvider.BackendStatuses = v1alpha1.BackendStatuses{
+				beName: v1alpha1.BackendReadyStatus,
+			}
+
+			err := c.kubeClient.Status().Update(ctx, bucket)
+			if err != nil {
+				c.log.Info("Failed to update backend status", "backend name", beName, "bucket_name", bucket.Name)
+			}
+
+			return managed.ExternalCreation{}, err
 		case err = <-errChan:
 			errorsLeft--
 
@@ -429,18 +409,10 @@ WAIT:
 
 				break WAIT
 			}
-
-			go func() {
-				wg.Wait()
-
-				if err := bucketCache.Delete(string(bucket.UID)); err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
-					c.log.Info("Failed to delete bucket from cache", "bucket_name", bucket.Name)
-				}
-			}()
-
-			return managed.ExternalCreation{}, nil
 		}
 	}
+
+	bucket.Status.SetConditions(xpv1.Unavailable())
 
 	return managed.ExternalCreation{}, err
 }
@@ -451,12 +423,8 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotBucket)
 	}
 
-	latestVersion, err := bucketCache.Get(string(bucket.UID))
-	if latestVersion != nil || !errors.Is(err, bigcache.ErrEntryNotFound) {
-		c.log.Info("Bucket creation in progress", "bucket_name", bucket.Name, "error", err)
-
-		return managed.ExternalUpdate{}, errors.New(errBucketCreationInProgress)
-	}
+	ctx, cancel := context.WithTimeout(ctx, defaultOperationTimeout)
+	defer cancel()
 
 	if utils.IsHealthCheckBucket(bucket) {
 		c.log.Info("Update is NOOP for health check bucket - updates performed by heath-check-controller", "bucket", bucket.Name)
@@ -474,20 +442,19 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
-	bucket.Status.SetConditions(xpv1.Available())
-
-	return managed.ExternalUpdate{
-		// Optionally return any details that may be required to connect to the
-		// external resource. These will be stored as the connection secret.
-		ConnectionDetails: managed.ConnectionDetails{},
-	}, nil
+	return managed.ExternalUpdate{}, nil
 }
 
+//nolint:gocyclo,cyclop // Function requires numerous checks.
 func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error {
 	bucketBackends := newBucketBackends()
 	defer c.setBucketStatus(bucket, bucketBackends)
 
 	g := new(errgroup.Group)
+
+	if len(bucket.Spec.Providers) == 0 {
+		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
+	}
 
 	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
 	if len(activeBackends) == 0 {
@@ -578,6 +545,9 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	if !ok {
 		return errors.New(errNotBucket)
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, defaultOperationTimeout)
+	defer cancel()
 
 	if utils.IsHealthCheckBucket(bucket) {
 		c.log.Info("Delete is NOOP for health check bucket as it is owned by, and garbage collected on deletion of its related providerconfig", "bucket", bucket.Name)

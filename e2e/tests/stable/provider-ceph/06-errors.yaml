@@ -1,4 +1,9 @@
 apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
 kind: Bucket
 metadata:
-  name: bucket-for-all
+  name: bucket-for-all-prov-set
+---
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: bucket-for-all-prov-empty

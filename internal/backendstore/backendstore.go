@@ -46,7 +46,7 @@ func (b *BackendStore) GetAllBackendClients() []*s3.Client {
 	return clients
 }
 
-func (b *BackendStore) GetBackendClients(beNames []string) []*s3.Client {
+func (b *BackendStore) GetBackendClients(beNames []string) map[string]*s3.Client {
 	requestedBackends := map[string]bool{}
 	for p := range beNames {
 		requestedBackends[beNames[p]] = true
@@ -56,12 +56,12 @@ func (b *BackendStore) GetBackendClients(beNames []string) []*s3.Client {
 	defer b.mu.RUnlock()
 
 	// Create a new clients slice hold a copy of the backend clients
-	clients := make([]*s3.Client, 0)
+	clients := map[string]*s3.Client{}
 	for k, v := range b.s3Backends {
 		if _, ok := requestedBackends[k]; !ok {
 			continue
 		}
-		clients = append(clients, v.s3Client)
+		clients[k] = v.s3Client
 	}
 
 	return clients

@@ -1,7 +1,7 @@
 apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
 kind: Bucket
 metadata:
-  name: bucket-for-all
+  name: bucket-for-all-prov-set
   finalizers:
   - "finalizer.managedresource.crossplane.io"
   - "bucket-in-use.provider-ceph.crossplane.io"
@@ -17,4 +17,27 @@ status:
     type: Ready
   - reason: ReconcileSuccess
     status: "True"
+    type: Synced
+---
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: bucket-for-all-prov-empty
+  finalizers:
+  - "finalizer.managedresource.crossplane.io"
+  - "bucket-in-use.provider-ceph.crossplane.io"
+  annotations:
+    crossplane.io/paused: "true"
+status:
+  atProvider:
+    backendStatuses:
+      localstack-a: "Ready"
+      localstack-b: "Ready"
+      localstack-c: "Ready"
+  conditions:
+  - reason: Available
+    status: "True"
+    type: Ready
+  - reason: ReconcilePaused
+    status: "False"
     type: Synced

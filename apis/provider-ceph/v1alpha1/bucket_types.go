@@ -104,7 +104,15 @@ type BucketSpec struct {
 	// existing buckets from the existing S3 backends and the Bucket
 	// CR's status is updated accordingly.
 	// This flag overrides 'Providers'.
-	Disabled          bool `json:"disabled,omitempty"`
+	Disabled bool `json:"disabled,omitempty"`
+	// +optional
+	// AutoPause allows the user to disable further reconciliation
+	// of the bucket after successfully created or updated.
+	// The magic under the hood is `crossplane.io/paused` annotation. (https://docs.crossplane.io/latest/concepts/managed-resources/#paused)
+	// If `crossplane.io/paused` is `true`, disables reconciliation of object.
+	// If `crossplane.io/paused`is missing or empty, triggers auto pause function.
+	// Any other value disables auto pause function on bucket.
+	AutoPause         bool `json:"autoPause,omitempty"`
 	xpv1.ResourceSpec `json:",inline"`
 }
 

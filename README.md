@@ -50,3 +50,6 @@ spec:
   package: xpkg.upbound.io/linode/provider-ceph:v0.0.8
 EOF
 ```
+
+## Contact
+- Slack: Join our [#provider-ceph](https://crossplane.slack.com/archives/C05RKQRNDHA) slack channel.

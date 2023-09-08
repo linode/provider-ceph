@@ -51,6 +51,15 @@ spec:
           spec:
             description: A BucketSpec defines the desired state of a Bucket.
             properties:
+              autoPause:
+                description: AutoPause allows the user to disable further reconciliation
+                  of the bucket after successfully created or updated. The magic under
+                  the hood is `crossplane.io/paused` annotation. (https://docs.crossplane.io/latest/concepts/managed-resources/#paused)
+                  If `crossplane.io/paused` is `true`, disables reconciliation of
+                  object. If `crossplane.io/paused`is missing or empty, triggers auto
+                  pause function. Any other value disables auto pause function on
+                  bucket.
+                type: boolean
               deletionPolicy:
                 default: Delete
                 description: 'DeletionPolicy specifies what will happen to the underlying

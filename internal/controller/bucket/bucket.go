@@ -537,6 +537,12 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 		return errors.Wrap(err, errUpdateBucket)
 	}
 
+	if controllerutil.AddFinalizer(bucket, inUseFinalizer) {
+		// we need to update the object to add the finalizer otherwise it is only added
+		// to the object's managed fields and does not block deletion.
+		return c.kubeClient.Update(ctx, bucket)
+	}
+
 	return nil
 }
 
@@ -551,11 +557,6 @@ func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backen
 	//TODO: Add functionality for bucket ownership controls, using s3 apis:
 	// - DeleteBucketOwnershipControls
 	// - PutBucketOwnershipControls
-	if controllerutil.AddFinalizer(bucket, inUseFinalizer) {
-		// we need to update the object to add the finalizer otherwise it is only added
-		// to the object's managed fields and does not block deletion.
-		return c.kubeClient.Update(ctx, bucket)
-	}
 
 	return nil
 }

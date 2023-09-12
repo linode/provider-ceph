@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/pkg/errors"
@@ -39,6 +38,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
@@ -75,8 +75,6 @@ const (
 	errBucketCreationInProgress = "bucket creation in progress"
 
 	inUseFinalizer = "bucket-in-use.provider-ceph.crossplane.io"
-
-	defaultOperationTimeout = time.Second * 10
 )
 
 // A NoOpService does nothing.
@@ -87,7 +85,7 @@ var (
 )
 
 // Setup adds a controller that reconciles Bucket managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore, autoPauseBucket bool) error {
+func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore, autoPauseBucket bool, operationTimeout time.Duration) error {
 	name := managed.ControllerName(v1alpha1.BucketGroupKind)
 
 	cps := []managed.ConnectionPublisher{managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())}
@@ -97,12 +95,13 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore,
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnecter(&connector{
-			kube:            mgr.GetClient(),
-			autoPauseBucket: autoPauseBucket,
-			usage:           resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn:    newNoOpService,
-			backendStore:    s,
-			log:             o.Logger.WithValues("controller", name),
+			kube:             mgr.GetClient(),
+			autoPauseBucket:  autoPauseBucket,
+			operationTimeout: operationTimeout,
+			usage:            resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
+			newServiceFn:     newNoOpService,
+			backendStore:     s,
+			log:              o.Logger.WithValues("controller", name),
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
@@ -125,12 +124,13 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore,
 // A connector is expected to produce an ExternalClient when its Connect method
 // is called.
 type connector struct {
-	kube            client.Client
-	autoPauseBucket bool
-	usage           resource.Tracker
-	newServiceFn    func(creds []byte) (interface{}, error)
-	backendStore    *backendstore.BackendStore
-	log             logging.Logger
+	kube             client.Client
+	autoPauseBucket  bool
+	operationTimeout time.Duration
+	usage            resource.Tracker
+	newServiceFn     func(creds []byte) (interface{}, error)
+	backendStore     *backendstore.BackendStore
+	log              logging.Logger
 }
 
 // Connect typically produces an ExternalClient by:
@@ -144,20 +144,22 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	return &external{
-			kubeClient:      c.kube,
-			autoPauseBucket: c.autoPauseBucket,
-			backendStore:    c.backendStore,
-			log:             c.log},
+			kubeClient:       c.kube,
+			autoPauseBucket:  c.autoPauseBucket,
+			operationTimeout: c.operationTimeout,
+			backendStore:     c.backendStore,
+			log:              c.log},
 		nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	kubeClient      client.Client
-	autoPauseBucket bool
-	backendStore    *backendstore.BackendStore
-	log             logging.Logger
+	kubeClient       client.Client
+	autoPauseBucket  bool
+	operationTimeout time.Duration
+	backendStore     *backendstore.BackendStore
+	log              logging.Logger
 }
 
 //nolint:gocognit,gocyclo,cyclop // Function requires numerous checks.
@@ -165,6 +167,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
 		return managed.ExternalObservation{}, errors.New(errNotBucket)
+	}
+
+	if !c.backendStore.BackendsAreStored() {
+		return managed.ExternalObservation{}, errors.New(errNoS3BackendsStored)
 	}
 
 	if len(bucket.Status.AtProvider.BackendStatuses) == 0 {
@@ -198,9 +204,14 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	missing := len(bucket.Spec.Providers)
 	for _, provider := range bucket.Spec.Providers {
 		if _, ok := allBackendClients[provider]; !ok {
+			// We don't want to create bucket on a missing backend,
+			// so it won't be counted as a missing backend.
 			missing--
 		}
+
 		if status := bucket.Status.AtProvider.BackendStatuses[provider]; status == v1alpha1.BackendReadyStatus {
+			// Bucket is ready on backend,
+			// so it won't be counted as a missing backend.
 			missing--
 		}
 	}
@@ -211,13 +222,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		}, nil
 	}
 
-	if !c.backendStore.BackendsAreStored() {
-		return managed.ExternalObservation{}, errors.New(errNoS3BackendsStored)
-	}
-
 	// Create a new context and cancel it when we have either found the bucket
 	// somewhere or cannot find it anywhere.
-	ctxC, cancel := context.WithTimeout(ctx, defaultOperationTimeout)
+	ctxC, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
 	g := new(errgroup.Group)
@@ -250,13 +257,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	var pauseError error
 
-	paused := bucket.Annotations["crossplane.io/paused"]
-	if paused == "" &&
-		(bucket.Spec.AutoPause || c.autoPauseBucket) &&
-		resourceUpToDate &&
-		!utils.IsHealthCheckBucket(bucket) &&
-		!backendError.Load() {
-		bucket.Annotations["crossplane.io/paused"] = "true"
+	if !utils.IsHealthCheckBucket(bucket) && pauseBucket(bucket.Annotations[meta.AnnotationKeyReconciliationPaused], resourceUpToDate, (bucket.Spec.AutoPause || c.autoPauseBucket), backendError.Load()) {
+		bucket.Annotations[meta.AnnotationKeyReconciliationPaused] = "true"
 
 		pauseError = c.kubeClient.Update(ctx, bucket)
 		if pauseError != nil {
@@ -265,9 +267,27 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	return managed.ExternalObservation{
-		ResourceExists:   true,
+		// Return false when the external resource does not exist. This lets
+		// the managed resource reconciler know that it needs to call Create to
+		// (re)create the resource, or that it has successfully been deleted.
+		ResourceExists: true,
+
+		// Return false when the external resource exists, but it not up to date
+		// with the desired managed resource state. This lets the managed
+		// resource reconciler know that it needs to call Update.
 		ResourceUpToDate: resourceUpToDate,
+
+		// Return any details that may be required to connect to the external
+		// resource. These will be stored as the connection secret.
+		ConnectionDetails: managed.ConnectionDetails{},
 	}, pauseError
+}
+
+func pauseBucket(pauseAnnotation string, resourceUpToDate, autoPauseBucket, backendError bool) bool {
+	return pauseAnnotation == "" &&
+		autoPauseBucket &&
+		resourceUpToDate &&
+		!backendError
 }
 
 //nolint:maintidx,gocognit,gocyclo,cyclop,nolintlint // Function requires numerous checks.
@@ -277,7 +297,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotBucket)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, defaultOperationTimeout)
+	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
 	if bucket.Spec.Disabled {
@@ -423,7 +443,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotBucket)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, defaultOperationTimeout)
+	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
 	if utils.IsHealthCheckBucket(bucket) {
@@ -520,7 +540,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 	return nil
 }
 
-func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backend *s3.Client) error {
+func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backend backendstore.S3Client) error {
 	if s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
 		_, err := s3Backend.PutBucketAcl(ctx, s3internal.BucketToPutBucketACLInput(bucket))
 		if err != nil {
@@ -546,7 +566,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.New(errNotBucket)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, defaultOperationTimeout)
+	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
 	if utils.IsHealthCheckBucket(bucket) {

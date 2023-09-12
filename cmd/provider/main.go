@@ -16,6 +16,8 @@ limitations under the License.
 
 package main
 
+//go:generate go get github.com/maxbrunsfeld/counterfeiter/v6
+
 import (
 	"context"
 	"flag"
@@ -62,6 +64,7 @@ func main() {
 		pollInterval         = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("30m").Duration()
 		reconcileConcurrency = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("100").Int()
 		maxReconcileRate     = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("1000").Int()
+		reconcileTimeout     = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("1s").Duration()
 
 		kubeClientRate = app.Flag("kube-client-rate", "The global maximum rate per second at how many requests the client can do.").Default("1000").Int()
 
@@ -193,6 +196,6 @@ func main() {
 	}
 
 	backendStore := backendstore.NewBackendStore()
-	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore, *autoPauseBucket), "Cannot setup Ceph controllers")
+	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore, *autoPauseBucket, *reconcileTimeout), "Cannot setup Ceph controllers")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }

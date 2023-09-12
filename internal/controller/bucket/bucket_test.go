@@ -20,6 +20,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
@@ -29,6 +31,7 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	"github.com/pkg/errors"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -46,6 +49,7 @@ var (
 	unexpectedItem resource.Managed
 )
 
+//nolint:maintidx // Function requires numerous checks.
 func TestObserve(t *testing.T) {
 	t.Parallel()
 
@@ -109,6 +113,263 @@ func TestObserve(t *testing.T) {
 				err: errors.New(errNoS3BackendsStored),
 			},
 		},
+		"Bucket doesn't have any living backend": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						ResourceSpec: v1.ResourceSpec{
+							ProviderConfigReference: &v1.Reference{
+								Name: "s3-backend-1",
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalObservation{
+					ResourceExists:   false,
+					ResourceUpToDate: true,
+				},
+			},
+		},
+		"Bucket status is not available": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						ResourceSpec: v1.ResourceSpec{
+							ProviderConfigReference: &v1.Reference{
+								Name: "s3-backend-1",
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						AtProvider: v1alpha1.BucketObservation{
+							BackendStatuses: v1alpha1.BackendStatuses{
+								"s3-backend-1": v1alpha1.BackendReadyStatus,
+							},
+						},
+						ResourceStatus: v1.ResourceStatus{
+							ConditionedStatus: v1.ConditionedStatus{
+								Conditions: []v1.Condition{
+									v1.Creating(),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalObservation{
+					ResourceExists:   true,
+					ResourceUpToDate: false,
+				},
+			},
+		},
+		"One of the backends is not ready": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{"s3-backend-1"},
+						ResourceSpec: v1.ResourceSpec{
+							ProviderConfigReference: &v1.Reference{
+								Name: "s3-backend-1",
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						AtProvider: v1alpha1.BucketObservation{
+							BackendStatuses: v1alpha1.BackendStatuses{
+								"s3-backend-1": v1alpha1.BackendNotReadyStatus,
+							},
+						},
+						ResourceStatus: v1.ResourceStatus{
+							ConditionedStatus: v1.ConditionedStatus{
+								Conditions: []v1.Condition{
+									v1.Available(),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalObservation{
+					ResourceExists:   true,
+					ResourceUpToDate: false,
+				},
+			},
+		},
+		"Bucket check on external - error": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return nil, errors.New("some error")
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{"s3-backend-1"},
+						ResourceSpec: v1.ResourceSpec{
+							ProviderConfigReference: &v1.Reference{
+								Name: "s3-backend-1",
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						AtProvider: v1alpha1.BucketObservation{
+							BackendStatuses: v1alpha1.BackendStatuses{
+								"s3-backend-1": v1alpha1.BackendReadyStatus,
+							},
+						},
+						ResourceStatus: v1.ResourceStatus{
+							ConditionedStatus: v1.ConditionedStatus{
+								Conditions: []v1.Condition{
+									v1.Available(),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalObservation{
+					ResourceExists:    true,
+					ResourceUpToDate:  true,
+					ConnectionDetails: managed.ConnectionDetails{},
+				},
+			},
+		},
+		"Bucket check on external - not exists": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return nil, &s3types.NotFound{}
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{"s3-backend-1"},
+						ResourceSpec: v1.ResourceSpec{
+							ProviderConfigReference: &v1.Reference{
+								Name: "s3-backend-1",
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						AtProvider: v1alpha1.BucketObservation{
+							BackendStatuses: v1alpha1.BackendStatuses{
+								"s3-backend-1": v1alpha1.BackendReadyStatus,
+							},
+						},
+						ResourceStatus: v1.ResourceStatus{
+							ConditionedStatus: v1.ConditionedStatus{
+								Conditions: []v1.Condition{
+									v1.Available(),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalObservation{
+					ResourceExists:    true,
+					ResourceUpToDate:  false,
+					ConnectionDetails: managed.ConnectionDetails{},
+				},
+			},
+		},
+		"Bucket check on external - ok": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return &s3.HeadBucketOutput{}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{"s3-backend-1"},
+						ResourceSpec: v1.ResourceSpec{
+							ProviderConfigReference: &v1.Reference{
+								Name: "s3-backend-1",
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						AtProvider: v1alpha1.BucketObservation{
+							BackendStatuses: v1alpha1.BackendStatuses{
+								"s3-backend-1": v1alpha1.BackendReadyStatus,
+							},
+						},
+						ResourceStatus: v1.ResourceStatus{
+							ConditionedStatus: v1.ConditionedStatus{
+								Conditions: []v1.Condition{
+									v1.Available(),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalObservation{
+					ResourceExists:    true,
+					ResourceUpToDate:  true,
+					ConnectionDetails: managed.ConnectionDetails{},
+				},
+			},
+		},
 	}
 	for name, tc := range cases {
 		tc := tc
@@ -122,6 +383,130 @@ func TestObserve(t *testing.T) {
 			}
 			if diff := cmp.Diff(tc.want.o, got); diff != "" {
 				t.Errorf("\n%s\ne.Observe(...): -want, +got:\n%s\n", tc.reason, diff)
+			}
+		})
+	}
+}
+
+func TestPauseBucket(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		pauseAnnotation  string
+		resourceUpToDate bool
+		autoPauseBucket  bool
+		backendError     bool
+		expected         bool
+	}{
+		"AllConditionsMet": {
+			pauseAnnotation:  "",
+			resourceUpToDate: true,
+			autoPauseBucket:  true,
+			backendError:     false,
+			expected:         true,
+		},
+		"AutoPauseIsFalse": {
+			pauseAnnotation:  "",
+			resourceUpToDate: true,
+			autoPauseBucket:  false,
+			backendError:     false,
+			expected:         false,
+		},
+		"AutoPauseIsFalseWithBackendError": {
+			pauseAnnotation:  "",
+			resourceUpToDate: true,
+			autoPauseBucket:  false,
+			backendError:     true,
+			expected:         false,
+		},
+		"AutoPauseIsFalseResourceNotUpToDate": {
+			pauseAnnotation:  "",
+			resourceUpToDate: false,
+			autoPauseBucket:  false,
+			backendError:     false,
+			expected:         false,
+		},
+		"AutoPauseIsFalseResourceNotUpToDateWithBackendError": {
+			pauseAnnotation:  "",
+			resourceUpToDate: false,
+			autoPauseBucket:  false,
+			backendError:     true,
+			expected:         false,
+		},
+		"PausedAnnotationExists": {
+			pauseAnnotation:  "true",
+			resourceUpToDate: true,
+			autoPauseBucket:  true,
+			backendError:     false,
+			expected:         false,
+		},
+		"PausedAnnotationExistsWithBackendError": {
+			pauseAnnotation:  "true",
+			resourceUpToDate: true,
+			autoPauseBucket:  true,
+			backendError:     true,
+			expected:         false,
+		},
+		"PausedAnnotationExistsResourceNotUpToDate": {
+			pauseAnnotation:  "true",
+			resourceUpToDate: false,
+			autoPauseBucket:  true,
+			backendError:     false,
+			expected:         false,
+		},
+		"PausedAnnotationExistsResourceNotUpToDateWithBackendError": {
+			pauseAnnotation:  "true",
+			resourceUpToDate: false,
+			autoPauseBucket:  true,
+			backendError:     true,
+			expected:         false,
+		},
+		"EmptyAnnotationWithBackendError": {
+			pauseAnnotation:  "",
+			resourceUpToDate: true,
+			autoPauseBucket:  true,
+			backendError:     true,
+			expected:         false,
+		},
+		"EmptyAnnotationResourceNotUpToDate": {
+			pauseAnnotation:  "",
+			resourceUpToDate: false,
+			autoPauseBucket:  true,
+			backendError:     false,
+			expected:         false,
+		},
+		"EmptyAnnotationResourceNotUpToDateWithBackendError": {
+			pauseAnnotation:  "",
+			resourceUpToDate: false,
+			autoPauseBucket:  true,
+			backendError:     true,
+			expected:         false,
+		},
+		"EmptyAnnotationAutoPauseIsFalse": {
+			pauseAnnotation:  "",
+			resourceUpToDate: true,
+			autoPauseBucket:  false,
+			backendError:     false,
+			expected:         false,
+		},
+		"EmptyAnnotationAutoPauseIsFalseWithBackendError": {
+			pauseAnnotation:  "",
+			resourceUpToDate: true,
+			autoPauseBucket:  false,
+			backendError:     true,
+			expected:         false,
+		},
+	}
+
+	for name, tc := range testCases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			actual := pauseBucket(tc.pauseAnnotation, tc.resourceUpToDate, tc.autoPauseBucket, tc.backendError)
+			if actual != tc.expected {
+				t.Errorf("Expected %v, but got %v", tc.expected, actual)
 			}
 		})
 	}

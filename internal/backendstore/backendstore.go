@@ -3,7 +3,6 @@ package backendstore
 import (
 	"sync"
 
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/linode/provider-ceph/apis/v1alpha1"
 )
 
@@ -22,7 +21,7 @@ func NewBackendStore() *BackendStore {
 	}
 }
 
-func (b *BackendStore) GetBackendClient(backendName string) *s3.Client {
+func (b *BackendStore) GetBackendClient(backendName string) S3Client {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
@@ -33,12 +32,12 @@ func (b *BackendStore) GetBackendClient(backendName string) *s3.Client {
 	return nil
 }
 
-func (b *BackendStore) GetAllBackendClients() []*s3.Client {
+func (b *BackendStore) GetAllBackendClients() []S3Client {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
 	// Create a new clients slice hold a copy of the backend clients
-	clients := make([]*s3.Client, 0)
+	clients := make([]S3Client, 0)
 	for _, v := range b.s3Backends {
 		clients = append(clients, v.s3Client)
 	}
@@ -46,7 +45,7 @@ func (b *BackendStore) GetAllBackendClients() []*s3.Client {
 	return clients
 }
 
-func (b *BackendStore) GetBackendClients(beNames []string) map[string]*s3.Client {
+func (b *BackendStore) GetBackendClients(beNames []string) map[string]S3Client {
 	requestedBackends := map[string]bool{}
 	for p := range beNames {
 		requestedBackends[beNames[p]] = true
@@ -56,7 +55,7 @@ func (b *BackendStore) GetBackendClients(beNames []string) map[string]*s3.Client
 	defer b.mu.RUnlock()
 
 	// Create a new clients slice hold a copy of the backend clients
-	clients := map[string]*s3.Client{}
+	clients := map[string]S3Client{}
 	for k, v := range b.s3Backends {
 		if _, ok := requestedBackends[k]; !ok {
 			continue
@@ -114,7 +113,7 @@ func (b *BackendStore) DeleteBackend(backendName string) {
 	delete(b.s3Backends, backendName)
 }
 
-func (b *BackendStore) AddOrUpdateBackend(backendName string, backendClient *s3.Client, active bool, health v1alpha1.HealthStatus) {
+func (b *BackendStore) AddOrUpdateBackend(backendName string, backendClient S3Client, active bool, health v1alpha1.HealthStatus) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 

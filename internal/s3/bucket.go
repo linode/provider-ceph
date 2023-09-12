@@ -8,6 +8,7 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 )
@@ -66,7 +67,7 @@ func BucketToPutBucketOwnershipControlsInput(bucket *v1alpha1.Bucket) *s3.PutBuc
 	}
 }
 
-func DeleteBucket(ctx context.Context, s3Backend *s3.Client, bucketName *string) error {
+func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
 	bucketExists, err := BucketExists(ctx, s3Backend, *bucketName)
 	if err != nil {
 		return err
@@ -96,7 +97,7 @@ func DeleteBucket(ctx context.Context, s3Backend *s3.Client, bucketName *string)
 	return resource.Ignore(isNotFound, err)
 }
 
-func deleteBucketObjects(ctx context.Context, s3Backend *s3.Client, bucketName *string) error {
+func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
 	objectsInput := &s3.ListObjectsV2Input{Bucket: bucketName}
 	for {
 		objects, err := s3Backend.ListObjectsV2(ctx, objectsInput)
@@ -130,7 +131,7 @@ func deleteBucketObjects(ctx context.Context, s3Backend *s3.Client, bucketName *
 	return nil
 }
 
-func deleteBucketObjectVersions(ctx context.Context, s3Backend *s3.Client, bucketName *string) error {
+func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
 	objVersionsInput := &s3.ListObjectVersionsInput{Bucket: bucketName}
 	for {
 		objectVersions, err := s3Backend.ListObjectVersions(ctx, objVersionsInput)
@@ -172,7 +173,7 @@ func deleteBucketObjectVersions(ctx context.Context, s3Backend *s3.Client, bucke
 	return nil
 }
 
-func deleteObject(ctx context.Context, s3Backend *s3.Client, bucket, key, versionId *string) error {
+func deleteObject(ctx context.Context, s3Backend backendstore.S3Client, bucket, key, versionId *string) error {
 	var err error
 	for i := 0; i < RequestRetries; i++ {
 		_, err = s3Backend.DeleteObject(ctx, &s3.DeleteObjectInput{
@@ -188,7 +189,7 @@ func deleteObject(ctx context.Context, s3Backend *s3.Client, bucket, key, versio
 	return err
 }
 
-func BucketExists(ctx context.Context, s3Backend *s3.Client, bucketName string) (bool, error) {
+func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketName string) (bool, error) {
 	_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
 	if err != nil {
 		return false, resource.Ignore(isNotFound, err)

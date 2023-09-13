@@ -105,6 +105,252 @@ spec:
                     description: Allows grantee to write the ACL for the applicable
                       bucket.
                     type: string
+                  lifecycleConfiguration:
+                    description: Creates a new lifecycle configuration for the bucket
+                      or replaces an existing lifecycle configuration. For information
+                      about lifecycle configuration, see Managing Access Permissions
+                      to Your Amazon S3 Resources (https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-access-control.html).
+                    properties:
+                      rules:
+                        description: "A lifecycle rule for individual objects in an
+                          Amazon S3 bucket. \n Rules is a required field"
+                        items:
+                          description: LifecycleRule for individual objects in an
+                            Amazon S3 bucket.
+                          properties:
+                            abortIncompleteMultipartUpload:
+                              description: Specifies the days since the initiation
+                                of an incomplete multipart upload that Amazon S3 will
+                                wait before permanently removing all parts of the
+                                upload. For more information, see Aborting Incomplete
+                                Multipart Uploads Using a Bucket Lifecycle Policy
+                                (https://docs.aws.amazon.com/AmazonS3/latest/dev/mpuoverview.html#mpu-abort-incomplete-mpu-lifecycle-config)
+                                in the Amazon Simple Storage Service Developer Guide.
+                              properties:
+                                daysAfterInitiation:
+                                  description: Specifies the number of days after
+                                    which Amazon S3 aborts an incomplete multipart
+                                    upload.
+                                  format: int32
+                                  type: integer
+                              required:
+                              - daysAfterInitiation
+                              type: object
+                            expiration:
+                              description: Specifies the expiration for the lifecycle
+                                of the object in the form of date, days and, whether
+                                the object has a delete marker.
+                              properties:
+                                date:
+                                  description: Indicates at what date the object is
+                                    to be moved or deleted.
+                                  format: date-time
+                                  type: string
+                                days:
+                                  description: Indicates the lifetime, in days, of
+                                    the objects that are subject to the rule. The
+                                    value must be a non-zero positive integer.
+                                  format: int32
+                                  minimum: 1
+                                  type: integer
+                                expiredObjectDeleteMarker:
+                                  description: Indicates whether Amazon S3 will remove
+                                    a delete marker with no noncurrent versions. If
+                                    set to true, the delete marker will be expired;
+                                    if set to false the policy takes no action. This
+                                    cannot be specified with Days or Date in a Lifecycle
+                                    Expiration Policy.
+                                  type: boolean
+                              type: object
+                            filter:
+                              description: The Filter is used to identify objects
+                                that a Lifecycle Rule applies to. A Filter must have
+                                exactly one of Prefix, Tag, or And specified.
+                              properties:
+                                and:
+                                  description: This is used in a Lifecycle Rule Filter
+                                    to apply a logical AND to two or more predicates.
+                                    The Lifecycle Rule will apply to any object matching
+                                    all of the predicates configured inside the And
+                                    operator.
+                                  properties:
+                                    prefix:
+                                      description: Prefix identifying one or more
+                                        objects to which the rule applies.
+                                      type: string
+                                    tags:
+                                      description: All of these tags must exist in
+                                        the object's tag set in order for the rule
+                                        to apply.
+                                      items:
+                                        description: Tag is a container for a key
+                                          value name pair.
+                                        properties:
+                                          key:
+                                            description: Name of the tag. Key is a
+                                              required field
+                                            type: string
+                                          value:
+                                            description: Value of the tag. Value is
+                                              a required field
+                                            type: string
+                                        required:
+                                        - key
+                                        - value
+                                        type: object
+                                      type: array
+                                  required:
+                                  - tags
+                                  type: object
+                                prefix:
+                                  description: Prefix identifying one or more objects
+                                    to which the rule applies.
+                                  type: string
+                                tag:
+                                  description: This tag must exist in the object's
+                                    tag set in order for the rule to apply.
+                                  properties:
+                                    key:
+                                      description: Name of the tag. Key is a required
+                                        field
+                                      type: string
+                                    value:
+                                      description: Value of the tag. Value is a required
+                                        field
+                                      type: string
+                                  required:
+                                  - key
+                                  - value
+                                  type: object
+                              type: object
+                            id:
+                              description: Unique identifier for the rule. The value
+                                cannot be longer than 255 characters.
+                              type: string
+                            noncurrentVersionExpiration:
+                              description: Specifies when noncurrent object versions
+                                expire. Upon expiration, Amazon S3 permanently deletes
+                                the noncurrent object versions. You set this lifecycle
+                                configuration action on a bucket that has versioning
+                                enabled (or suspended) to request that Amazon S3 delete
+                                noncurrent object versions at a specific period in
+                                the object's lifetime.
+                              properties:
+                                noncurrentDays:
+                                  description: Specifies the number of days an object
+                                    is noncurrent before Amazon S3 can perform the
+                                    associated action. For information about the noncurrent
+                                    days calculations, see How Amazon S3 Calculates
+                                    When an Object Became Noncurrent (https://docs.aws.amazon.com/AmazonS3/latest/dev/intro-lifecycle-rules.html#non-current-days-calculations)
+                                    in the Amazon Simple Storage Service Developer
+                                    Guide.
+                                  format: int32
+                                  type: integer
+                              type: object
+                            noncurrentVersionTransitions:
+                              description: Specifies the transition rule for the lifecycle
+                                rule that describes when noncurrent objects transition
+                                to a specific storage class. If your bucket is versioning-enabled
+                                (or versioning is suspended), you can set this action
+                                to request that Amazon S3 transition noncurrent object
+                                versions to a specific storage class at a set period
+                                in the object's lifetime.
+                              items:
+                                description: NoncurrentVersionTransition contains
+                                  the transition rule that describes when noncurrent
+                                  objects transition to the STANDARD_IA, ONEZONE_IA,
+                                  INTELLIGENT_TIERING, GLACIER, or DEEP_ARCHIVE storage
+                                  class. If your bucket is versioning-enabled (or
+                                  versioning is suspended), you can set this action
+                                  to request that Amazon S3 transition noncurrent
+                                  object versions to the STANDARD_IA, ONEZONE_IA,
+                                  INTELLIGENT_TIERING, GLACIER, or DEEP_ARCHIVE storage
+                                  class at a specific period in the object's lifetime.
+                                properties:
+                                  noncurrentDays:
+                                    description: Specifies the number of days an object
+                                      is noncurrent before Amazon S3 can perform the
+                                      associated action. For information about the
+                                      noncurrent days calculations, see How Amazon
+                                      S3 Calculates How Long an Object Has Been Noncurrent
+                                      (https://docs.aws.amazon.com/AmazonS3/latest/dev/intro-lifecycle-rules.html#non-current-days-calculations)
+                                      in the Amazon Simple Storage Service Developer
+                                      Guide.
+                                    format: int32
+                                    type: integer
+                                  storageClass:
+                                    description: 'The class of storage used to store
+                                      the object. Valid values are: GLACIER, STANDARD_IA,
+                                      ONEZONE_IA, INTELLIGENT_TIERING, DEEP_ARCHIVE'
+                                    enum:
+                                    - GLACIER
+                                    - STANDARD_IA
+                                    - ONEZONE_IA
+                                    - INTELLIGENT_TIERING
+                                    - DEEP_ARCHIVE
+                                    type: string
+                                required:
+                                - storageClass
+                                type: object
+                              type: array
+                            status:
+                              description: "If 'Enabled', the rule is currently being
+                                applied. If 'Disabled', the rule is not currently
+                                being applied. \n Status is a required field, valid
+                                values are Enabled or Disabled"
+                              enum:
+                              - Enabled
+                              - Disabled
+                              type: string
+                            transitions:
+                              description: Specifies when an Amazon S3 object transitions
+                                to a specified storage class.
+                              items:
+                                description: Transition specifies when an object transitions
+                                  to a specified storage class. For more information
+                                  about Amazon S3 lifecycle configuration rules, see
+                                  Transitioning Objects Using Amazon S3 Lifecycle
+                                  (https://docs.aws.amazon.com/AmazonS3/latest/dev/lifecycle-transition-general-considerations.html)
+                                  in the Amazon Simple Storage Service Developer Guide.
+                                properties:
+                                  date:
+                                    description: Indicates when objects are transitioned
+                                      to the specified storage class. The date value
+                                      must be in ISO 8601 format. The time is always
+                                      midnight UTC.
+                                    format: date-time
+                                    type: string
+                                  days:
+                                    description: Indicates the number of days after
+                                      creation when objects are transitioned to the
+                                      specified storage class. The value must be a
+                                      positive integer.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  storageClass:
+                                    description: 'The storage class to which you want
+                                      the object to transition. Valid values are:
+                                      GLACIER, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING,
+                                      DEEP_ARCHIVE'
+                                    enum:
+                                    - GLACIER
+                                    - STANDARD_IA
+                                    - ONEZONE_IA
+                                    - INTELLIGENT_TIERING
+                                    - DEEP_ARCHIVE
+                                    type: string
+                                required:
+                                - storageClass
+                                type: object
+                              type: array
+                          required:
+                          - status
+                          type: object
+                        type: array
+                    required:
+                    - rules
+                    type: object
                   locationConstraint:
                     description: Specifies the Region where the bucket will be created.
                     type: string

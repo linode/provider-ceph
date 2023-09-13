@@ -70,6 +70,13 @@ type BucketParameters struct {
 
 	// Specifies the Region where the bucket will be created.
 	LocationConstraint string `json:"locationConstraint,omitempty"`
+
+	// Creates a new lifecycle configuration for the bucket or replaces an existing
+	// lifecycle configuration. For information about lifecycle configuration, see
+	// Managing Access Permissions to Your Amazon S3 Resources
+	// (https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-access-control.html).
+	// +optional
+	LifecycleConfiguration *BucketLifecycleConfiguration `json:"lifecycleConfiguration,omitempty"`
 }
 
 type BackendStatuses map[string]BackendStatus

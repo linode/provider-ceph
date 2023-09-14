@@ -583,11 +583,22 @@ spec:
               atProvider:
                 description: BucketObservation are the observable fields of a Bucket.
                 properties:
-                  backendStatuses:
+                  backends:
                     additionalProperties:
-                      type: string
-                    description: BackendStatuses is a map of the s3 backends on which
-                      the bucket has been created and their update status.
+                      description: BackendInfo contains relevant information about
+                        an S3 backend for a single bucket.
+                      properties:
+                        bucketStatus:
+                          description: BucketStatus is the condition of the Bucket
+                            on the S3 backend.
+                          type: string
+                        lifecycleConfigurationStatus:
+                          description: LifecycleConfigurationStatus is the condition
+                            of the bucket lifecycle configuration on the S3 backend.
+                          type: string
+                      type: object
+                    description: Backends is a map of the names of the S3 backends
+                      to BackendInfo.
                     type: object
                   configurableField:
                     type: string

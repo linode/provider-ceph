@@ -29,7 +29,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNoS3BackendsStored)
 	}
 
-	if len(bucket.Status.AtProvider.BackendStatuses) == 0 {
+	if len(bucket.Status.AtProvider.Backends) == 0 {
 		return managed.ExternalObservation{
 			ResourceExists:   false,
 			ResourceUpToDate: true,
@@ -79,7 +79,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			missing--
 		}
 
-		if status := bucket.Status.AtProvider.BackendStatuses[provider]; status == v1alpha1.BackendReadyStatus {
+		if status := bucket.Status.AtProvider.Backends[provider].BucketStatus; status == v1alpha1.ReadyStatus {
 			// Bucket is ready on backend,
 			// so it won't be counted as a missing backend.
 			missing--

@@ -79,23 +79,32 @@ type BucketParameters struct {
 	LifecycleConfiguration *BucketLifecycleConfiguration `json:"lifecycleConfiguration,omitempty"`
 }
 
-type BackendStatuses map[string]BackendStatus
+// BackendInfo contains relevant information about an S3 backend for
+// a single bucket.
+type BackendInfo struct {
+	// BucketStatus is the condition of the Bucket on the S3 backend.
+	BucketStatus Status `json:"bucketStatus,omitempty"`
+	// LifecycleConfigurationStatus is the condition of the
+	// bucket lifecycle configuration on the S3 backend.
+	LifecycleConfigurationStatus Status `json:"lifecycleConfigurationStatus,omitempty"`
+}
 
-type BackendStatus string
+// Backends is a map of the names of the S3 backends to BackendInfo.
+type Backends map[string]*BackendInfo
+
+type Status string
 
 const (
-	BackendReadyStatus    BackendStatus = "Ready"
-	BackendNotReadyStatus BackendStatus = "NotReady"
-	BackendDeletingStatus BackendStatus = "Deleting"
+	ReadyStatus    Status = "Ready"
+	NotReadyStatus Status = "NotReady"
+	DeletingStatus Status = "Deleting"
 )
 
 // BucketObservation are the observable fields of a Bucket.
 type BucketObservation struct {
-	// BackendStatuses is a map of the s3 backends on which the bucket
-	// has been created and their update status.
-	BackendStatuses   BackendStatuses `json:"backendStatuses,omitempty"`
-	ConfigurableField string          `json:"configurableField"`
-	ObservableField   string          `json:"observableField,omitempty"`
+	Backends          Backends `json:"backends,omitempty"`
+	ConfigurableField string   `json:"configurableField"`
+	ObservableField   string   `json:"observableField,omitempty"`
 }
 
 // A BucketSpec defines the desired state of a Bucket.

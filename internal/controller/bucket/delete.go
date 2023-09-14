@@ -55,7 +55,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	}
 
 	for _, backendName := range activeBackends {
-		bucketBackends.setBucketBackendStatus(bucket.Name, backendName, v1alpha1.BackendDeletingStatus)
+		bucketBackends.setBucketBackendStatus(bucket.Name, backendName, v1alpha1.DeletingStatus)
 
 		c.log.Info("Deleting bucket", "bucket name", bucket.Name, "backend name", backendName)
 		cl := c.backendStore.GetBackendClient(backendName)

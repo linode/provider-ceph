@@ -7,40 +7,43 @@ import (
 )
 
 type bucketBackends struct {
-	// bucketBackendStatuses maps bucket names to backend statuses
-	// for backends on which the bucket exists.
-	bucketBackendStatuses map[string]v1alpha1.BackendStatuses
-	mu                    sync.RWMutex
+	// backends maps bucket name to backends on which that bucket exists.
+	backends map[string]v1alpha1.Backends
+	mu       sync.RWMutex
 }
 
 func newBucketBackends() *bucketBackends {
 	return &bucketBackends{
-		bucketBackendStatuses: make(map[string]v1alpha1.BackendStatuses),
+		backends: make(map[string]v1alpha1.Backends),
 	}
 }
 
-func (b *bucketBackends) setBucketBackendStatus(bucketName, backendName string, status v1alpha1.BackendStatus) {
+func (b *bucketBackends) setBucketBackendStatus(bucketName, backendName string, status v1alpha1.Status) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if b.bucketBackendStatuses[bucketName] == nil {
-		b.bucketBackendStatuses[bucketName] = make(v1alpha1.BackendStatuses)
+	if b.backends[bucketName] == nil {
+		b.backends[bucketName] = make(v1alpha1.Backends)
 	}
 
-	b.bucketBackendStatuses[bucketName][backendName] = status
+	if b.backends[bucketName][backendName] == nil {
+		b.backends[bucketName][backendName] = &v1alpha1.BackendInfo{}
+	}
+
+	b.backends[bucketName][backendName].BucketStatus = status
 }
 
 func (b *bucketBackends) deleteBucketBackend(bucketName, backendName string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if _, ok := b.bucketBackendStatuses[bucketName]; !ok {
+	if _, ok := b.backends[bucketName]; !ok {
 		return
 	}
 
-	delete(b.bucketBackendStatuses[bucketName], backendName)
+	delete(b.backends[bucketName], backendName)
 }
 
-func (b *bucketBackends) getBucketBackendStatuses(bucketName string, beNames []string) v1alpha1.BackendStatuses {
+func (b *bucketBackends) getBackends(bucketName string, beNames []string) v1alpha1.Backends {
 	requestedBackends := map[string]bool{}
 	for p := range beNames {
 		requestedBackends[beNames[p]] = true
@@ -49,12 +52,12 @@ func (b *bucketBackends) getBucketBackendStatuses(bucketName string, beNames []s
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	be := make(v1alpha1.BackendStatuses)
-	if _, ok := b.bucketBackendStatuses[bucketName]; !ok {
+	be := make(v1alpha1.Backends)
+	if _, ok := b.backends[bucketName]; !ok {
 		return be
 	}
 
-	for k, v := range b.bucketBackendStatuses[bucketName] {
+	for k, v := range b.backends[bucketName] {
 		if _, ok := requestedBackends[k]; !ok {
 			continue
 		}

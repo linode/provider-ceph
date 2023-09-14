@@ -150,7 +150,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 
 				bucketBackends.setBucketStatus(bucket.Name, beName, v1alpha1.NotReadyStatus)
 
-				err = c.update(ctx, bucket, cl)
+				err = c.update(ctx, beName, bucket, cl, bucketBackends)
 				if err == nil {
 					// Check to see if this backend has been marked as 'Unhealthy'. It may be 'Unknown' due to
 					// the healthcheck being disabled. In which case we can only assume the backend is healthy
@@ -174,9 +174,9 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 	return nil
 }
 
-func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backend backendstore.S3Client) error {
-	if s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
-		_, err := s3Backend.PutBucketAcl(ctx, s3internal.BucketToPutBucketACLInput(bucket))
+func (c *external) update(ctx context.Context, backendName string, b *v1alpha1.Bucket, cl backendstore.S3Client, bb *bucketBackends) error {
+	if s3types.ObjectOwnership(aws.ToString(b.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
+		_, err := cl.PutBucketAcl(ctx, s3internal.BucketToPutBucketACLInput(b))
 		if err != nil {
 			return err
 		}
@@ -185,6 +185,9 @@ func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backen
 	//TODO: Add functionality for bucket ownership controls, using s3 apis:
 	// - DeleteBucketOwnershipControls
 	// - PutBucketOwnershipControls
+	if b.Spec.ForProvider.LifecycleConfiguration == nil || b.Spec.LifeCycleConfigurationDisabled {
+		return c.deleteLifecycleConfig(ctx, backendName, b, cl, bb)
+	}
 
-	return nil
+	return c.updateLifecycleConfig(ctx, backendName, b, cl, bb)
 }

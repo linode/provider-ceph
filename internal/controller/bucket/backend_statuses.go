@@ -33,6 +33,36 @@ func (b *bucketBackends) setBucketStatus(bucketName, backendName string, status 
 	b.backends[bucketName][backendName].BucketStatus = status
 }
 
+func (b *bucketBackends) setLifecycleConfigStatus(bucketName, backendName string, status v1alpha1.Status) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.backends[bucketName] == nil {
+		b.backends[bucketName] = make(v1alpha1.Backends)
+	}
+
+	if b.backends[bucketName][backendName] == nil {
+		b.backends[bucketName][backendName] = &v1alpha1.BackendInfo{}
+	}
+
+	b.backends[bucketName][backendName].LifecycleConfigurationStatus = status
+}
+
+func (b *bucketBackends) getLifecycleConfigStatus(bucketName, backendName string) v1alpha1.Status {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if b.backends[bucketName] == nil {
+		return v1alpha1.NoStatus
+	}
+
+	if b.backends[bucketName][backendName] == nil {
+		return v1alpha1.NoStatus
+	}
+
+	return b.backends[bucketName][backendName].LifecycleConfigurationStatus
+}
+
 func (b *bucketBackends) deleteBackend(bucketName, backendName string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()

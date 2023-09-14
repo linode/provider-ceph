@@ -98,6 +98,7 @@ const (
 	ReadyStatus    Status = "Ready"
 	NotReadyStatus Status = "NotReady"
 	DeletingStatus Status = "Deleting"
+	NoStatus       Status = ""
 )
 
 // BucketObservation are the observable fields of a Bucket.
@@ -121,6 +122,11 @@ type BucketSpec struct {
 	// CR's status is updated accordingly.
 	// This flag overrides 'Providers'.
 	Disabled bool `json:"disabled,omitempty"`
+	// LifecycleConfigurationDisabled causes provider-ceph to
+	// attempt deletion and/or avoid create/updates of the
+	// lifecycle config for the bucket on all of the bucket's
+	// backends. The Bucket CR's status is updated accordingly.
+	LifeCycleConfigurationDisabled bool `json:"lifecycleConfiguratonDisabled,omitempty"`
 	// +optional
 	// AutoPause allows the user to disable further reconciliation
 	// of the bucket after successfully created or updated.

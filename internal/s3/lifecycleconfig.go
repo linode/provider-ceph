@@ -17,12 +17,12 @@ func GenerateLifecycleConfigurationInput(name string, config *v1alpha1.BucketLif
 	}
 	return &awss3.PutBucketLifecycleConfigurationInput{
 		Bucket:                 aws.String(name),
-		LifecycleConfiguration: &types.BucketLifecycleConfiguration{Rules: generateLifecycleRules(config.Rules)},
+		LifecycleConfiguration: &types.BucketLifecycleConfiguration{Rules: GenerateLifecycleRules(config.Rules)},
 	}
 }
 
-// generateLifecycleRules creates the list of LifecycleRules for the AWS SDK
-func generateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule { // nolint:gocyclo
+// GenerateLifecycleRules creates the list of LifecycleRules for the AWS SDK
+func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule { // nolint:gocyclo
 	// NOTE(muvaf): prealloc is disabled due to AWS requiring nil instead
 	// of 0-length for empty slices.
 	var result []types.LifecycleRule // nolint:prealloc
@@ -121,7 +121,7 @@ func sortS3TagSet(tags []types.Tag) []types.Tag {
 	return outTags
 }
 
-func sortFilterTags(rules []types.LifecycleRule) {
+func SortFilterTags(rules []types.LifecycleRule) {
 	for i := range rules {
 		andOperator, ok := rules[i].Filter.(*types.LifecycleRuleFilterMemberAnd)
 		if ok {

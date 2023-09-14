@@ -374,6 +374,12 @@ spec:
                       this ACL expressed in the XML format."
                     type: string
                 type: object
+              lifecycleConfiguratonDisabled:
+                description: LifecycleConfigurationDisabled causes provider-ceph to
+                  attempt deletion and/or avoid create/updates of the lifecycle config
+                  for the bucket on all of the bucket's backends. The Bucket CR's
+                  status is updated accordingly.
+                type: boolean
               managementPolicies:
                 default:
                 - '*'

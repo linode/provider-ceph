@@ -60,6 +60,9 @@ const (
 	errCodeBucketNotFound       = "NotFound"
 	errFailedToCreateClient     = "failed to create s3 client"
 	errBucketCreationInProgress = "bucket creation in progress"
+	errPutLifecycleConfig       = "cannot put Bucket lifecycle configuration"
+	errDeleteLifecycle          = "cannot delete Bucket lifecycle"
+	errGetLifecycleConfig       = "cannot get Bucket lifecycle configuration"
 
 	inUseFinalizer = "bucket-in-use.provider-ceph.crossplane.io"
 )

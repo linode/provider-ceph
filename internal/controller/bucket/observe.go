@@ -92,6 +92,17 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		}, nil
 	}
 
+	needsUpdate, err := c.observeLifecycleConfig(ctx, bucket)
+	if err != nil {
+		return managed.ExternalObservation{}, err
+	}
+	if needsUpdate {
+		return managed.ExternalObservation{
+			ResourceExists:   true,
+			ResourceUpToDate: false,
+		}, nil
+	}
+
 	// Create a new context and cancel it when we have either found the bucket
 	// somewhere or cannot find it anywhere.
 	ctxC, cancel := context.WithTimeout(ctx, c.operationTimeout)

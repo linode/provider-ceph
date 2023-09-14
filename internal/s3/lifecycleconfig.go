@@ -11,18 +11,18 @@ import (
 )
 
 // GenerateLifecycleConfiguration creates the PutBucketLifecycleConfigurationInput for the AWS SDK
-func GenerateLifecycleConfiguration(name string, config *v1alpha1.BucketLifecycleConfiguration) *awss3.PutBucketLifecycleConfigurationInput {
+func GenerateLifecycleConfigurationInput(name string, config *v1alpha1.BucketLifecycleConfiguration) *awss3.PutBucketLifecycleConfigurationInput {
 	if config == nil {
 		return nil
 	}
 	return &awss3.PutBucketLifecycleConfigurationInput{
 		Bucket:                 aws.String(name),
-		LifecycleConfiguration: &types.BucketLifecycleConfiguration{Rules: GenerateLifecycleRules(config.Rules)},
+		LifecycleConfiguration: &types.BucketLifecycleConfiguration{Rules: generateLifecycleRules(config.Rules)},
 	}
 }
 
-// GenerateLifecycleRules creates the list of LifecycleRules for the AWS SDK
-func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule { // nolint:gocyclo
+// generateLifecycleRules creates the list of LifecycleRules for the AWS SDK
+func generateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule { // nolint:gocyclo
 	// NOTE(muvaf): prealloc is disabled due to AWS requiring nil instead
 	// of 0-length for empty slices.
 	var result []types.LifecycleRule // nolint:prealloc

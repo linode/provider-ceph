@@ -88,13 +88,14 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore,
 		managed.WithTimeout(operationTimeout + time.Second),
 		managed.WithPollInterval(pollInterval),
 		managed.WithExternalConnecter(&connector{
-			kube:             mgr.GetClient(),
-			autoPauseBucket:  autoPauseBucket,
-			operationTimeout: operationTimeout,
-			usage:            resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn:     newNoOpService,
-			backendStore:     s,
-			log:              o.Logger.WithValues("controller", name),
+			kube:               mgr.GetClient(),
+			autoPauseBucket:    autoPauseBucket,
+			operationTimeout:   operationTimeout,
+			usage:              resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
+			newServiceFn:       newNoOpService,
+			backendStore:       s,
+			subresourceClients: NewSubresourceClients(s, o.Logger.WithValues("controller", name)),
+			log:                o.Logger.WithValues("controller", name),
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
@@ -118,13 +119,14 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore,
 // A connector is expected to produce an ExternalClient when its Connect method
 // is called.
 type connector struct {
-	kube             client.Client
-	autoPauseBucket  bool
-	operationTimeout time.Duration
-	usage            resource.Tracker
-	newServiceFn     func(creds []byte) (interface{}, error)
-	backendStore     *backendstore.BackendStore
-	log              logging.Logger
+	kube               client.Client
+	autoPauseBucket    bool
+	operationTimeout   time.Duration
+	usage              resource.Tracker
+	newServiceFn       func(creds []byte) (interface{}, error)
+	backendStore       *backendstore.BackendStore
+	subresourceClients []SubresourceClient
+	log                logging.Logger
 }
 
 // Connect typically produces an ExternalClient by:
@@ -138,20 +140,22 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	return &external{
-			kubeClient:       c.kube,
-			autoPauseBucket:  c.autoPauseBucket,
-			operationTimeout: c.operationTimeout,
-			backendStore:     c.backendStore,
-			log:              c.log},
+			kubeClient:         c.kube,
+			autoPauseBucket:    c.autoPauseBucket,
+			operationTimeout:   c.operationTimeout,
+			backendStore:       c.backendStore,
+			subresourceClients: c.subresourceClients,
+			log:                c.log},
 		nil
 }
 
 // An ExternalClient observes, then either creates, updates, or deletes an
 // external resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	kubeClient       client.Client
-	autoPauseBucket  bool
-	operationTimeout time.Duration
-	backendStore     *backendstore.BackendStore
-	log              logging.Logger
+	kubeClient         client.Client
+	autoPauseBucket    bool
+	operationTimeout   time.Duration
+	backendStore       *backendstore.BackendStore
+	subresourceClients []SubresourceClient
+	log                logging.Logger
 }

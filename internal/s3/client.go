@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"k8s.io/client-go/util/retry"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -36,6 +37,9 @@ func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1
 	// By default make sure a region is specified, this is required for S3 operations
 	region := defaultRegion
 	sessionConfig.Region = aws.ToString(&region)
+
+	sessionConfig.RetryMaxAttempts = retry.DefaultRetry.Steps
+	sessionConfig.RetryMode = aws.RetryModeStandard
 
 	sessionConfig.Credentials = aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(string(data[accessKey]), string(data[secretKey]), ""))
 

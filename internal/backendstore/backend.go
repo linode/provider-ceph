@@ -1,6 +1,6 @@
 package backendstore
 
-//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -generate
+//go:generate go run -mod=mod github.com/maxbrunsfeld/counterfeiter/v6 -generate
 
 import (
 	"context"

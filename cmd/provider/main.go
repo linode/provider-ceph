@@ -33,6 +33,7 @@ import (
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
@@ -42,6 +43,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
 	"github.com/linode/provider-ceph/apis"
+	providercephv1alpha1 "github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	ceph "github.com/linode/provider-ceph/internal/controller"
@@ -73,6 +75,9 @@ func main() {
 		enableManagementPolicies   = app.Flag("enable-management-policies", "Enable support for Management Policies.").Default("false").Envar("ENABLE_MANAGEMENT_POLICIES").Bool()
 
 		autoPauseBucket = app.Flag("auto-pause-bucket", "Enable auto pause of reconciliation of ready buckets").Default("false").Envar("AUTO_PAUSE_BUCKET").Bool()
+
+		webhookTLSCertDir = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
+		enableWebhooks    = app.Flag("enable-webhooks", "Enable support for Webhooks.").Default("false").Bool()
 	)
 
 	var zo zap.Options
@@ -150,8 +155,7 @@ func main() {
 	leaderRetryDuration := *leaderRenew / two
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		SyncPeriod: syncInterval,
-
+		SyncPeriod:                 syncInterval,
 		LeaderElection:             *leaderElection,
 		LeaderElectionID:           "crossplane-leader-election-provider-ceph-ibyaiby",
 		LeaderElectionNamespace:    *namespace,
@@ -159,6 +163,7 @@ func main() {
 		RenewDeadline:              leaderRenew,
 		LeaseDuration:              &leaseDuration,
 		RetryPeriod:                &leaderRetryDuration,
+		WebhookServer:              webhook.NewServer(webhook.Options{CertDir: *webhookTLSCertDir}),
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Ceph APIs to scheme")
@@ -193,6 +198,13 @@ func main() {
 	if *enableManagementPolicies {
 		o.Features.Enable(features.EnableAlphaManagementPolicies)
 		log.Info("Alpha feature enabled", "flag", features.EnableAlphaManagementPolicies)
+	}
+
+	if *enableWebhooks {
+		kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
+			For(&providercephv1alpha1.Bucket{}).
+			WithValidator(providercephv1alpha1.BucketValidator).
+			Complete(), "Cannot setup bucket validating webhook")
 	}
 
 	backendStore := backendstore.NewBackendStore()

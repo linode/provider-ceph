@@ -127,7 +127,7 @@ crossplane-cluster: $(HELM3) cluster
 	@$(INFO) Installing Crossplane
 	@$(HELM3) repo add crossplane-stable https://charts.crossplane.io/stable
 	@$(HELM3) repo update
-	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane
+	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane --set webhooks.enabled=true
 	@$(OK) Installing Crossplane
 
 # Build the controller image and the provider package. 

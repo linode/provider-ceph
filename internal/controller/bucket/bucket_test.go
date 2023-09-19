@@ -33,6 +33,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -140,6 +141,33 @@ func TestObserve(t *testing.T) {
 				},
 			},
 		},
+		"Bucket doesn't have finalizer": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						ResourceSpec: v1.ResourceSpec{
+							ProviderConfigReference: &v1.Reference{
+								Name: "s3-backend-1",
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalObservation{
+					ResourceExists:   false,
+					ResourceUpToDate: true,
+				},
+			},
+		},
 		"Bucket status is not available": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
@@ -151,6 +179,9 @@ func TestObserve(t *testing.T) {
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Finalizers: []string{inUseFinalizer},
+					},
 					Spec: v1alpha1.BucketSpec{
 						ResourceSpec: v1.ResourceSpec{
 							ProviderConfigReference: &v1.Reference{
@@ -192,6 +223,9 @@ func TestObserve(t *testing.T) {
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Finalizers: []string{inUseFinalizer},
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
 						ResourceSpec: v1.ResourceSpec{
@@ -240,6 +274,9 @@ func TestObserve(t *testing.T) {
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Finalizers: []string{inUseFinalizer},
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
 						ResourceSpec: v1.ResourceSpec{
@@ -289,6 +326,9 @@ func TestObserve(t *testing.T) {
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Finalizers: []string{inUseFinalizer},
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
 						ResourceSpec: v1.ResourceSpec{
@@ -338,6 +378,9 @@ func TestObserve(t *testing.T) {
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Finalizers: []string{inUseFinalizer},
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
 						ResourceSpec: v1.ResourceSpec{
@@ -383,130 +426,6 @@ func TestObserve(t *testing.T) {
 			}
 			if diff := cmp.Diff(tc.want.o, got); diff != "" {
 				t.Errorf("\n%s\ne.Observe(...): -want, +got:\n%s\n", tc.reason, diff)
-			}
-		})
-	}
-}
-
-func TestPauseBucket(t *testing.T) {
-	t.Parallel()
-
-	testCases := map[string]struct {
-		pauseAnnotation  string
-		resourceUpToDate bool
-		autoPauseBucket  bool
-		backendError     bool
-		expected         bool
-	}{
-		"AllConditionsMet": {
-			pauseAnnotation:  "",
-			resourceUpToDate: true,
-			autoPauseBucket:  true,
-			backendError:     false,
-			expected:         true,
-		},
-		"AutoPauseIsFalse": {
-			pauseAnnotation:  "",
-			resourceUpToDate: true,
-			autoPauseBucket:  false,
-			backendError:     false,
-			expected:         false,
-		},
-		"AutoPauseIsFalseWithBackendError": {
-			pauseAnnotation:  "",
-			resourceUpToDate: true,
-			autoPauseBucket:  false,
-			backendError:     true,
-			expected:         false,
-		},
-		"AutoPauseIsFalseResourceNotUpToDate": {
-			pauseAnnotation:  "",
-			resourceUpToDate: false,
-			autoPauseBucket:  false,
-			backendError:     false,
-			expected:         false,
-		},
-		"AutoPauseIsFalseResourceNotUpToDateWithBackendError": {
-			pauseAnnotation:  "",
-			resourceUpToDate: false,
-			autoPauseBucket:  false,
-			backendError:     true,
-			expected:         false,
-		},
-		"PausedAnnotationExists": {
-			pauseAnnotation:  "true",
-			resourceUpToDate: true,
-			autoPauseBucket:  true,
-			backendError:     false,
-			expected:         false,
-		},
-		"PausedAnnotationExistsWithBackendError": {
-			pauseAnnotation:  "true",
-			resourceUpToDate: true,
-			autoPauseBucket:  true,
-			backendError:     true,
-			expected:         false,
-		},
-		"PausedAnnotationExistsResourceNotUpToDate": {
-			pauseAnnotation:  "true",
-			resourceUpToDate: false,
-			autoPauseBucket:  true,
-			backendError:     false,
-			expected:         false,
-		},
-		"PausedAnnotationExistsResourceNotUpToDateWithBackendError": {
-			pauseAnnotation:  "true",
-			resourceUpToDate: false,
-			autoPauseBucket:  true,
-			backendError:     true,
-			expected:         false,
-		},
-		"EmptyAnnotationWithBackendError": {
-			pauseAnnotation:  "",
-			resourceUpToDate: true,
-			autoPauseBucket:  true,
-			backendError:     true,
-			expected:         false,
-		},
-		"EmptyAnnotationResourceNotUpToDate": {
-			pauseAnnotation:  "",
-			resourceUpToDate: false,
-			autoPauseBucket:  true,
-			backendError:     false,
-			expected:         false,
-		},
-		"EmptyAnnotationResourceNotUpToDateWithBackendError": {
-			pauseAnnotation:  "",
-			resourceUpToDate: false,
-			autoPauseBucket:  true,
-			backendError:     true,
-			expected:         false,
-		},
-		"EmptyAnnotationAutoPauseIsFalse": {
-			pauseAnnotation:  "",
-			resourceUpToDate: true,
-			autoPauseBucket:  false,
-			backendError:     false,
-			expected:         false,
-		},
-		"EmptyAnnotationAutoPauseIsFalseWithBackendError": {
-			pauseAnnotation:  "",
-			resourceUpToDate: true,
-			autoPauseBucket:  false,
-			backendError:     true,
-			expected:         false,
-		},
-	}
-
-	for name, tc := range testCases {
-		tc := tc
-
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			actual := pauseBucket(tc.pauseAnnotation, tc.resourceUpToDate, tc.autoPauseBucket, tc.backendError)
-			if actual != tc.expected {
-				t.Errorf("Expected %v, but got %v", tc.expected, actual)
 			}
 		})
 	}
@@ -727,7 +646,9 @@ func TestDelete(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			e := external{backendStore: tc.fields.backendStore, log: logging.NewNopLogger()}
+			kubeClient := fake.NewClientBuilder().Build()
+
+			e := external{backendStore: tc.fields.backendStore, log: logging.NewNopLogger(), kubeClient: kubeClient}
 			err := e.Delete(context.Background(), tc.args.mg)
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
 				t.Errorf("\n%s\ne.Delete(...): -want error, +got error:\n%s\n", tc.reason, diff)

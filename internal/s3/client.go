@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"k8s.io/client-go/util/retry"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -28,7 +29,10 @@ func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1
 		}, nil
 	})
 
-	sessionConfig, err := config.LoadDefaultConfig(ctx, config.WithEndpointResolverWithOptions(endpointResolver))
+	sessionConfig, err := config.LoadDefaultConfig(ctx,
+		config.WithEndpointResolverWithOptions(endpointResolver),
+		config.WithRetryMaxAttempts(retry.DefaultRetry.Steps),
+		config.WithRetryMode(aws.RetryModeStandard))
 	if err != nil {
 		return nil, err
 	}

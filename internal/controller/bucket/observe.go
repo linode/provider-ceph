@@ -110,9 +110,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		})
 	}
 
-	var err error
 	resourceUpToDate := !bucket.Spec.Disabled
-	if err = g.Wait(); err != nil {
+	if err := g.Wait(); err != nil {
 		resourceUpToDate = false
 	}
 

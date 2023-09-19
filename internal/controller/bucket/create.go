@@ -135,20 +135,20 @@ WAIT:
 		case beName := <-readyChan:
 			c.log.Info("Bucket created", "backend name", beName, "bucket_name", bucket.Name)
 
-			err := c.updateObject(ctx, bucket, func(_, bucket *v1alpha1.Bucket) bool {
+			err := c.updateObject(ctx, bucket, func(_, bucket *v1alpha1.Bucket) UpdateRequired {
 				// Remove the annotation, because Crossplane is not always able to do it.
 				// This workaround doesn't eliminates the problem, if this update fails,
 				// Crossplane skips object forever.
 				delete(bucket.ObjectMeta.Annotations, meta.AnnotationKeyExternalCreatePending)
 
-				return false
-			}, func(_, bucket *v1alpha1.Bucket) bool {
+				return NeedsObjectUpdate
+			}, func(_, bucket *v1alpha1.Bucket) UpdateRequired {
 				bucket.Status.SetConditions(xpv1.Available())
 				bucket.Status.AtProvider.BackendStatuses = v1alpha1.BackendStatuses{
 					beName: v1alpha1.BackendReadyStatus,
 				}
 
-				return true
+				return NeedsStatusUpdate
 			})
 			if err != nil {
 				c.log.Info("Failed to update backend status", "backend name", beName, "bucket_name", bucket.Name)
@@ -170,10 +170,10 @@ WAIT:
 		}
 	}
 
-	err = c.updateObject(ctx, bucket, func(_, bucket *v1alpha1.Bucket) bool {
+	err = c.updateObject(ctx, bucket, func(_, bucket *v1alpha1.Bucket) UpdateRequired {
 		bucket.Status.SetConditions(xpv1.Unavailable())
 
-		return true
+		return NeedsStatusUpdate
 	})
 	if err != nil {
 		c.log.Info("Failed to update backend unavailable status", "bucket_name", bucket.Name)

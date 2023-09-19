@@ -78,14 +78,14 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.Wrap(err, errDeleteBucket)
 	}
 
-	err := c.updateObject(ctx, bucket, func(origBucket, bucket *v1alpha1.Bucket) bool {
+	err := c.updateObject(ctx, bucket, func(origBucket, bucket *v1alpha1.Bucket) UpdateRequired {
 		controllerutil.RemoveFinalizer(bucket, inUseFinalizer)
 
-		return false
-	}, func(origBucket, bucket *v1alpha1.Bucket) bool {
+		return NeedsObjectUpdate
+	}, func(origBucket, bucket *v1alpha1.Bucket) UpdateRequired {
 		setBucketStatus(bucket, bucketBackends)
 
-		return true
+		return NeedsStatusUpdate
 	})
 	if err != nil {
 		c.log.Info("Failed to update bucket before delete", "bucket_name", bucket.Name)

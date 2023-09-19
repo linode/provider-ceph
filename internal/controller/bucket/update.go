@@ -52,25 +52,25 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
-	err := c.updateObject(ctx, bucket, func(origBucket, bucket *v1alpha1.Bucket) bool {
+	err := c.updateObject(ctx, bucket, func(origBucket, bucket *v1alpha1.Bucket) UpdateRequired {
 		bucket.Status.Conditions = origBucket.Status.Conditions
 		bucket.Status.AtProvider.BackendStatuses = origBucket.Status.AtProvider.BackendStatuses
 
-		return true
-	}, func(origBucket, bucket *v1alpha1.Bucket) bool {
+		return NeedsStatusUpdate
+	}, func(origBucket, bucket *v1alpha1.Bucket) UpdateRequired {
 		bucket.Spec.Providers = origBucket.Spec.Providers
 
-		resourceUpToDate := true
+		allBucketsReady := true
 		for _, p := range bucket.Spec.Providers {
 			if bucket.Status.AtProvider.BackendStatuses[p] != v1alpha1.BackendReadyStatus {
-				resourceUpToDate = false
+				allBucketsReady = false
 
 				break
 			}
 		}
 
 		if !utils.IsHealthCheckBucket(bucket) &&
-			resourceUpToDate &&
+			allBucketsReady &&
 			(bucket.Spec.AutoPause || c.autoPauseBucket) &&
 			bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "" {
 			c.log.Info("Auto pausing bucket", "bucket_name", bucket.Name)
@@ -80,7 +80,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 		controllerutil.AddFinalizer(bucket, inUseFinalizer)
 
-		return false
+		return NeedsObjectUpdate
 	})
 	if err != nil {
 		c.log.Info("Failed to update bucket", "bucket_name", bucket.Name)

@@ -37,29 +37,44 @@ func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends) {
 	}
 }
 
-// Callbacks have to return false on object update and true on status update.
-// First bucket is the original, the second is the new version.
-func (c *external) updateObject(ctx context.Context, bucket *v1alpha1.Bucket, callbacks ...func(*v1alpha1.Bucket, *v1alpha1.Bucket) bool) error {
+type UpdateRequired int
+
+const (
+	NeedsStatusUpdate UpdateRequired = iota
+	NeedsObjectUpdate
+)
+
+// Callbacks have two parameters, first bucket is the original, the second is the new version og bucket.
+func (c *external) updateObject(ctx context.Context, bucket *v1alpha1.Bucket, callbacks ...func(*v1alpha1.Bucket, *v1alpha1.Bucket) UpdateRequired) error {
 	origBucket := bucket.DeepCopy()
 
 	nn := types.NamespacedName{Name: bucket.GetName()}
 
+	const (
+		steps  = 4
+		divide = 2
+		factor = 0.5
+		jitter = 0.1
+	)
+
 	for _, cb := range callbacks {
 		err := retry.OnError(wait.Backoff{
-			Steps:    4,
-			Duration: c.operationTimeout / 2,
-			Factor:   5.0,
-			Jitter:   0.1,
+			Steps:    steps,
+			Duration: c.operationTimeout / divide,
+			Factor:   factor,
+			Jitter:   jitter,
 		}, resource.IsAPIError, func() error {
 			if err := c.kubeClient.Get(ctx, nn, bucket); err != nil {
 				return err
 			}
 
-			stausUpdate := cb(origBucket, bucket)
-			if stausUpdate {
+			switch cb(origBucket, bucket) {
+			case NeedsStatusUpdate:
 				return c.kubeClient.Status().Update(ctx, bucket)
-			} else {
+			case NeedsObjectUpdate:
 				return c.kubeClient.Update(ctx, bucket)
+			default:
+				return nil
 			}
 		})
 

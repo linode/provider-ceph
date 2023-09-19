@@ -29,7 +29,10 @@ func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1
 		}, nil
 	})
 
-	sessionConfig, err := config.LoadDefaultConfig(ctx, config.WithEndpointResolverWithOptions(endpointResolver))
+	sessionConfig, err := config.LoadDefaultConfig(ctx,
+		config.WithEndpointResolverWithOptions(endpointResolver),
+		config.WithRetryMaxAttempts(retry.DefaultRetry.Steps),
+		config.WithRetryMode(aws.RetryModeStandard))
 	if err != nil {
 		return nil, err
 	}
@@ -37,9 +40,6 @@ func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1
 	// By default make sure a region is specified, this is required for S3 operations
 	region := defaultRegion
 	sessionConfig.Region = aws.ToString(&region)
-
-	sessionConfig.RetryMaxAttempts = retry.DefaultRetry.Steps
-	sessionConfig.RetryMode = aws.RetryModeStandard
 
 	sessionConfig.Credentials = aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(string(data[accessKey]), string(data[secretKey]), ""))
 

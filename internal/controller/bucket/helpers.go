@@ -2,6 +2,7 @@ package bucket
 
 import (
 	"context"
+	"fmt"
 
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -10,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -36,13 +38,19 @@ func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends) {
 }
 
 // Callbacks have to return false on object update and true on status update.
-// First bucket is the original the second is the new.
+// First bucket is the original, the second is the new version.
 func (c *external) updateObject(ctx context.Context, bucket *v1alpha1.Bucket, callbacks ...func(*v1alpha1.Bucket, *v1alpha1.Bucket) bool) error {
 	origBucket := bucket.DeepCopy()
 
+	nn := types.NamespacedName{Name: bucket.GetName()}
+
 	for _, cb := range callbacks {
-		err := retry.OnError(retry.DefaultRetry, resource.IsAPIError, func() error {
-			nn := types.NamespacedName{Name: bucket.GetName()}
+		err := retry.OnError(wait.Backoff{
+			Steps:    4,
+			Duration: c.operationTimeout / 2,
+			Factor:   5.0,
+			Jitter:   0.1,
+		}, resource.IsAPIError, func() error {
 			if err := c.kubeClient.Get(ctx, nn, bucket); err != nil {
 				return err
 			}
@@ -62,7 +70,7 @@ func (c *external) updateObject(ctx context.Context, bucket *v1alpha1.Bucket, ca
 				break
 			}
 
-			return err
+			return fmt.Errorf("unable to update object: %w", err)
 		}
 	}
 

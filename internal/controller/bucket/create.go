@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
@@ -91,18 +92,18 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 				}
 			}
 
-			if err != nil {
-				c.log.Info("Failed to create bucket on backend", "backend name", beName, "bucket_name", originalBucket.Name, "err", err.Error())
-
-				errChan <- err
-
-				return
-			}
-
 			if !updated.CompareAndSwap(false, true) {
 				c.log.Info("Bucket already updated", "bucket_name", originalBucket.Name)
 
 				errChan <- nil
+
+				return
+			}
+
+			if err != nil {
+				c.log.Info("Failed to create bucket on backend", "backend name", beName, "bucket_name", originalBucket.Name)
+
+				errChan <- err
 
 				return
 			}
@@ -118,10 +119,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, nil
 	}
 
-	return c.waitForCreation(ctx, bucket, readyChan, errChan, errorsLeft)
+	return c.waitForCreationAndUpdateObject(ctx, bucket, readyChan, errChan, errorsLeft)
 }
 
-func (c *external) waitForCreation(ctx context.Context, bucket *v1alpha1.Bucket, readyChan <-chan string, errChan <-chan error, errorsLeft int) (managed.ExternalCreation, error) {
+func (c *external) waitForCreationAndUpdateObject(ctx context.Context, bucket *v1alpha1.Bucket, readyChan <-chan string, errChan <-chan error, errorsLeft int) (managed.ExternalCreation, error) {
 	var err error
 
 WAIT:
@@ -135,6 +136,13 @@ WAIT:
 			c.log.Info("Bucket created", "backend name", beName, "bucket_name", bucket.Name)
 
 			err := c.updateObject(ctx, bucket, func(_, bucket *v1alpha1.Bucket) bool {
+				// Remove the annotation, because Crossplane is not always able to do it.
+				// This workaround doesn't eliminates the problem, if this update fails,
+				// Crossplane skips object forever.
+				delete(bucket.ObjectMeta.Annotations, meta.AnnotationKeyExternalCreatePending)
+
+				return false
+			}, func(_, bucket *v1alpha1.Bucket) bool {
 				bucket.Status.SetConditions(xpv1.Available())
 				bucket.Status.AtProvider.BackendStatuses = v1alpha1.BackendStatuses{
 					beName: v1alpha1.BackendReadyStatus,

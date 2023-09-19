@@ -196,6 +196,6 @@ func main() {
 	}
 
 	backendStore := backendstore.NewBackendStore()
-	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore, *autoPauseBucket, *reconcileTimeout), "Cannot setup Ceph controllers")
+	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore, *autoPauseBucket, *pollInterval, *reconcileTimeout), "Cannot setup Ceph controllers")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }

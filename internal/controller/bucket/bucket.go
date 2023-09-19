@@ -72,7 +72,7 @@ var (
 )
 
 // Setup adds a controller that reconciles Bucket managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore, autoPauseBucket bool, operationTimeout time.Duration) error {
+func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore, autoPauseBucket bool, pollInterval, operationTimeout time.Duration) error {
 	name := managed.ControllerName(v1alpha1.BucketGroupKind)
 
 	cps := []managed.ConnectionPublisher{managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())}
@@ -82,6 +82,8 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore,
 
 	opts := []managed.ReconcilerOption{
 		managed.WithCriticalAnnotationUpdater(managed.NewRetryingCriticalAnnotationUpdater(mgr.GetClient())),
+		managed.WithTimeout(operationTimeout + time.Second),
+		managed.WithPollInterval(pollInterval),
 		managed.WithExternalConnecter(&connector{
 			kube:             mgr.GetClient(),
 			autoPauseBucket:  autoPauseBucket,

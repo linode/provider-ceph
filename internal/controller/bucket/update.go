@@ -19,7 +19,6 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
-	"github.com/linode/provider-ceph/pkg/utils"
 )
 
 //nolint:gocyclo,cyclop // Function requires numerous checks.
@@ -32,7 +31,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
-	if utils.IsHealthCheckBucket(bucket) {
+	if v1alpha1.IsHealthCheckBucket(bucket) {
 		c.log.Info("Update is NOOP for health check bucket - updates performed by health-check-controller", "bucket", bucket.Name)
 
 		return managed.ExternalUpdate{}, nil
@@ -69,7 +68,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			}
 		}
 
-		if !utils.IsHealthCheckBucket(bucket) &&
+		if !v1alpha1.IsHealthCheckBucket(bucket) &&
 			allBucketsReady &&
 			(bucket.Spec.AutoPause || c.autoPauseBucket) &&
 			bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "" {

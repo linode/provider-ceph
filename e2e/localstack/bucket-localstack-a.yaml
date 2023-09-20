@@ -5,4 +5,5 @@ metadata:
 spec:
   providers:
   - localstack-a
+  - localstack-d
   forProvider: {}

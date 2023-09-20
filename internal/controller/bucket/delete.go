@@ -13,7 +13,6 @@ import (
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
-	"github.com/linode/provider-ceph/pkg/utils"
 )
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
@@ -25,7 +24,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
-	if utils.IsHealthCheckBucket(bucket) {
+	if v1alpha1.IsHealthCheckBucket(bucket) {
 		c.log.Info("Delete is NOOP for health check bucket as it is owned by, and garbage collected on deletion of its related providerconfig", "bucket", bucket.Name)
 
 		return nil

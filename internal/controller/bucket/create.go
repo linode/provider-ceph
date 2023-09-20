@@ -16,7 +16,6 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
-	"github.com/linode/provider-ceph/pkg/utils"
 )
 
 //nolint:maintidx,gocognit,gocyclo,cyclop,nolintlint // Function requires numerous checks.
@@ -73,7 +72,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
 		}
 
-		if utils.IsHealthCheckBucket(bucket) && pc.Spec.DisableHealthCheck {
+		if v1alpha1.IsHealthCheckBucket(bucket) && pc.Spec.DisableHealthCheck {
 			c.log.Info("Health check is disabled on backend - health-check-bucket will not be created", "backend name", beName)
 
 			continue

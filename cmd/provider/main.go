@@ -47,6 +47,7 @@ import (
 	"github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	ceph "github.com/linode/provider-ceph/internal/controller"
+	"github.com/linode/provider-ceph/internal/controller/bucket"
 	"github.com/linode/provider-ceph/internal/features"
 )
 
@@ -203,7 +204,7 @@ func main() {
 	if *enableWebhooks {
 		kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
 			For(&providercephv1alpha1.Bucket{}).
-			WithValidator(providercephv1alpha1.BucketValidator).
+			WithValidator(bucket.NewBucketValidator(mgr.GetClient())).
 			Complete(), "Cannot setup bucket validating webhook")
 	}
 

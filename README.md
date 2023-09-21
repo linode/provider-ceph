@@ -50,6 +50,7 @@ spec:
   package: xpkg.upbound.io/linode/provider-ceph:v0.0.16
 EOF
 ```
+See [WEBHOOKS.md](docs/WEBHOOKS.md) for instructions on how to enable webhooks.
 
 ## Contact
 - Slack: Join our [#provider-ceph](https://crossplane.slack.com/archives/C05RKQRNDHA) slack channel.

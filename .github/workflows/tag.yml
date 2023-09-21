@@ -18,8 +18,8 @@ jobs:
       MESSAGE: ${{ github.event.inputs.message }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
     - name: Update image tag
       run: /bin/bash ./hack/update-image-tag.sh $VERSION

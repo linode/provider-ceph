@@ -10,7 +10,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-provider-ceph-crossplane-io-v1alpha1-bucket
+      path: /validate-provider-ceph-ceph-crossplane-io-v1alpha1-bucket
   failurePolicy: Fail
   name: bucket.providerceph.crossplane.io
   rules:

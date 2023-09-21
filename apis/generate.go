@@ -30,7 +30,7 @@ limitations under the License.
 //go:generate go run -tags generate github.com/crossplane/crossplane-tools/cmd/angryjet generate-methodsets --header-file=../hack/boilerplate.go.txt ./...
 
 // Generate webhook manifests
-//go:generate go run -tags generate sigs.k8s.io/controller-tools/cmd/controller-gen webhook paths=./... output:artifacts:config=../package/webhookconfigurations
+//go:generate go run -tags generate sigs.k8s.io/controller-tools/cmd/controller-gen webhook paths=../internal/controller/bucket output:artifacts:config=../package/webhookconfigurations
 
 package apis
 

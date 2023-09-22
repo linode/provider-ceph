@@ -53,4 +53,3 @@ jobs:
           --body "This PR is created by GitHub Actions."
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  

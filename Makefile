@@ -106,8 +106,8 @@ build.init: $(UP)
 run: go.build
 	@$(INFO) Running Crossplane locally out-of-cluster . . .
 	@# To see other arguments that can be provided, run the command with --help instead
-	# TODO: Webhooks are not enabled for local run.
-	# A workaround for tls certs is required.
+	@# TODO: Webhooks are not enabled for local run.
+	@# A workaround for tls certs is required.
 	$(GO_OUT_DIR)/provider --zap-devel
 
 # Spin up a Kind cluster and localstack.
@@ -129,7 +129,7 @@ crossplane-cluster: $(HELM3) cluster
 	@$(INFO) Installing Crossplane
 	@$(HELM3) repo add crossplane-stable https://charts.crossplane.io/stable
 	@$(HELM3) repo update
-	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane --set webhooks.enabled=true
+	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane
 	@$(OK) Installing Crossplane
 
 # Build the controller image and the provider package. 
@@ -172,8 +172,7 @@ dev-cluster: $(KUBECTL) cluster
 	@$(INFO) Installing CRDs and ProviderConfig
 	@$(KUBECTL) apply -k https://github.com/crossplane/crossplane//cluster?ref=master
 	@$(KUBECTL) apply -R -f package/crds
-	#TODO: apply package/webhookconfigurations when webhooks
-	# can be enabled locally.
+	@# TODO: apply package/webhookconfigurations when webhooks can be enabled locally.
 	@$(KUBECTL) apply -R -f e2e/localstack/localstack-provider-cfg.yaml
 	@$(OK) Installing CRDs and ProviderConfig
 

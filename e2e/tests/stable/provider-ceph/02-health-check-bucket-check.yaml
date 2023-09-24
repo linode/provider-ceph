@@ -1,6 +1,6 @@
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
-  - command: ../../../../hack/expect_bucket.sh bucket_exists localstack-a-health-check localhost:4566
-  - command: ../../../../hack/expect_bucket.sh bucket_exists localstack-b-health-check localhost:4567
-  - command: ../../../../hack/expect_bucket.sh bucket_exists localstack-c-health-check localhost:4568
+  - command: ../../../../hack/expect_bucket.sh bucket_exists localstack-a-health-check local-dev-control-plane:32566
+  - command: ../../../../hack/expect_bucket.sh bucket_exists localstack-b-health-check local-dev-control-plane:32567
+  - command: ../../../../hack/expect_bucket.sh bucket_exists localstack-c-health-check local-dev-control-plane:32568

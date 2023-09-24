@@ -33,3 +33,33 @@ metadata:
   name: localstack-c
 status:
   health: Healthy
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: localstack-a
+  name: localstack-a
+  namespace: crossplane-system
+status:
+  availableReplicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: localstack-b
+  name: localstack-b
+  namespace: crossplane-system
+status:
+  availableReplicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: localstack-c
+  name: localstack-c
+  namespace: crossplane-system
+status:
+  availableReplicas: 1

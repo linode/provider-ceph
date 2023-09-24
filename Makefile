@@ -11,6 +11,7 @@ PLATFORMS ?= linux_amd64 linux_arm64
 # Please edit LATEST_KIND_NODE instead and run 'make update-kind-nodes'.
 TEST_KIND_NODES ?= 1.25.0,1.26.0,1.27.0
 
+LATEST_KUBE_VERSION ?= 1.27
 LATEST_KIND_NODE ?= 1.27.0
 REPO ?= provider-ceph
 
@@ -113,16 +114,10 @@ run: go.build
 # Spin up a Kind cluster and localstack.
 # Create k8s service to allows pods to communicate with
 # localstack.
-cluster: $(KIND) $(KUBECTL) $(COMPOSE) cluster-clean
-	@$(INFO) Creating localstack
-	@$(COMPOSE) -f e2e/localstack/docker-compose.yml up -d
-	@$(OK) Creating localstack
+cluster: $(KIND) $(KUBECTL) cluster-clean
 	@$(INFO) Creating kind cluster
-	@$(KIND) create cluster --name=$(KIND_CLUSTER_NAME)
+	@$(KIND) create cluster --name=$(KIND_CLUSTER_NAME) --config e2e/kind/kind-config-$(LATEST_KUBE_VERSION).yaml
 	@$(OK) Creating kind cluster
-	@$(INFO) Creating Localstack Service
-	@$(KUBECTL) apply -R -f e2e/localstack/service.yaml
-	@$(OK) Creating Localstack Service
 
 # Spin up a Kind cluster and localstack and install Crossplane via Helm.
 crossplane-cluster: $(HELM3) cluster
@@ -154,7 +149,7 @@ load-package: $(KIND) build
 # Destroy Kind and localstack.
 kuttl: $(KUTTL) crossplane-cluster load-package
 	@$(INFO) Running kuttl test suite
-	@$(KUTTL) test --config e2e/kuttl/stable/provider-ceph-1.27.yaml
+	@$(KUTTL) test --config e2e/kuttl/stable/provider-ceph-$(LATEST_KUBE_VERSION).yaml
 	@$(OK) Running kuttl test suite
 	@$(MAKE) cluster-clean
 
@@ -162,7 +157,7 @@ ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
 	@$(INFO) Creating kind cluster
 	@$(KIND) create cluster --name=$(KIND_CLUSTER_NAME)
 	@$(OK) Creating kind cluster
-	@$(KUTTL) test --config e2e/kuttl/ceph/provider-ceph-1.27.yaml
+	@$(KUTTL) test --config e2e/kuttl/ceph/provider-ceph-$(LATEST_KUBE_VERSION).yaml
 
 # Spin up a Kind cluster and localstack and install Crossplane CRDs (not
 # containerised Crossplane componenets).
@@ -181,13 +176,10 @@ dev-cluster: $(KUBECTL) cluster
 dev: dev-cluster run
 
 # Destroy Kind cluster and localstack.
-cluster-clean: $(KIND) $(KUBECTL) $(COMPOSE)
+cluster-clean: $(KIND) $(KUBECTL)
 	@$(INFO) Deleting kind cluster
 	@$(KIND) delete cluster --name=$(KIND_CLUSTER_NAME)
 	@$(OK) Deleting kind cluster
-	@$(INFO) Tearing down localstack
-	@$(COMPOSE) -f e2e/localstack/docker-compose.yml stop
-	@$(OK) Tearing down localstack
 
 .PHONY: submodules fallthrough test-integration run cluster dev-cluster dev cluster-clean
 
@@ -247,14 +239,6 @@ crossplane.help:
 help-special: crossplane.help
 
 .PHONY: crossplane.help help-special aws
-
-# Install Docker Compose to run localstack.
-COMPOSE ?= $(shell pwd)/bin/docker-compose
-compose:
-ifeq (,$(wildcard $(COMPOSE)))
-	curl -sL https://github.com/docker/compose/releases/download/v2.17.3/docker-compose-linux-x86_64 -o $(COMPOSE)
-	chmod +x $(COMPOSE)
-endif
 
 # Install aws cli for testing.
 AWS ?= /usr/local/bin/aws

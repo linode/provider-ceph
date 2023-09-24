@@ -19,14 +19,14 @@ metadata:
   name: localstack-a
   namespace: crossplane-system
 spec:
-  hostBase: "172.17.0.1:4566"
+  hostBase: "localstack-a:32566"
   credentials:
     source: Secret
     secretRef:
       namespace: crossplane-system
       name: localstack
       key: credentials
-  disableHealthCheck: true
+  disableHealthCheck: false
 ---
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
@@ -34,14 +34,14 @@ metadata:
   name: localstack-b
   namespace: crossplane-system
 spec:
-  hostBase: "172.17.0.1:4567"
+  hostBase: "localstack-b:32567"
   credentials:
     source: Secret
     secretRef:
       namespace: crossplane-system
       name: localstack
       key: credentials
-  disableHealthCheck: true
+  disableHealthCheck: false
 ---
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
@@ -49,11 +49,11 @@ metadata:
   name: localstack-c
   namespace: crossplane-system
 spec:
-  hostBase: "172.17.0.1:4568"
+  hostBase: "localstack-c:32568"
   credentials:
     source: Secret
     secretRef:
       namespace: crossplane-system
       name: localstack
       key: credentials
-  disableHealthCheck: true
+  disableHealthCheck: false

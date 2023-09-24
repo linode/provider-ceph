@@ -2,6 +2,12 @@
 
 bucketname=$2
 address=$3
+
+if ! ping -c 1 ${address%:*} &>/dev/null; then
+    # Resolve IP by node name.
+    address="$(kubectl get no ${address%:*} -o jsonpath='{.status.addresses[0].address}'):${address#*:}"
+fi
+
 # Check whether the bucket already exists. 
 # We suppress all output - we're interested only in the return code.
 
@@ -14,7 +20,7 @@ bucket_exists() {
         echo "pass: bucket $bucketname found"
         return 0
     else
-        echo "error: bucket not found"
+        echo "error: bucket not found on $address"
         return 1
     fi
 }

@@ -1,0 +1,203 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: localstack-a
+  name: localstack-a
+  namespace: crossplane-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: localstack-a
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        io.kompose.service: localstack-a
+    spec:
+      containers:
+        - env:
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: S3_DIR
+              value: /tmp/data
+            - name: DEBUG
+              value: "1"
+            - name: EDGE_PORT
+              value: "32566"
+            - name: MAIN_CONTAINER_NAME
+              value: localstack-a
+            - name: SERVICES
+              value: s3
+          image: localstack/localstack:2.2
+          name: localstack-a
+          ports:
+            - containerPort: 32510
+            - containerPort: 32566
+          resources: {}
+          volumeMounts:
+            - mountPath: /tmp/data
+              name: data-dir
+      hostname: localstack-a
+      restartPolicy: Always
+      volumes:
+        - name: data-dir
+          emptyDir:
+            sizeLimit: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    io.kompose.service: localstack-a
+  name: localstack-a
+  namespace: crossplane-system
+spec:
+  type: NodePort
+  ports:
+    - name: "32510"
+      nodePort: 32510
+      port: 32510
+    - name: "32566"
+      nodePort: 32566
+      port: 32566
+  selector:
+    io.kompose.service: localstack-a
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: localstack-b
+  name: localstack-b
+  namespace: crossplane-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: localstack-b
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        io.kompose.service: localstack-b
+    spec:
+      containers:
+        - env:
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: S3_DIR
+              value: /tmp/data
+            - name: DEBUG
+              value: "1"
+            - name: EDGE_PORT
+              value: "32567"
+            - name: MAIN_CONTAINER_NAME
+              value: localstack-b
+            - name: SERVICES
+              value: s3
+          image: localstack/localstack:2.2
+          name: localstack-b
+          ports:
+            - containerPort: 32511
+            - containerPort: 32567
+          resources: {}
+          volumeMounts:
+            - mountPath: /tmp/data
+              name: data-dir
+      hostname: localstack-b
+      restartPolicy: Always
+      volumes:
+        - name: data-dir
+          emptyDir:
+            sizeLimit: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    io.kompose.service: localstack-b
+  name: localstack-b
+  namespace: crossplane-system
+spec:
+  type: NodePort
+  ports:
+    - name: "32511"
+      nodePort: 32511
+      port: 32511
+    - name: "32567"
+      nodePort: 32567
+      port: 32567
+  selector:
+    io.kompose.service: localstack-b
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: localstack-c
+  name: localstack-c
+  namespace: crossplane-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: localstack-c
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        io.kompose.service: localstack-c
+    spec:
+      containers:
+        - env:
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: S3_DIR
+              value: /tmp/data
+            - name: DEBUG
+              value: "1"
+            - name: EDGE_PORT
+              value: "32568"
+            - name: MAIN_CONTAINER_NAME
+              value: localstack-c
+            - name: SERVICES
+              value: s3
+          image: localstack/localstack:2.2
+          name: localstack-c
+          ports:
+            - containerPort: 32512
+            - containerPort: 32568
+          resources: {}
+          volumeMounts:
+            - mountPath: /tmp/data
+              name: data-dir
+      hostname: localstack-c
+      restartPolicy: Always
+      volumes:
+        - name: data-dir
+          emptyDir:
+            sizeLimit: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    io.kompose.service: localstack-c
+  name: localstack-c
+  namespace: crossplane-system
+spec:
+  type: NodePort
+  ports:
+    - name: "32512"
+      nodePort: 32512
+      port: 32512
+    - name: "32568"
+      nodePort: 32568
+      port: 32568
+  selector:
+    io.kompose.service: localstack-c

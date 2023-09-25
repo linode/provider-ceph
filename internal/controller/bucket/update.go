@@ -33,7 +33,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	defer cancel()
 
 	if utils.IsHealthCheckBucket(bucket) {
-		c.log.Info("Update is NOOP for health check bucket - updates performed by heath-check-controller", "bucket", bucket.Name)
+		c.log.Info("Update is NOOP for health check bucket - updates performed by health-check-controller", "bucket", bucket.Name)
 
 		return managed.ExternalUpdate{}, nil
 	}

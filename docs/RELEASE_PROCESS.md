@@ -6,16 +6,7 @@ Here is a simplified set of steps to create a release for `provider-ceph`.
 
 1. **feature freeze**: Merge all completed features into main development branch of all repos to begin "feature freeze" period.
 2. **pin dependencies**: Update the go module on main development branch to depend on stable versions of dependencies if needed.
-3. **branch repo**: Create a new release branch using the GitHub UI for the repo.
-4. **release branch prep**: Make any release-specific updates on the release branch.
-   
-   **Important**: Set the controller image version to the release version (e.g. v0.0.2) in
-    * `package/crossplane.yaml` https://github.com/linode/provider-ceph/blob/d851260fc3480e9b7bb36064516e289eb734a036/package/crossplane.yaml#L15
-    * `README.MD` https://github.com/linode/provider-ceph/blob/d851260fc3480e9b7bb36064516e289eb734a036/README.md?plain=1#L55 https://github.com/linode/provider-ceph/blob/d851260fc3480e9b7bb36064516e289eb734a036/README.md?plain=1#L66
-   
-   This is a required step due to issue #14 which is due to be fixed.
-   
-   **Important**: Set the cont
-   
-6. **tag release**: Run the Tag action on the release branch with the desired version (e.g. v0.0.2).
-7. **build/publish**: Run the CI and Configurations action on the release branch with the version that was just tagged. The released package will be published on the upbound marketplace [here](https://marketplace.upbound.io/account/linode/provider-ceph). 
+3. **tag release**: Run the Tag action on the main development branch with the desired version (e.g., v0.0.2).
+    1. The action will create a release branch (e.g., release-v0.0.2), update the controller version and README, and make a tag with the release branch.
+    2. The action also make a PR to the main development branch. Please review/merge it to record the release.
+4. **build/publish**: Run the CI and Configurations action on the release branch with the version that was just tagged. The released package will be published on the upbound marketplace [here](https://marketplace.upbound.io/account/linode/provider-ceph). 

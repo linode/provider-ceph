@@ -16,26 +16,40 @@ jobs:
     env:
       VERSION: ${{ github.event.inputs.version }}
       MESSAGE: ${{ github.event.inputs.message }}
-
+      BRANCH: "release-${{ github.event.inputs.version }}"
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-
-    - name: Update image tag
-      run: /bin/bash ./hack/update-image-tag.sh $VERSION
 
     - name: Set git config
       run: |
         git config user.name "GitHub Actions"
         git config user.email "<>"
 
+    - name: Create a new branch
+      run: |
+        git checkout -b $BRANCH
+
+    - name: Update image tag
+      run: /bin/bash ./hack/update-image-tag.sh $VERSION
+
     - name: Commit
       run: |
         git add .
-        git commit -m "New version: ${VERSION}"
-        git push origin ${GITHUB_REF#refs/heads/}
+        git commit -m "Bump version: ${VERSION}"
+        git push --set-upstream origin $BRANCH
 
     - name: Tag
       run: |
         git tag $VERSION -m "$MESSAGE"
         git push origin $VERSION
+
+    - name: Create a PR
+      run: |
+        gh pr create \
+          --base ${GITHUB_REF#refs/heads/} \
+          --head $BRANCH \
+          --title "Bump version: ${VERSION}" \
+          --body "This PR is created by GitHub Actions."
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

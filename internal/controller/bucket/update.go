@@ -63,7 +63,12 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			allBucketsReady := true
 			for _, p := range bucket.Spec.Providers {
-				if bucket.Status.AtProvider.BackendStatuses[p] != v1alpha1.BackendReadyStatus {
+				if _, ok := bucket.Status.AtProvider.Backends[p]; !ok {
+					allBucketsReady = false
+
+					break
+				}
+				if bucket.Status.AtProvider.Backends[p].BucketStatus != v1alpha1.ReadyStatus {
 					allBucketsReady = false
 
 					break
@@ -130,7 +135,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 
 		beName := backendName
 		g.Go(func() error {
-			bucketBackends.setBucketBackendStatus(bucket.Name, beName, v1alpha1.NotReadyStatus)
+			bucketBackends.setBucketStatus(bucket.Name, beName, v1alpha1.NotReadyStatus)
 
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				bucketExists, err := s3internal.BucketExists(ctx, cl, bucket.Name)
@@ -138,12 +143,12 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 					return err
 				}
 				if !bucketExists {
-					bucketBackends.deleteBucketBackend(bucket.Name, beName)
+					bucketBackends.deleteBackend(bucket.Name, beName)
 
 					return nil
 				}
 
-				bucketBackends.setBucketBackendStatus(bucket.Name, beName, v1alpha1.NotReadyStatus)
+				bucketBackends.setBucketStatus(bucket.Name, beName, v1alpha1.NotReadyStatus)
 
 				err = c.update(ctx, bucket, cl)
 				if err == nil {
@@ -154,7 +159,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 						break
 					}
 
-					bucketBackends.setBucketBackendStatus(bucket.Name, beName, v1alpha1.ReadyStatus)
+					bucketBackends.setBucketStatus(bucket.Name, beName, v1alpha1.ReadyStatus)
 				}
 			}
 

@@ -18,7 +18,7 @@ func newBucketBackends() *bucketBackends {
 	}
 }
 
-func (b *bucketBackends) setBucketBackendStatus(bucketName, backendName string, status v1alpha1.Status) {
+func (b *bucketBackends) setBucketStatus(bucketName, backendName string, status v1alpha1.Status) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -33,7 +33,7 @@ func (b *bucketBackends) setBucketBackendStatus(bucketName, backendName string, 
 	b.backends[bucketName][backendName].BucketStatus = status
 }
 
-func (b *bucketBackends) deleteBucketBackend(bucketName, backendName string) {
+func (b *bucketBackends) deleteBackend(bucketName, backendName string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if _, ok := b.backends[bucketName]; !ok {

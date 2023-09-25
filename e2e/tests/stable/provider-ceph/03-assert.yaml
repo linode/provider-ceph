@@ -1,0 +1,20 @@
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: bucket-for-all-prov-set
+status:
+  atProvider:
+    backends:
+      localstack-a:
+        bucketStatus: "Ready"
+      localstack-b:
+        bucketStatus: "Ready"
+      localstack-c:
+        bucketStatus: "Ready"
+  conditions:
+  - reason: Available
+    status: "True"
+    type: Ready
+  - reason: ReconcileSuccess
+    status: "True"
+    type: Synced

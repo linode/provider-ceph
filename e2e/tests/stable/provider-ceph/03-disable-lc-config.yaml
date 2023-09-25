@@ -7,7 +7,7 @@ spec:
   - localstack-a
   - localstack-b
   - localstack-c
-  lifecycleConfigurationDisabled: false
+  lifecycleConfigurationDisabled: true
   forProvider:
     lifecycleConfiguration:
       rules:
@@ -17,11 +17,4 @@ spec:
           days: 1
         filter:
           prefix: "images/"
----
-apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
-kind: Bucket
-metadata:
-  name: bucket-for-all-prov-empty
-spec:
-  autoPause: true
-  forProvider: {}
+

@@ -10,10 +10,13 @@ status:
     backends:
       localstack-a:
         bucketStatus: "Ready"
+        lifecycleConfigurationStatus: "Ready"
       localstack-b:
         bucketStatus: "Ready"
+        lifecycleConfigurationStatus: "Ready"
       localstack-c:
         bucketStatus: "Ready"
+        lifecycleConfigurationStatus: "Ready"
   conditions:
   - reason: Available
     status: "True"

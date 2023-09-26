@@ -77,8 +77,8 @@ func main() {
 
 		autoPauseBucket = app.Flag("auto-pause-bucket", "Enable auto pause of reconciliation of ready buckets").Default("false").Envar("AUTO_PAUSE_BUCKET").Bool()
 
-		webhookTLSCertDir = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
-		enableWebhooks    = app.Flag("enable-webhooks", "Enable support for Webhooks.").Default("false").Bool()
+		webhookTLSCertDir        = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
+		enableValidationWebhooks = app.Flag("enable-validation-webhooks", "Enable support for Webhooks.").Default("false").Bool()
 	)
 
 	var zo zap.Options
@@ -201,7 +201,7 @@ func main() {
 		log.Info("Alpha feature enabled", "flag", features.EnableAlphaManagementPolicies)
 	}
 
-	if *enableWebhooks {
+	if *enableValidationWebhooks {
 		kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
 			For(&providercephv1alpha1.Bucket{}).
 			WithValidator(bucket.NewBucketValidator(mgr.GetClient())).

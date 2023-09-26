@@ -23,7 +23,7 @@ metadata:
   name: provider-ceph
 spec:
   args:
-  - "--enable-webhooks"
+  - "--enable-validation-webhooks"
 ```
 **Note:** `ControllerConfig` has been deprecated, but remains in use until an alternative exists.
 

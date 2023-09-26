@@ -13,7 +13,7 @@ func TestMissingStrings(t *testing.T) {
 		sliceB  []string
 		missing []string
 	}{
-		"All spec.sliceA found": {
+		"All strings in sliceA found in sliceB": {
 			sliceA: []string{
 				"cluster-1",
 				"cluster-2",
@@ -25,7 +25,7 @@ func TestMissingStrings(t *testing.T) {
 			},
 			missing: nil,
 		},
-		"No spec.sliceA found": {
+		"All strings in sliceA missing from sliceB": {
 			sliceA: []string{
 				"cluster-1",
 				"cluster-2",
@@ -40,7 +40,7 @@ func TestMissingStrings(t *testing.T) {
 				"cluster-2",
 			},
 		},
-		"No ProviderConfigs exist": {
+		"All strings in sliceA missing from empty sliceB": {
 			sliceA: []string{
 				"cluster-1",
 				"cluster-2",
@@ -51,7 +51,7 @@ func TestMissingStrings(t *testing.T) {
 				"cluster-2",
 			},
 		},
-		"Some spec.sliceA found": {
+		"One string in sliceA is missing from sliceB, others are found": {
 			sliceA: []string{
 				"cluster-1",
 				"cluster-2",
@@ -74,7 +74,7 @@ func TestMissingStrings(t *testing.T) {
 			t.Parallel()
 			missing := MissingStrings(tc.sliceA, tc.sliceB)
 			if diff := cmp.Diff(tc.missing, missing); diff != "" {
-				t.Errorf("\n%s\nmissing(...): -want, +got:\n%s\n", n, diff)
+				t.Errorf("\n%s\nMissingStrings(...): -want, +got:\n%s\n", n, diff)
 			}
 		})
 	}

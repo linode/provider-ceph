@@ -15,7 +15,6 @@ import (
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
-	"github.com/linode/provider-ceph/pkg/utils"
 )
 
 //nolint:gocyclo,cyclop // Function requires numerous checks.
@@ -51,7 +50,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			break
 		}
 	}
-	if !available && !utils.IsHealthCheckBucket(bucket) {
+	if !available && !v1alpha1.IsHealthCheckBucket(bucket) {
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,

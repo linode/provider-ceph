@@ -43,7 +43,6 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
-	"github.com/linode/provider-ceph/pkg/utils"
 )
 
 const (
@@ -184,7 +183,7 @@ func (r *HealthCheckReconciler) createHealthCheckBucket(ctx context.Context, pro
 	hcBucket.Spec.ProviderConfigReference = &commonv1.Reference{Name: providerConfig.Name}
 	// Add health-check label so that bucket controller knows to ignore Update/Delete calls.
 	bucketLabels := make(map[string]string)
-	bucketLabels[utils.HealthCheckLabelKey] = utils.HealthCheckLabelVal
+	bucketLabels[v1alpha1.HealthCheckLabelKey] = v1alpha1.HealthCheckLabelVal
 	hcBucket.SetLabels(bucketLabels)
 
 	return r.kubeClient.Create(ctx, hcBucket)

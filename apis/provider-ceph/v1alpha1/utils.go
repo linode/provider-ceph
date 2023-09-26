@@ -14,16 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
-
-import "github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+package v1alpha1
 
 const (
 	HealthCheckLabelKey = "provider-ceph.crossplane.io"
 	HealthCheckLabelVal = "health-check-bucket"
 )
 
-func IsHealthCheckBucket(bucket *v1alpha1.Bucket) bool {
+func IsHealthCheckBucket(bucket *Bucket) bool {
 	if val, ok := bucket.GetLabels()[HealthCheckLabelKey]; ok {
 		if val == HealthCheckLabelVal {
 			return true

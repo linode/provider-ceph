@@ -201,14 +201,16 @@ func main() {
 		log.Info("Alpha feature enabled", "flag", features.EnableAlphaManagementPolicies)
 	}
 
+	backendStore := backendstore.NewBackendStore()
+
 	if *enableValidationWebhooks {
+		bucketValidator := bucket.NewBucketValidator(backendStore)
 		kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
 			For(&providercephv1alpha1.Bucket{}).
-			WithValidator(bucket.NewBucketValidator(mgr.GetClient())).
+			WithValidator(bucketValidator).
 			Complete(), "Cannot setup bucket validating webhook")
 	}
 
-	backendStore := backendstore.NewBackendStore()
 	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore, *autoPauseBucket, *pollInterval, *reconcileTimeout), "Cannot setup Ceph controllers")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }

@@ -22,19 +22,19 @@ import (
 
 	"github.com/crossplane/crossplane-runtime/pkg/webhook"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
-	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/utils"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 type BucketValidator struct {
-	validator  *webhook.Validator
-	kubeClient client.Client
+	validator    *webhook.Validator
+	backendStore *backendstore.BackendStore
 }
 
-func NewBucketValidator(kubeClient client.Client) *BucketValidator {
+func NewBucketValidator(b *backendstore.BackendStore) *BucketValidator {
 	bucketValidator := &BucketValidator{}
 	validator := webhook.NewValidator()
 
@@ -43,7 +43,7 @@ func NewBucketValidator(kubeClient client.Client) *BucketValidator {
 	validator.DeletionChain = append(validator.DeletionChain, bucketValidator.ValidateDelete)
 
 	bucketValidator.validator = validator
-	bucketValidator.kubeClient = kubeClient
+	bucketValidator.backendStore = b
 
 	return bucketValidator
 }
@@ -56,7 +56,7 @@ func (b *BucketValidator) ValidateCreate(ctx context.Context, obj runtime.Object
 		return nil, errors.New(errNotBucket)
 	}
 
-	return nil, b.validateCreateOrUpdate(ctx, bucket)
+	return nil, b.validateCreateOrUpdate(bucket)
 }
 
 func (b *BucketValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
@@ -65,14 +65,14 @@ func (b *BucketValidator) ValidateUpdate(ctx context.Context, oldObj, newObj run
 		return nil, errors.New(errNotBucket)
 	}
 
-	return nil, b.validateCreateOrUpdate(ctx, bucket)
+	return nil, b.validateCreateOrUpdate(bucket)
 }
 
 func (b *BucketValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
-func (b *BucketValidator) validateCreateOrUpdate(ctx context.Context, bucket *v1alpha1.Bucket) error {
+func (b *BucketValidator) validateCreateOrUpdate(bucket *v1alpha1.Bucket) error {
 	// Ignore validation for health check buckets as they do not
 	// behave as 'normal' buckets. For example, health check buckets
 	// need to be updated after their owning ProviderConfig has been deleted.
@@ -85,33 +85,10 @@ func (b *BucketValidator) validateCreateOrUpdate(ctx context.Context, bucket *v1
 		return nil
 	}
 
-	providerConfigList := &apisv1alpha1.ProviderConfigList{}
-	if err := b.kubeClient.List(ctx, providerConfigList); err != nil {
-		return err
-	}
-
-	missingProviders := missingProviders(bucket.Spec.Providers, providerConfigList)
+	missingProviders := utils.MissingStrings(bucket.Spec.Providers, b.backendStore.GetAllActiveBackendNames())
 	if len(missingProviders) != 0 {
 		return errors.New(fmt.Sprintf("providers %v listed in bucket.Spec.Providers cannot be found", missingProviders))
 	}
 
 	return nil
-}
-
-func missingProviders(providers []string, providerConfigList *apisv1alpha1.ProviderConfigList) []string {
-	existingProviders := make(map[string]bool)
-
-	for _, providerConfig := range providerConfigList.Items {
-		existingProviders[providerConfig.Name] = true
-	}
-
-	providersNotFound := []string{}
-
-	for _, provider := range providers {
-		if !existingProviders[provider] {
-			providersNotFound = append(providersNotFound, provider)
-		}
-	}
-
-	return providersNotFound
 }

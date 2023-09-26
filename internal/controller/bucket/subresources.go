@@ -27,7 +27,7 @@ import (
 // SubresourceClient is the interface all Bucket sub-resources must conform to.
 type SubresourceClient interface {
 	Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error)
-	HandleObservation(ctx context.Context, bucket *v1alpha1.Bucket, backendName string, bb *bucketBackends) error
+	Handle(ctx context.Context, bucket *v1alpha1.Bucket, backendName string, bb *bucketBackends) error
 }
 
 // NewSubresourceClients creates the array of all sub resource clients.

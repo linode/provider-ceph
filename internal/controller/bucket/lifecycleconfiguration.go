@@ -128,7 +128,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	return Updated, nil
 }
 
-func (l *LifecycleConfigurationClient) HandleObservation(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	observation, err := l.observeBackend(ctx, b, backendName)
 	if err != nil {
 		return err

@@ -187,7 +187,7 @@ func (c *external) update(ctx context.Context, b *v1alpha1.Bucket, backendName s
 	// - PutBucketOwnershipControls
 
 	for _, subResourceClient := range c.subresourceClients {
-		err := subResourceClient.HandleObservation(ctx, b, backendName, bb)
+		err := subResourceClient.Handle(ctx, b, backendName, bb)
 		if err != nil {
 			return err
 		}

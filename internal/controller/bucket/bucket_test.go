@@ -194,8 +194,10 @@ func TestObserve(t *testing.T) {
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
-							BackendStatuses: v1alpha1.BackendStatuses{
-								"s3-backend-1": v1alpha1.BackendReadyStatus,
+							Backends: v1alpha1.Backends{
+								"s3-backend-1": &v1alpha1.BackendInfo{
+									BucketStatus: v1alpha1.ReadyStatus,
+								},
 							},
 						},
 						ResourceStatus: v1.ResourceStatus{
@@ -239,8 +241,10 @@ func TestObserve(t *testing.T) {
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
-							BackendStatuses: v1alpha1.BackendStatuses{
-								"s3-backend-1": v1alpha1.BackendNotReadyStatus,
+							Backends: v1alpha1.Backends{
+								"s3-backend-1": &v1alpha1.BackendInfo{
+									BucketStatus: v1alpha1.NotReadyStatus,
+								},
 							},
 						},
 						ResourceStatus: v1.ResourceStatus{
@@ -291,8 +295,10 @@ func TestObserve(t *testing.T) {
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
-							BackendStatuses: v1alpha1.BackendStatuses{
-								"s3-backend-1": v1alpha1.BackendReadyStatus,
+							Backends: v1alpha1.Backends{
+								"s3-backend-1": &v1alpha1.BackendInfo{
+									BucketStatus: v1alpha1.ReadyStatus,
+								},
 							},
 						},
 						ResourceStatus: v1.ResourceStatus{
@@ -344,8 +350,10 @@ func TestObserve(t *testing.T) {
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
-							BackendStatuses: v1alpha1.BackendStatuses{
-								"s3-backend-1": v1alpha1.BackendReadyStatus,
+							Backends: v1alpha1.Backends{
+								"s3-backend-1": &v1alpha1.BackendInfo{
+									BucketStatus: v1alpha1.ReadyStatus,
+								},
 							},
 						},
 						ResourceStatus: v1.ResourceStatus{
@@ -397,8 +405,10 @@ func TestObserve(t *testing.T) {
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
-							BackendStatuses: v1alpha1.BackendStatuses{
-								"s3-backend-1": v1alpha1.BackendReadyStatus,
+							Backends: v1alpha1.Backends{
+								"s3-backend-1": &v1alpha1.BackendInfo{
+									BucketStatus: v1alpha1.ReadyStatus,
+								},
 							},
 						},
 						ResourceStatus: v1.ResourceStatus{

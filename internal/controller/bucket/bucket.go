@@ -72,7 +72,7 @@ var (
 )
 
 // Setup adds a controller that reconciles Bucket managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore, autoPauseBucket bool, pollInterval, operationTimeout time.Duration) error {
+func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore, autoPauseBucket bool, pollInterval, operationTimeout, creationGracePeriod time.Duration) error {
 	name := managed.ControllerName(v1alpha1.BucketGroupKind)
 
 	cps := []managed.ConnectionPublisher{managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())}
@@ -96,6 +96,7 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore,
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
 		managed.WithConnectionPublishers(cps...),
+		managed.WithCreationGracePeriod(creationGracePeriod),
 	}
 
 	if o.Features.Enabled(features.EnableAlphaManagementPolicies) {

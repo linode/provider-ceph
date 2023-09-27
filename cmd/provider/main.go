@@ -70,6 +70,7 @@ func main() {
 		reconcileConcurrency = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("100").Int()
 		maxReconcileRate     = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("1000").Int()
 		reconcileTimeout     = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("3s").Duration()
+		creationGracePeriod  = app.Flag("creation-grace-period", "Duration to wait for the external API to report that a newly created external resource exists.").Default("10s").Duration()
 
 		kubeClientRate = app.Flag("kube-client-rate", "The global maximum rate per second at how many requests the client can do.").Default("1000").Int()
 
@@ -215,6 +216,6 @@ func main() {
 			Complete(), "Cannot setup bucket validating webhook")
 	}
 
-	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore, *autoPauseBucket, *pollInterval, *reconcileTimeout), "Cannot setup Ceph controllers")
+	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore, *autoPauseBucket, *pollInterval, *reconcileTimeout, *creationGracePeriod), "Cannot setup Ceph controllers")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }

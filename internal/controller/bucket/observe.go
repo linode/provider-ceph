@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
@@ -32,6 +33,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{
 			ResourceExists:   false,
 			ResourceUpToDate: true,
+		}, nil
+	}
+
+	if !v1alpha1.IsHealthCheckBucket(bucket) && (bucket.Spec.AutoPause || c.autoPauseBucket) && bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "" {
+		return managed.ExternalObservation{
+			ResourceExists:   true,
+			ResourceUpToDate: false,
 		}, nil
 	}
 

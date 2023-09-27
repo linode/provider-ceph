@@ -67,6 +67,7 @@ type HealthCheckReconciler struct {
 	log          logging.Logger
 }
 
+//nolint:gocyclo,cyclop // Function requires numerous checks.
 func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	r.log.Info("Reconciling health of s3 backend", "name", req.Name)
 
@@ -284,6 +285,7 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 		bucket := &v1alpha1.Bucket{}
 		if err := r.kubeClient.Get(ctx, types.NamespacedName{Name: *s3Bucket.Name}, bucket); err != nil {
 			r.log.Info(err.Error(), "bucket", *s3Bucket.Name)
+
 			continue
 		}
 

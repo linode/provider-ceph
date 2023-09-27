@@ -918,6 +918,7 @@ func TestUpdate(t *testing.T) {
 				o: managed.ExternalUpdate{},
 				specificDiff: func(mg resource.Managed) string {
 					bucket, _ := mg.(*v1alpha1.Bucket)
+
 					return cmp.Diff(
 						v1alpha1.BackendStatuses{
 							"s3-backend-1": v1alpha1.BackendReadyStatus,
@@ -973,7 +974,7 @@ func TestUpdate(t *testing.T) {
 				o: managed.ExternalUpdate{},
 				specificDiff: func(mg resource.Managed) string {
 					bucket, _ := mg.(*v1alpha1.Bucket)
-					t.Log(bucket)
+
 					return cmp.Diff(
 						map[string]string{
 							"test":                                 "test",

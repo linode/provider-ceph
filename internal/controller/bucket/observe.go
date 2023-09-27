@@ -18,7 +18,7 @@ import (
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
-//nolint:gocyclo,cyclop // Function requires numerous checks.
+//nolint:gocyclo,cyclop,gocognit // Function requires numerous checks.
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {

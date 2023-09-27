@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: crossplane-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: crossplane-system
+  name: localstack
+type: Opaque
+data:
+  access_key: "RHVtbXk="
+  secret_key: "RHVtbXk="
+---
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: localstack-a
+  namespace: crossplane-system
+spec:
+  hostBase: "0.0.0.0:32566"
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: localstack
+      key: credentials
+  disableHealthCheck: false
+---
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: localstack-b
+  namespace: crossplane-system
+spec:
+  hostBase: "0.0.0.0:32567"
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: localstack
+      key: credentials
+  disableHealthCheck: false
+---
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: localstack-c
+  namespace: crossplane-system
+spec:
+  hostBase: "0.0.0.0:32568"
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: localstack
+      key: credentials
+  disableHealthCheck: false

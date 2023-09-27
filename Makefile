@@ -39,6 +39,9 @@ GO111MODULE = on
 # Husky git hook manager tasks.
 -include .husky/husky.mk
 
+# Mirrord local dev tasks.
+-include .mirrord/mirrord.mk
+
 # ====================================================================================
 # Setup Images
 
@@ -164,16 +167,24 @@ ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
 # Install local provider-ceph CRDs.
 # Create ProviderConfig CR representing localstack.
 dev-cluster: $(KUBECTL) cluster
-	@$(INFO) Installing CRDs and ProviderConfig
+	@$(INFO) Installing CRDs, ProviderConfig and Localstack
 	@$(KUBECTL) apply -k https://github.com/crossplane/crossplane//cluster?ref=master
 	@$(KUBECTL) apply -R -f package/crds
 	@# TODO: apply package/webhookconfigurations when webhooks can be enabled locally.
-	@$(KUBECTL) apply -R -f e2e/localstack/localstack-provider-cfg.yaml
+	@$(KUBECTL) apply -R -f e2e/localstack/localstack-deployment.yaml
+	@$(KUBECTL) apply -R -f e2e/localstack/localstack-provider-cfg-host.yaml
 	@$(OK) Installing CRDs and ProviderConfig
 
 # Best for development - locally run provider-ceph controller.
 # Removes need for Crossplane install via Helm.
 dev: dev-cluster run
+
+# Best for development - locally run provider-ceph controller.
+mirrord: dev-cluster crossplane-cluster load-package
+
+mirrord-run: 
+	@$(INFO) Starting mirrord on deployment
+	$(MIRRORD) exec -f .mirrord/mirrord.json make run
 
 # Destroy Kind cluster and localstack.
 cluster-clean: $(KIND) $(KUBECTL)

@@ -67,7 +67,7 @@ type ProviderConfigStatus struct {
 
 	// Health of the s3 backend represented by the ProviderConfig determined
 	// by periodic health check.
-	//+kubebuilder:validation:Enum=Healthy;Unhealthy;Unknown
+	// +kubebuilder:validation:Enum=Healthy;Unhealthy;Unknown
 	Health                    HealthStatus `json:"health,omitempty"`
 	xpv1.ProviderConfigStatus `json:",inline"`
 }

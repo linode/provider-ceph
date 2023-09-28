@@ -5,4 +5,7 @@ testDirs:
 - ./e2e/tests/ceph
 kindConfig: e2e/kind/kind-config-1.26.yaml
 startKIND: false
-timeout: 90
+kindNodeCache: true
+kindContainers:
+- localstack/localstack:2.2
+timeout: 120

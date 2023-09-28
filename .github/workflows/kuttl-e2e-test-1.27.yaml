@@ -7,7 +7,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUTTL: /usr/local/bin/kubectl-kuttl
-      COMPOSE: /usr/local/bin/docker-compose
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.9.1
@@ -21,8 +20,6 @@ jobs:
         run: |
           sudo curl -Lo $KUTTL https://github.com/kudobuilder/kuttl/releases/download/v0.13.0/kubectl-kuttl_0.13.0_linux_x86_64
           sudo chmod +x $KUTTL
-          sudo curl -Lo $COMPOSE https://github.com/docker/compose/releases/download/v2.17.3/docker-compose-linux-x86_64
-          sudo chmod +x $COMPOSE
       - name: Build
         run: make submodules build
       - name: Create test environment

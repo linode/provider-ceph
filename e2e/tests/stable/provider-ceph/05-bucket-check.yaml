@@ -2,11 +2,11 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
     # localstack-a should only have bucket-for-all-prov-set
-  - command: ../../../../hack/expect_bucket.sh bucket_exists bucket-for-all-prov-set localhost:4566
-  - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist bucket-for-localstack-b localhost:4566
+  - command: ../../../../hack/expect_bucket.sh bucket_exists bucket-for-all-prov-set local-dev-control-plane:32566
+  - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist bucket-for-localstack-b local-dev-control-plane:32566
     # localstack-b should have bucket-for-all-prov-set and buclet-for-localstack-b
-  - command: ../../../../hack/expect_bucket.sh bucket_exists bucket-for-all-prov-set localhost:4567
-  - command: ../../../../hack/expect_bucket.sh bucket_exists bucket-for-localstack-b localhost:4567
+  - command: ../../../../hack/expect_bucket.sh bucket_exists bucket-for-all-prov-set local-dev-control-plane:32567
+  - command: ../../../../hack/expect_bucket.sh bucket_exists bucket-for-localstack-b local-dev-control-plane:32567
     # localstack-c should only have bucket-for-all-prov-set
-  - command: ../../../../hack/expect_bucket.sh bucket_exists bucket-for-all-prov-set localhost:4568
-  - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist bucket-for-localstack-b localhost:4568
+  - command: ../../../../hack/expect_bucket.sh bucket_exists bucket-for-all-prov-set local-dev-control-plane:32568
+  - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist bucket-for-localstack-b local-dev-control-plane:32568

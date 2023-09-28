@@ -275,6 +275,7 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
+						Name:       "bucket-check-external-error",
 						Finalizers: []string{inUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
@@ -327,6 +328,7 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
+						Name:       "bucket-check-external-not-exists",
 						Finalizers: []string{inUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
@@ -379,6 +381,7 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
+						Name:       "bucket-check-external-ok",
 						Finalizers: []string{inUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{

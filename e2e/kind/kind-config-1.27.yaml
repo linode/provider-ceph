@@ -10,3 +10,10 @@ nodes:
     hostPort: 32567
   - containerPort: 32568
     hostPort: 32568
+  kubeadmConfigPatches:
+  - |
+    kind: ClusterConfiguration
+    apiServer:
+        extraArgs:
+          max-mutating-requests-inflight: "2000"
+          max-requests-inflight: "4000"

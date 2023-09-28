@@ -85,8 +85,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			var err error
 
 			for i := 0; i < s3internal.RequestRetries; i++ {
-				_, err = cl.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(originalBucket))
-				if resource.Ignore(isAlreadyExists, err) == nil {
+				_, err = s3internal.CreateBucket(ctx, cl, s3internal.BucketToCreateBucketInput(originalBucket))
+				if resource.Ignore(s3internal.IsAlreadyExists, err) == nil {
 					break
 				}
 			}

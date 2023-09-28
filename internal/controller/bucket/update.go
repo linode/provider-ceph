@@ -28,14 +28,14 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotBucket)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
-	defer cancel()
-
 	if v1alpha1.IsHealthCheckBucket(bucket) {
 		c.log.Info("Update is NOOP for health check bucket - updates performed by health-check-controller", "bucket", bucket.Name)
 
 		return managed.ExternalUpdate{}, nil
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
+	defer cancel()
 
 	if bucket.Spec.Disabled {
 		c.log.Info("Bucket is disabled - remove any existing buckets from backends", "bucket name", bucket.Name)

@@ -9,6 +9,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/s3/cache"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 )
@@ -94,7 +95,7 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 
 	_, err = s3Backend.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: bucketName})
 
-	return resource.Ignore(isNotFound, err)
+	return resource.Ignore(IsNotFound, err)
 }
 
 func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
@@ -181,7 +182,7 @@ func deleteObject(ctx context.Context, s3Backend backendstore.S3Client, bucket, 
 			Key:       key,
 			VersionId: versionId,
 		})
-		if resource.Ignore(isNotFound, err) == nil {
+		if resource.Ignore(IsNotFound, err) == nil {
 			return nil
 		}
 	}
@@ -189,17 +190,40 @@ func deleteObject(ctx context.Context, s3Backend backendstore.S3Client, bucket, 
 	return err
 }
 
+func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *s3.CreateBucketInput) (*s3.CreateBucketOutput, error) {
+	resp, err := s3Backend.CreateBucket(ctx, bucket)
+	if err == nil || resource.Ignore(IsAlreadyExists, err) == nil {
+		cache.Set(*bucket.Bucket)
+	}
+
+	return resp, err
+}
+
 func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketName string) (bool, error) {
+	if cache.Exists(bucketName) {
+		return true, nil
+	}
+
 	_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
 	if err != nil {
-		return false, resource.Ignore(isNotFound, err)
+		return false, resource.Ignore(IsNotFound, err)
 	}
+
+	cache.Set(bucketName)
+
 	// Bucket exists, return true with no error.
 	return true, nil
 }
 
-// isNotFound helper function to test for NotFound error
-func isNotFound(err error) bool {
+// IsAlreadyExists helper function to test for ErrCodeBucketAlreadyOwnedByYou error
+func IsAlreadyExists(err error) bool {
+	var alreadyOwnedByYou *s3types.BucketAlreadyOwnedByYou
+
+	return errors.As(err, &alreadyOwnedByYou)
+}
+
+// IsNotFound helper function to test for NotFound error
+func IsNotFound(err error) bool {
 	var notFoundError *s3types.NotFound
 
 	return errors.As(err, &notFoundError)

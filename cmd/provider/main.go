@@ -49,6 +49,7 @@ import (
 	ceph "github.com/linode/provider-ceph/internal/controller"
 	"github.com/linode/provider-ceph/internal/controller/bucket"
 	"github.com/linode/provider-ceph/internal/features"
+	"github.com/linode/provider-ceph/internal/s3/cache"
 )
 
 var defaultZapConfig = map[string]string{
@@ -65,9 +66,10 @@ func main() {
 
 		syncInterval         = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
 		pollInterval         = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("30m").Duration()
+		bucketExistsCache    = app.Flag("bucket-exists-cache", "How long the provider caches bucket exists result").Short('c').Default("5s").Duration()
 		reconcileConcurrency = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("100").Int()
 		maxReconcileRate     = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("1000").Int()
-		reconcileTimeout     = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("1s").Duration()
+		reconcileTimeout     = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("3s").Duration()
 
 		kubeClientRate = app.Flag("kube-client-rate", "The global maximum rate per second at how many requests the client can do.").Default("1000").Int()
 
@@ -148,6 +150,8 @@ func main() {
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
 
 	cfg = ratelimiter.LimitRESTConfig(cfg, *kubeClientRate)
+
+	cache.BucketExistsCacheTTL = *bucketExistsCache
 
 	const oneDotTwo = 1.2
 	const two = 2

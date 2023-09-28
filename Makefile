@@ -140,7 +140,7 @@ load-package: $(KIND) build
 	@$(MAKE) local.xpkg.sync
 	@$(INFO) deploying provider package $(PROJECT_NAME)
 	@$(KIND) load docker-image $(BUILD_REGISTRY)/$(PROJECT_NAME)-$(ARCH) -n $(KIND_CLUSTER_NAME)
-	@echo '{"apiVersion":"pkg.crossplane.io/v1alpha1","kind":"ControllerConfig","metadata":{"name":"config"},"spec":{"args":["--zap-devel","--enable-validation-webhooks", "--kube-client-rate=100000", "--reconcile-timeout=2s", "--max-reconcile-rate=5000", "--reconcile-concurrency=100", "--poll=30m", "--sync=1h"],"image":"$(BUILD_REGISTRY)/$(PROJECT_NAME)-$(ARCH)"}}' | $(KUBECTL) apply -f -
+	@echo '{"apiVersion":"pkg.crossplane.io/v1alpha1","kind":"ControllerConfig","metadata":{"name":"config"},"spec":{"args":["--zap-devel", "--enable-validation-webhooks", "--kube-client-rate=80000", "--reconcile-timeout=5s", "--max-reconcile-rate=600", "--reconcile-concurrency=160", "--poll=30m", "--sync=1h"],"image":"$(BUILD_REGISTRY)/$(PROJECT_NAME)-$(ARCH)"}}' | $(KUBECTL) apply -f -
 	@echo '{"apiVersion":"pkg.crossplane.io/v1","kind":"Provider","metadata":{"name":"$(PROJECT_NAME)"},"spec":{"package":"$(PROJECT_NAME)-$(VERSION).gz","packagePullPolicy":"Never","controllerConfigRef":{"name":"config"}}}' | $(KUBECTL) apply -f -
 	@$(OK) deploying provider package $(PROJECT_NAME) $(VERSION)
 

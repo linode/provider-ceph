@@ -4,23 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
-	"github.com/pkg/errors"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
-
-// isAlreadyExists helper function to test for ErrCodeBucketAlreadyOwnedByYou error
-func isAlreadyExists(err error) bool {
-	var alreadyOwnedByYou *s3types.BucketAlreadyOwnedByYou
-
-	return errors.As(err, &alreadyOwnedByYou)
-}
 
 func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends) {
 	bucket.Status.SetConditions(xpv1.Unavailable())

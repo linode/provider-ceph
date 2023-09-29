@@ -37,7 +37,7 @@ func NewSubresourceClients(backendStore *backendstore.BackendStore, log logging.
 	}
 }
 
-// ResourceStatus represents the current status  if the resource resource is updated.
+// ResourceStatus represents the current status of the resource.
 type ResourceStatus int
 
 const (

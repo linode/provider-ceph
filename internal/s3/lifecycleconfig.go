@@ -15,6 +15,7 @@ func GenerateLifecycleConfigurationInput(name string, config *v1alpha1.BucketLif
 	if config == nil {
 		return nil
 	}
+
 	return &awss3.PutBucketLifecycleConfigurationInput{
 		Bucket:                 aws.String(name),
 		LifecycleConfiguration: &types.BucketLifecycleConfiguration{Rules: GenerateLifecycleRules(config.Rules)},
@@ -22,10 +23,10 @@ func GenerateLifecycleConfigurationInput(name string, config *v1alpha1.BucketLif
 }
 
 // GenerateLifecycleRules creates the list of LifecycleRules for the AWS SDK
-func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule { // nolint:gocyclo
+func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule { //nolint:gocognit,gocyclo,cyclop // Function requires many checks.
 	// NOTE(muvaf): prealloc is disabled due to AWS requiring nil instead
 	// of 0-length for empty slices.
-	var result []types.LifecycleRule // nolint:prealloc
+	var result []types.LifecycleRule //nolint:prealloc // NOTE(muvaf): prealloc is disabled due to AWS requiring nil instead of 0-length for empty slices.
 	for _, local := range in {
 		rule := types.LifecycleRule{
 			ID:     local.ID,
@@ -71,6 +72,7 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 		}
 		// This is done because S3 expects an empty filter, and never nil
 		rule.Filter = &types.LifecycleRuleFilterMemberPrefix{}
+		//nolint:nestif // Multiple checks required
 		if local.Filter != nil {
 			if local.Filter.Prefix != nil {
 				rule.Filter = &types.LifecycleRuleFilterMemberPrefix{Value: *local.Filter.Prefix}
@@ -90,6 +92,7 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 		}
 		result = append(result, rule)
 	}
+
 	return result
 }
 
@@ -99,15 +102,7 @@ func copyTags(tags []v1alpha1.Tag) []types.Tag {
 	for _, one := range tags {
 		out = append(out, types.Tag{Key: aws.String(one.Key), Value: aws.String(one.Value)})
 	}
-	return out
-}
 
-// copyAWSTags converts a list of external s3.Tags to local Tags
-func copyAWSTags(tags []types.Tag) []v1alpha1.Tag {
-	out := make([]v1alpha1.Tag, len(tags))
-	for i, one := range tags {
-		out[i] = v1alpha1.Tag{Key: aws.ToString(one.Key), Value: aws.ToString(one.Value)}
-	}
 	return out
 }
 
@@ -118,6 +113,7 @@ func sortS3TagSet(tags []types.Tag) []types.Tag {
 	sort.SliceStable(outTags, func(i, j int) bool {
 		return aws.ToString(outTags[i].Key) < aws.ToString(outTags[j].Key)
 	})
+
 	return outTags
 }
 

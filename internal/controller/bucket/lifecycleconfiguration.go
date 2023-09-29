@@ -35,6 +35,7 @@ var LifecycleNotFoundErrCode = "NoSuchLifecycleConfiguration"
 // LifecycleConfigurationNotFound is parses the aws Error and validates if the lifecycle configuration does not exist
 func LifecycleConfigurationNotFound(err error) bool {
 	var awsErr smithy.APIError
+
 	return errors.As(err, &awsErr) && awsErr.ErrorCode() == LifecycleNotFoundErrCode
 }
 
@@ -134,7 +135,9 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 		return err
 	}
 
-	switch observation { //nolint:exhaustive
+	switch observation {
+	case Updated:
+		return nil
 	case NeedsDeletion:
 		bb.setLifecycleConfigStatus(b.Name, backendName, v1alpha1.DeletingStatus)
 		err = l.delete(ctx, b.Name, backendName)

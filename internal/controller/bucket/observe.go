@@ -81,6 +81,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 		if _, ok := bucket.Status.AtProvider.Backends[provider]; !ok {
 			// Bucket is not on backend
+			continue
 		}
 
 		if status := bucket.Status.AtProvider.Backends[provider].BucketStatus; status == v1alpha1.ReadyStatus {

@@ -22,8 +22,6 @@ REPO ?= provider-ceph
 # ====================================================================================
 # Setup Go
 
-NPROCS ?= 1
-GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
@@ -59,6 +57,9 @@ XPKGS = provider-ceph
 # NOTE(hasheddan): we force image building to happen prior to xpkg build so that
 # we ensure image is present in daemon.
 xpkg.build.provider-ceph: do.build.images
+
+something:
+	echo something: $GO_TEST_PARALLEL
 
 fallthrough: submodules
 	@echo Initial setup complete. Running make again . . .
@@ -132,7 +133,7 @@ crossplane-cluster: $(HELM3) cluster
 	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane
 	@$(OK) Installing Crossplane
 
-# Build the controller image and the provider package. 
+# Build the controller image and the provider package.
 # Load the controller image to the Kind cluster and add the provider package
 # to the Provider.
 # The following is taken from local.xpkg.deploy.provider.
@@ -147,7 +148,7 @@ load-package: $(KIND) build
 	@$(OK) deploying provider package $(PROJECT_NAME) $(VERSION)
 
 # Spin up a Kind cluster and localstack and install Crossplane via Helm.
-# Build the controller image and the provider package. 
+# Build the controller image and the provider package.
 # Load the controller image to the Kind cluster and add the provider package
 # to the Provider.
 # Run Kuttl test suite on newly built controller image.
@@ -249,7 +250,7 @@ help-special: crossplane.help
 .PHONY: crossplane.help help-special aws
 
 # Install Docker Compose to run localstack.
-COMPOSE ?= $(shell pwd)/bin/docker-compose
+COMPOSE ?= $PWD/bin/docker-compose
 compose:
 ifeq (,$(wildcard $(COMPOSE)))
 	curl -sL https://github.com/docker/compose/releases/download/v2.17.3/docker-compose-linux-x86_64 -o $(COMPOSE)
@@ -260,7 +261,7 @@ endif
 AWS ?= /usr/local/bin/aws
 aws:
 ifeq (,$(wildcard $(AWS)))
-	curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o $(shell pwd)/bin/awscliv2.zip
-	unzip $(shell pwd)/bin/awscliv2.zip -d $(shell pwd)/bin/
-	$(shell pwd)/bin/aws/install
+	curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o $PWD/bin/awscliv2.zip
+	unzip $PWD/bin/awscliv2.zip -d $PWD/bin/
+	$PWD/bin/aws/install
 endif

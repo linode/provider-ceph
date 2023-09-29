@@ -10,6 +10,7 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -98,6 +99,9 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 }
 
 func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
+	ctx, span := otel.Tracer("").Start(ctx, "deleteBucketObjects")
+	defer span.End()
+
 	objectsInput := &s3.ListObjectsV2Input{Bucket: bucketName}
 	for {
 		objects, err := s3Backend.ListObjectsV2(ctx, objectsInput)
@@ -132,6 +136,9 @@ func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, b
 }
 
 func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
+	ctx, span := otel.Tracer("").Start(ctx, "deleteBucketObjectVersions")
+	defer span.End()
+
 	objVersionsInput := &s3.ListObjectVersionsInput{Bucket: bucketName}
 	for {
 		objectVersions, err := s3Backend.ListObjectVersions(ctx, objVersionsInput)
@@ -174,6 +181,9 @@ func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Cl
 }
 
 func deleteObject(ctx context.Context, s3Backend backendstore.S3Client, bucket, key, versionId *string) error {
+	ctx, span := otel.Tracer("").Start(ctx, "deleteObject")
+	defer span.End()
+
 	var err error
 	for i := 0; i < RequestRetries; i++ {
 		_, err = s3Backend.DeleteObject(ctx, &s3.DeleteObjectInput{
@@ -190,6 +200,9 @@ func deleteObject(ctx context.Context, s3Backend backendstore.S3Client, bucket, 
 }
 
 func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketName string) (bool, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "BucketExists")
+	defer span.End()
+
 	_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
 	if err != nil {
 		return false, resource.Ignore(isNotFound, err)

@@ -24,6 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,6 +43,7 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/otel/traces"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
@@ -74,6 +76,9 @@ type HealthCheckReconciler struct {
 }
 
 func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "HealthCheckReconciler")
+	defer span.End()
+
 	r.log.Info("Reconciling health of s3 backend", "name", req.Name)
 
 	// Build the health check bucket from the provider config.
@@ -96,6 +101,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		r.log.Info("Health check is disabled for s3 backend", "name", req.Name)
 		providerConfig.Status.Health = apisv1alpha1.HealthStatusUnknown
 		if err := r.kubeClient.Status().Update(ctx, providerConfig); err != nil {
+			traces.SetAndRecordError(span, err)
 			return ctrl.Result{}, errors.Wrap(err, errUpdateHealth)
 		}
 
@@ -107,6 +113,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			// No existing health check bucket for this ProviderConfig, create it.
 			if err := r.createHealthCheckBucket(ctx, providerConfig, hcBucket); err != nil {
 				r.log.Info("Failed to create bucket for health check on s3 backend", "name", providerConfig.Name)
+				traces.SetAndRecordError(span, err)
 
 				return ctrl.Result{}, err
 			}
@@ -124,7 +131,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	})
 	if err != nil {
 		r.onceMap.deleteEntry(providerConfig.Name)
-
+		traces.SetAndRecordError(span, err)
 		return ctrl.Result{}, err
 	}
 
@@ -190,9 +197,14 @@ func (r *HealthCheckReconciler) createHealthCheckBucket(ctx context.Context, pro
 }
 
 func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, hcBucket *v1alpha1.Bucket) error {
+	ctx, span := otel.Tracer("").Start(ctx, "HealthCheckReconciler.doHealthCheck")
+	defer span.End()
+
 	s3BackendClient := r.backendStore.GetBackendClient(providerConfig.Name)
 	if s3BackendClient == nil {
-		return errors.New(errBackendNotStored)
+		err := errors.New(errBackendNotStored)
+		traces.SetAndRecordError(span, err)
+		return err
 	}
 
 	// Assume the status is Unhealthy until we can verify otherwise.
@@ -204,6 +216,7 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 		Body:   strings.NewReader(time.Now().Format(time.RFC850)),
 	})
 	if putErr != nil {
+		traces.SetAndRecordError(span, putErr)
 		if err := r.kubeClient.Status().Update(ctx, providerConfig); err != nil {
 			return errors.Wrap(err, putErr.Error())
 		}
@@ -216,6 +229,7 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 		Key:    aws.String(healthCheckFile),
 	})
 	if getErr != nil {
+		traces.SetAndRecordError(span, getErr)
 		if err := r.kubeClient.Status().Update(ctx, providerConfig); err != nil {
 			return errors.Wrap(err, getErr.Error())
 		}

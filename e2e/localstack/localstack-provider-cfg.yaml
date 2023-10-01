@@ -12,7 +12,6 @@ spec:
       name: localstack
       key: credentials
   disableHealthCheck: false
-  # This speeds up E2E testing of healthchecking
   healthCheckIntervalSeconds: 5
 ---
 apiVersion: ceph.crossplane.io/v1alpha1
@@ -29,6 +28,7 @@ spec:
       name: localstack
       key: credentials
   disableHealthCheck: false
+  healthCheckIntervalSeconds: 5
 ---
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
@@ -44,3 +44,4 @@ spec:
       name: localstack
       key: credentials
   disableHealthCheck: false
+  healthCheckIntervalSeconds: 5

@@ -1,24 +1,3 @@
-apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
-kind: Bucket
-metadata:
-  annotations:
-    crossplane.io/paused: "true"
-  name: localstack-a-health-check
----
-apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
-kind: Bucket
-metadata:
-  annotations:
-    crossplane.io/paused: "true"
-  name: localstack-b-health-check
----
-apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
-kind: Bucket
-metadata:
-  annotations:
-    crossplane.io/paused: "true"
-  name: localstack-c-health-check
----
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:

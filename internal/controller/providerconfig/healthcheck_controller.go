@@ -27,23 +27,17 @@ import (
 	"github.com/pkg/errors"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	commonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
-	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
@@ -55,10 +49,6 @@ const (
 	errUpdateHealth       = "failed to update health status of provider config"
 	healthCheckSuffix     = "-health-check"
 	healthCheckFile       = "health-check-file"
-	// retryInterval is the interval used when checking
-	// for an existing bucket.
-	retryInterval        = 5
-	healthCheckFinalizer = "health-check.provider-ceph.crossplane.io"
 )
 
 func newHealthCheckReconciler(k client.Client, o controller.Options, s *backendstore.BackendStore) *HealthCheckReconciler {
@@ -78,17 +68,13 @@ type HealthCheckReconciler struct {
 func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	r.log.Info("Reconciling health of s3 backend", "name", req.Name)
 
-	// Build the health check bucket from the provider config.
-	hcBucket := &v1alpha1.Bucket{}
-	hcBucket.SetName(req.Name + healthCheckSuffix)
-	hcBucket.SetNamespace(req.Namespace)
-	hcBucket.Spec.Providers = []string{req.Name}
+	bucketName := req.Name + healthCheckSuffix
 
 	providerConfig := &apisv1alpha1.ProviderConfig{}
 	if err = r.kubeClient.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
 			// ProviderConfig has been deleted, perform cleanup.
-			return ctrl.Result{}, r.cleanup(ctx, req, hcBucket)
+			return ctrl.Result{}, r.cleanup(ctx, req, bucketName)
 		}
 
 		return
@@ -120,30 +106,15 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 	}()
 
-	if err = r.kubeClient.Get(ctx, types.NamespacedName{Namespace: hcBucket.Namespace, Name: hcBucket.Name}, hcBucket); err != nil {
-		if !kerrors.IsNotFound(err) {
-			r.log.Info("Failed to get bucket for health check on s3 backend", "name", providerConfig.Name, "backend", req.Name)
-
-			return
-		}
-
-		// No existing health check bucket for this ProviderConfig, create it.
-		if err = r.createHealthCheckBucket(ctx, providerConfig, hcBucket); err != nil {
-			r.log.Info("Failed to create bucket resource for health check on s3 backend", "name", providerConfig.Name, "backend", req.Name)
-
-			return
-		}
-	}
-
-	if err = r.bucketExists(ctx, req.Name, hcBucket.Name); err != nil {
-		if err = r.createBucket(ctx, req.Name, hcBucket.Name); err != nil {
+	if err = r.bucketExists(ctx, req.Name, bucketName); err != nil {
+		if err = r.createBucket(ctx, req.Name, bucketName); err != nil {
 			r.log.Info("Failed to create bucket for health check on s3 backend", "name", providerConfig.Name, "backend", req.Name)
 
 			return
 		}
 	}
 
-	if err = r.doHealthCheck(ctx, providerConfig, hcBucket); err != nil {
+	if err = r.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
 		return
 	}
 
@@ -155,66 +126,29 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	return
 }
 
-func (r *HealthCheckReconciler) cleanup(ctx context.Context, req ctrl.Request, hcBucket *v1alpha1.Bucket) error {
+func (r *HealthCheckReconciler) cleanup(ctx context.Context, req ctrl.Request, bucketName string) error {
 	// The ProviderConfig representing an s3 backend has been deleted,
-	// therefore we need to:
-	// 1. delete the health check bucket from the s3 backend.
+	// therefore we need to delete the health check bucket from the s3 backend.
 	backendClient := r.backendStore.GetBackendClient(req.Name)
-	if backendClient != nil {
-		r.log.Info("Deleting health check bucket", "name", hcBucket.Name)
-		if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(hcBucket.Name)); err != nil {
-			return err
-		}
-	}
-	// 2. Get the latest version of the health check bucket (in order to
-	// complete 3).
-	if err := r.kubeClient.Get(ctx, types.NamespacedName{Namespace: hcBucket.Namespace, Name: hcBucket.Name}, hcBucket); err != nil {
-		return resource.Ignore(kerrors.IsNotFound, err)
-	}
-	// 3. Remove the bucket's finalizers so that it can be garbage collected. These are the healthcheck
-	// finalizer added at creation time, and the managed-resource finalizer added by crossplane.
-	// 'Normal' buckets are given the managed-resource finalizer in order to prevent the associated
-	// provider config from being deleted whilst it is still in use. However, health check buckets are
-	// treated differently as they are owned by the provider config.
-	controllerutil.RemoveFinalizer(hcBucket, managed.FinalizerName)
-	controllerutil.RemoveFinalizer(hcBucket, healthCheckFinalizer)
+	if backendClient == nil {
+		r.log.Info("Backend client not found", "name", bucketName)
 
-	hcBucket.Annotations[meta.AnnotationKeyReconciliationPaused] = "false"
+		return nil
+	}
 
-	return r.kubeClient.Update(ctx, hcBucket)
+	r.log.Info("Deleting health check bucket", "name", bucketName)
+
+	return s3internal.DeleteBucket(ctx, backendClient, aws.String(bucketName))
 }
 
-func (r *HealthCheckReconciler) createHealthCheckBucket(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, hcBucket *v1alpha1.Bucket) error {
-	r.log.Info("Creating bucket for health check on s3 backend", "name", providerConfig.Name)
-	// Add the ProviderConfig to the Bucket's owner reference for garbage collection.
-	ownerRef := metav1.OwnerReference{
-		APIVersion: providerConfig.APIVersion,
-		Kind:       providerConfig.Kind,
-		Name:       providerConfig.Name,
-		UID:        providerConfig.UID,
-	}
-	hcBucket.SetOwnerReferences([]metav1.OwnerReference{ownerRef})
-	// Give the health check bucket a finalizer so that it cannot be deleted mistakenly.
-	hcBucket.SetFinalizers([]string{healthCheckFinalizer})
-	// Set the ProviderConfigReference so that the bucket is created on the correct backend.
-	hcBucket.Spec.ProviderConfigReference = &commonv1.Reference{Name: providerConfig.Name}
-	// Add health-check label so that bucket controller knows to ignore Update/Delete calls.
-	bucketLabels := make(map[string]string)
-	bucketLabels[v1alpha1.HealthCheckLabelKey] = v1alpha1.HealthCheckLabelVal
-	hcBucket.SetLabels(bucketLabels)
-	hcBucket.SetAnnotations(map[string]string{meta.AnnotationKeyReconciliationPaused: "true"})
-
-	return r.kubeClient.Create(ctx, hcBucket)
-}
-
-func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, hcBucket *v1alpha1.Bucket) error {
+func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, bucketName string) error {
 	s3BackendClient := r.backendStore.GetBackendClient(providerConfig.Name)
 	if s3BackendClient == nil {
 		return errors.New(errBackendNotStored)
 	}
 
 	_, putErr := s3BackendClient.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(hcBucket.Name),
+		Bucket: aws.String(bucketName),
 		Key:    aws.String(healthCheckFile),
 		Body:   strings.NewReader(time.Now().Format(time.RFC850)),
 	})
@@ -223,7 +157,7 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 	}
 
 	_, getErr := s3BackendClient.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(hcBucket.Name),
+		Bucket: aws.String(bucketName),
 		Key:    aws.String(healthCheckFile),
 	})
 	if getErr != nil {
@@ -268,7 +202,6 @@ func (r *HealthCheckReconciler) updateConfigStatus(ctx context.Context, pc *apis
 
 	const (
 		steps  = 4
-		divide = 2
 		factor = 0.5
 		jitter = 0.1
 	)

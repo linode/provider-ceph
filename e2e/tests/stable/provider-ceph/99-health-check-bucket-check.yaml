@@ -1,6 +1,7 @@
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
+  - command: sleep 10 # Wait for reconciliation of health check buckets based on interval.
   - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist localstack-a-health-check local-dev-control-plane:32566
   - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist localstack-b-health-check local-dev-control-plane:32567
   - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist localstack-c-health-check local-dev-control-plane:32568

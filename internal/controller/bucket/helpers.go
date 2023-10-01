@@ -42,7 +42,7 @@ func (c *external) updateObject(ctx context.Context, bucket *v1alpha1.Bucket, ca
 	nn := types.NamespacedName{Name: bucket.GetName()}
 
 	const (
-		steps  = 4
+		steps  = 3
 		divide = 2
 		factor = 0.5
 		jitter = 0.1

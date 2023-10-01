@@ -2,7 +2,7 @@
 
 ## Enable Webhooks
 - Webhooks are enabled in Crossplane by default from `v1.13` onwards. For previous versions of Crossplane, include the flag `--set webhooks.enabled=true` when [installing Crossplane via Helm](https://docs.crossplane.io/v1.11/software/install/#install-the-crossplane-helm-chart).
-- To enable webhooks in Provider Ceph, set the `--enable-webhooks` flag for the Provider Ceph controller. See example below using a controller configuration:
+- To enable webhooks in Provider Ceph, set the `--enable-validation-webhooks` flag for the Provider Ceph controller. See example below using a controller configuration:
 
 `Provider` with reference to a `ControllerConfig` (**Note:** package version is omitted):
 ```

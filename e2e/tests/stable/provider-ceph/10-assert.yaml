@@ -1,0 +1,6 @@
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: localstack-a
+status:
+  health: Unhealthy

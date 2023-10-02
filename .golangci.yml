@@ -81,10 +81,6 @@ linters-settings:
     # with golangci-lint call it on a directory with the changed file.
     check-exported: false
 
-  nakedret:
-    # make an issue if func has more lines of code than this setting and it has naked returns; default is 30
-    max-func-lines: 30
-
   prealloc:
     # XXX: we don't recommend using this linter before doing performance profiling.
     # For most programs usage of prealloc will be a premature optimization.
@@ -171,7 +167,6 @@ linters:
     - nlreturn
     - noctx
     - nolintlint
-    - nakedret
     - paralleltest
     - prealloc
     - predeclared

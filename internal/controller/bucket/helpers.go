@@ -35,14 +35,14 @@ const (
 	NeedsObjectUpdate
 )
 
-// Callbacks have two parameters, first bucket is the original, the second is the new version og bucket.
+// Callbacks have two parameters, first bucket is the original, the second is the new version of bucket.
 func (c *external) updateObject(ctx context.Context, bucket *v1alpha1.Bucket, callbacks ...func(*v1alpha1.Bucket, *v1alpha1.Bucket) UpdateRequired) error {
 	origBucket := bucket.DeepCopy()
 
 	nn := types.NamespacedName{Name: bucket.GetName()}
 
 	const (
-		steps  = 4
+		steps  = 3
 		divide = 2
 		factor = 0.5
 		jitter = 0.1

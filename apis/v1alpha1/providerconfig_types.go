@@ -41,7 +41,7 @@ type ProviderConfigSpec struct {
 
 	DisableHealthCheck bool `json:"disableHealthCheck,omitempty"`
 
-	// +kubebuilder:validation:Minimum:=0
+	// +kubebuilder:validation:Minimum:=2
 	// +kubebuilder:default:=30
 	HealthCheckIntervalSeconds int32 `json:"healthCheckIntervalSeconds,omitempty"`
 }

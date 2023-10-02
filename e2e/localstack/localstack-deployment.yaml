@@ -53,6 +53,16 @@ spec:
             sizeLimit: 1Gi
 ---
 apiVersion: v1
+kind: Secret
+metadata:
+  namespace: crossplane-system
+  name: localstack
+type: Opaque
+data:
+  access_key: "RHVtbXk="
+  secret_key: "RHVtbXk="
+---
+apiVersion: v1
 kind: Service
 metadata:
   labels:

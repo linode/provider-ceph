@@ -156,7 +156,7 @@ func (b *BackendStore) GetActiveBackends(beNames []string) s3Backends {
 	// Create a new s3Backends to hold a copy of the backends
 	backends := make(s3Backends, 0)
 	for k, v := range b.s3Backends {
-		if _, ok := requestedBackends[k]; !ok || !v.active {
+		if _, ok := requestedBackends[k]; !ok || !v.active || v.health == v1alpha1.HealthStatusUnhealthy {
 			continue
 		}
 
@@ -172,7 +172,7 @@ func (b *BackendStore) GetAllActiveBackendNames() []string {
 
 	backends := make([]string, 0)
 	for k, v := range b.s3Backends {
-		if !v.active {
+		if !v.active || v.health == v1alpha1.HealthStatusUnhealthy {
 			continue
 		}
 

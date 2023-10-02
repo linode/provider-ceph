@@ -2,11 +2,11 @@ package bucket
 
 import (
 	"context"
-	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	"github.com/pkg/errors"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -76,7 +76,7 @@ func (c *external) updateObject(ctx context.Context, bucket *v1alpha1.Bucket, ca
 				break
 			}
 
-			return fmt.Errorf("unable to update object: %w", err)
+			return errors.Wrap(err, "unable to update object")
 		}
 	}
 

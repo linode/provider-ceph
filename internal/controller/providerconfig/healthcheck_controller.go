@@ -96,11 +96,13 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// Assume the status is Unhealthy until we can verify otherwise.
 	providerConfig.Status.Health = apisv1alpha1.HealthStatusUnhealthy
+	providerConfig.Status.Reason = ""
 	defer func() {
 		r.backendStore.SetBackendHealthStatus(req.Name, providerConfig.Status.Health)
 
 		if updateErr := r.updateConfigStatus(ctx, providerConfig, func(orig, pc *apisv1alpha1.ProviderConfig) {
 			pc.Status.Health = orig.Status.Health
+			pc.Status.Reason = orig.Status.Reason
 		}); updateErr != nil {
 			err = errors.Wrap(updateErr, err.Error())
 		}
@@ -110,11 +112,17 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if err = r.createBucket(ctx, req.Name, bucketName); err != nil {
 			r.log.Info("Failed to create bucket for health check on s3 backend", "name", providerConfig.Name, "backend", req.Name)
 
+			providerConfig.Status.Reason = fmt.Sprintf("failed to create bucket: %v", err.Error())
+
 			return
 		}
 	}
 
 	if err = r.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
+		r.log.Info("Failed to do health check on s3 backend", "name", providerConfig.Name, "backend", req.Name)
+
+		providerConfig.Status.Reason = fmt.Sprintf("failed to do health check: %v", err.Error())
+
 		return
 	}
 
@@ -227,7 +235,7 @@ func (r *HealthCheckReconciler) updateConfigStatus(ctx context.Context, pc *apis
 				break
 			}
 
-			return fmt.Errorf("unable to update object: %w", err)
+			return errors.Wrap(err, "unable to update object")
 		}
 	}
 

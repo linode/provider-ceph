@@ -2,7 +2,6 @@ apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
   name: localstack-a
-  namespace: crossplane-system
 spec:
   hostBase: "0.0.0.0:32566"
   credentials:
@@ -17,7 +16,6 @@ apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
   name: localstack-b
-  namespace: crossplane-system
 spec:
   hostBase: "0.0.0.0:32567"
   credentials:
@@ -32,7 +30,6 @@ apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
   name: localstack-c
-  namespace: crossplane-system
 spec:
   hostBase: "0.0.0.0:32568"
   credentials:

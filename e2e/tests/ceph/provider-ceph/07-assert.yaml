@@ -1,0 +1,19 @@
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: test-bucket
+  finalizers:
+  - "finalizer.managedresource.crossplane.io"
+  - "bucket-in-use.provider-ceph.crossplane.io"
+status:
+  atProvider:
+    backends:
+      ceph-cluster: 
+        bucketStatus: "Ready"
+  conditions:
+  - reason: Available
+    status: "True"
+    type: Ready
+  - reason: ReconcileSuccess
+    status: "True"
+    type: Synced

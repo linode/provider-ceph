@@ -159,6 +159,8 @@ spec:
                 - Unhealthy
                 - Unknown
                 type: string
+              reason:
+                type: string
               users:
                 description: Users of this provider configuration.
                 format: int64

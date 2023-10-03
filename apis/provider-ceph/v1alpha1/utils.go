@@ -21,6 +21,8 @@ const (
 	HealthCheckLabelVal = "health-check-bucket"
 )
 
+// Deprecation warning: This function exists for compatibility reasons,
+// and would be removed soon.
 func IsHealthCheckBucket(bucket *Bucket) bool {
 	if val, ok := bucket.GetLabels()[HealthCheckLabelKey]; ok {
 		if val == HealthCheckLabelVal {

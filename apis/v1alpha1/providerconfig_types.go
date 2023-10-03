@@ -69,6 +69,7 @@ type ProviderConfigStatus struct {
 	// by periodic health check.
 	// +kubebuilder:validation:Enum=Healthy;Unhealthy;Unknown
 	Health                    HealthStatus `json:"health,omitempty"`
+	Reason                    string       `json:"reason,omitempty"`
 	xpv1.ProviderConfigStatus `json:",inline"`
 }
 

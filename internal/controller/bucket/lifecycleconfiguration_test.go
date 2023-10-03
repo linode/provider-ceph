@@ -18,7 +18,6 @@ package bucket
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -35,6 +34,8 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var errExternal = "external error"
 
 // Unlike many Kubernetes projects Crossplane does not use third party testing
 // libraries, per the common Go test review comments. Crossplane encourages the
@@ -76,7 +77,7 @@ func TestObserveBackend(t *testing.T) {
 						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{},
-							}, fmt.Errorf("external error")
+							}, errors.New(errExternal)
 						},
 					}
 
@@ -96,7 +97,7 @@ func TestObserveBackend(t *testing.T) {
 			},
 			want: want{
 				status: NeedsUpdate,
-				err:    errors.Wrap(fmt.Errorf("external error"), errGetLifecycleConfig),
+				err:    errors.Wrap(errors.New(errExternal), errGetLifecycleConfig),
 			},
 		},
 		"Lifecycle config not specified in CR but exists on backend so NeedsDeletion": {
@@ -195,7 +196,7 @@ func TestObserveBackend(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Expiration: &v1alpha1.LifecycleExpiration{
 											Days: 1,
 										},
@@ -240,7 +241,7 @@ func TestObserveBackend(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Expiration: &v1alpha1.LifecycleExpiration{
 											Days: 1,
 										},
@@ -265,7 +266,7 @@ func TestObserveBackend(t *testing.T) {
 						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{
-									s3types.LifecycleRule{
+									{
 										Expiration: &s3types.LifecycleExpiration{
 											Days: 1,
 										},
@@ -310,7 +311,7 @@ func TestObserveBackend(t *testing.T) {
 						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{
-									s3types.LifecycleRule{
+									{
 										Status: "Enabled",
 										Expiration: &s3types.LifecycleExpiration{
 											Days: int32(2),
@@ -338,7 +339,7 @@ func TestObserveBackend(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Status: "Enabled",
 										Expiration: &v1alpha1.LifecycleExpiration{
 											Days: int32(1),
@@ -364,7 +365,7 @@ func TestObserveBackend(t *testing.T) {
 						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{
-									s3types.LifecycleRule{
+									{
 										Expiration: &s3types.LifecycleExpiration{
 											Days: int32(3),
 										},
@@ -391,7 +392,7 @@ func TestObserveBackend(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Expiration: &v1alpha1.LifecycleExpiration{
 											Days: int32(3),
 										},

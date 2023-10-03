@@ -90,6 +90,10 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 	})
 
 	if err := g.Wait(); err != nil {
+		if NoSuchBucket(err) {
+			return nil
+		}
+
 		return err
 	}
 
@@ -227,4 +231,11 @@ func IsNotFound(err error) bool {
 	var notFoundError *s3types.NotFound
 
 	return errors.As(err, &notFoundError)
+}
+
+// NoSuchBucket helper function to test for NoSuchBucket error
+func NoSuchBucket(err error) bool {
+	var noSuchBucketError *s3types.NoSuchBucket
+
+	return errors.As(err, &noSuchBucketError)
 }

@@ -66,6 +66,26 @@ func (b *BackendStore) GetBackendClients(beNames []string) map[string]S3Client {
 	return clients
 }
 
+func (b *BackendStore) GetFirstActiveBackendClient(beNames []string) S3Client {
+	requestedBackends := map[string]bool{}
+	for p := range beNames {
+		requestedBackends[beNames[p]] = true
+	}
+
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	for k, v := range b.s3Backends {
+		if _, ok := requestedBackends[k]; !ok || !v.active || v.health == v1alpha1.HealthStatusUnhealthy {
+			continue
+		}
+
+		return v.s3Client
+	}
+
+	return nil
+}
+
 func (b *BackendStore) IsBackendActive(backendName string) bool {
 	b.mu.RLock()
 	defer b.mu.RUnlock()

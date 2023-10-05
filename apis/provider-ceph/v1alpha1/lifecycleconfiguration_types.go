@@ -18,6 +18,8 @@ package v1alpha1
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+const LifecycleConfigValidationBucketName = "lifecycle-configuration-validation-bucket"
+
 // BucketLifecycleConfiguration specifies the lifecycle configuration for objects in an Amazon S3 bucket.
 // For more information, see Object Lifecycle Management (https://docs.aws.amazon.com/AmazonS3/latest/dev/object-lifecycle-mgmt.html)
 // in the Amazon Simple Storage Service Developer Guide.

@@ -20,14 +20,18 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/pkg/webhook"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	s3internal "github.com/linode/provider-ceph/internal/s3"
 	"github.com/linode/provider-ceph/internal/utils"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
+
+const errValidatingLifecycleConfig = "unable to validate lifecycle configuration"
 
 type BucketValidator struct {
 	validator    *webhook.Validator
@@ -56,7 +60,7 @@ func (b *BucketValidator) ValidateCreate(ctx context.Context, obj runtime.Object
 		return nil, errors.New(errNotBucket)
 	}
 
-	return nil, b.validateCreateOrUpdate(bucket)
+	return nil, b.validateCreateOrUpdate(ctx, bucket)
 }
 
 func (b *BucketValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
@@ -65,14 +69,14 @@ func (b *BucketValidator) ValidateUpdate(ctx context.Context, oldObj, newObj run
 		return nil, errors.New(errNotBucket)
 	}
 
-	return nil, b.validateCreateOrUpdate(bucket)
+	return nil, b.validateCreateOrUpdate(ctx, bucket)
 }
 
 func (b *BucketValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
-func (b *BucketValidator) validateCreateOrUpdate(bucket *v1alpha1.Bucket) error {
+func (b *BucketValidator) validateCreateOrUpdate(ctx context.Context, bucket *v1alpha1.Bucket) error {
 	// Ignore validation for health check buckets as they do not
 	// behave as 'normal' buckets. For example, health check buckets
 	// need to be updated after their owning ProviderConfig has been deleted.
@@ -81,13 +85,54 @@ func (b *BucketValidator) validateCreateOrUpdate(bucket *v1alpha1.Bucket) error 
 		return nil
 	}
 
-	if len(bucket.Spec.Providers) == 0 {
-		return nil
+	if len(bucket.Spec.Providers) != 0 {
+		missingProviders := utils.MissingStrings(bucket.Spec.Providers, b.backendStore.GetAllActiveBackendNames())
+		if len(missingProviders) != 0 {
+			return errors.New(fmt.Sprintf("providers %v listed in bucket.Spec.Providers cannot be found", missingProviders))
+		}
 	}
 
-	missingProviders := utils.MissingStrings(bucket.Spec.Providers, b.backendStore.GetAllActiveBackendNames())
-	if len(missingProviders) != 0 {
-		return errors.New(fmt.Sprintf("providers %v listed in bucket.Spec.Providers cannot be found", missingProviders))
+	if !bucket.Spec.LifeCycleConfigurationDisabled && bucket.Spec.ForProvider.LifecycleConfiguration != nil {
+		if err := b.validateLifecycleConfiguration(ctx, bucket); err != nil {
+			return errors.Wrap(err, errValidatingLifecycleConfig)
+		}
+	}
+
+	return nil
+}
+
+func (b *BucketValidator) validateLifecycleConfiguration(ctx context.Context, bucket *v1alpha1.Bucket) error {
+	s3Client := b.backendStore.GetFirstActiveBackendClient(bucket.Spec.Providers)
+	if s3Client == nil {
+		return errors.New(errNoS3BackendsStored)
+	}
+
+	dummyBucket := &v1alpha1.Bucket{}
+	validationBucketName := v1alpha1.LifecycleConfigValidationBucketName
+	dummyBucket.SetName(validationBucketName)
+
+	// Create dummy bucket 'life-cycle-configuration-validation-bucket' for the lifecycle config validation.
+	// Cleanup of this bucket is performed by the health-check controller on deletion of the ProviderConfig.
+	var err error
+	for i := 0; i < s3internal.RequestRetries; i++ {
+		_, err = s3Client.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(dummyBucket))
+		if resource.Ignore(s3internal.IsAlreadyExists, err) == nil {
+			break
+		}
+	}
+	if resource.Ignore(s3internal.IsAlreadyExists, err) != nil {
+		return errors.Wrap(err, errCreateBucket)
+	}
+
+	// Attempt to Put the lifecycle config.
+	for i := 0; i < s3internal.RequestRetries; i++ {
+		_, err = s3Client.PutBucketLifecycleConfiguration(ctx, s3internal.GenerateLifecycleConfigurationInput(validationBucketName, bucket.Spec.ForProvider.LifecycleConfiguration))
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		return errors.Wrap(err, errPutLifecycleConfig)
 	}
 
 	return nil

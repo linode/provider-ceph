@@ -3,3 +3,4 @@ kind: TestStep
 commands:
   - command: sleep 8 # Wait for reconciliation of health check buckets based on interval.
   - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist ceph-cluster-health-check $CEPH_ADDRESS
+  - command: ../../../../hack/expect_bucket.sh bucket_does_not_exist lifecycle-config-validation-bucket $CEPH_ADDRESS

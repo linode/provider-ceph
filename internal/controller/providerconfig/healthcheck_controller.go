@@ -126,7 +126,9 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return
 	}
 
-	// health check interval is 30s by default.
+	// Health check interval is 30s by default.
+	// It is safe to requeue after the same object multiple times,
+	// because controller runtime reconcilies only once.
 	res = ctrl.Result{
 		RequeueAfter: time.Duration(providerConfig.Spec.HealthCheckIntervalSeconds) * time.Second,
 	}

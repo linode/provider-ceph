@@ -9,10 +9,10 @@ PLATFORMS ?= linux_amd64 linux_arm64
 # Generate kuttl e2e tests for the following kind node versions
 # TEST_KIND_NODES is not intended to be updated manually.
 # Please edit LATEST_KIND_NODE instead and run 'make update-kind-nodes'.
-TEST_KIND_NODES ?= 1.25.0,1.26.0,1.27.0
+TEST_KIND_NODES ?= 1.25.11,1.26.6,1.27.3,1.28.0
 
-LATEST_KUBE_VERSION ?= 1.27
-LATEST_KIND_NODE ?= 1.27.0
+LATEST_KUBE_VERSION ?= 1.28
+LATEST_KIND_NODE ?= 1.28.0
 REPO ?= provider-ceph
 
 # ====================================================================================

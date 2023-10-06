@@ -280,6 +280,7 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 	}
 
 	for _, bucket := range buckets.Items {
+		bucket := bucket
 		r.log.Debug("unpause bucket", "bucket", bucket.Name)
 		if !v1alpha1.IsHealthCheckBucket(&bucket) && bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "true" {
 			bucket.Annotations[meta.AnnotationKeyReconciliationPaused] = ""

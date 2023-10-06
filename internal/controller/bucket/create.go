@@ -141,7 +141,7 @@ WAIT:
 				delete(bucket.ObjectMeta.Annotations, meta.AnnotationKeyExternalCreatePending)
 
 				// Add labels for the backend
-				bucket.Labels[beName] = "true"
+				bucket.ObjectMeta.Labels[beName] = "true"
 
 				return NeedsObjectUpdate
 			}, func(_, bucket *v1alpha1.Bucket) UpdateRequired {

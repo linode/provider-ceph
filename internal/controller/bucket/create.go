@@ -140,6 +140,9 @@ WAIT:
 				// Crossplane skips object forever.
 				delete(bucket.ObjectMeta.Annotations, meta.AnnotationKeyExternalCreatePending)
 
+				// Add labels for the backend
+				bucket.Labels[beName] = "true"
+
 				return NeedsObjectUpdate
 			}, func(_, bucket *v1alpha1.Bucket) UpdateRequired {
 				bucket.Status.SetConditions(xpv1.Available())

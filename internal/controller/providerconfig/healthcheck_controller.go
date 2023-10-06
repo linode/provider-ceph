@@ -120,7 +120,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 	}
 
-	currentHealth := providerConfig.Status.Health
+	previousHealth := providerConfig.Status.Health
 
 	if err = r.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
 		r.log.Info("Failed to do health check on s3 backend", "name", providerConfig.Name, "backend", req.Name)
@@ -130,9 +130,9 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return
 	}
 
-	newHealth := providerConfig.Status.Health
+	currentHealth := providerConfig.Status.Health
 
-	if currentHealth == apisv1alpha1.HealthStatusUnhealthy && newHealth == apisv1alpha1.HealthStatusHealthy {
+	if previousHealth == apisv1alpha1.HealthStatusUnhealthy && currentHealth == apisv1alpha1.HealthStatusHealthy {
 		r.log.Info("Backend becomes online again", "provider", providerConfig.Name)
 		err = r.unpauseBuckets(ctx, providerConfig.Name)
 		if err != nil {
@@ -270,37 +270,24 @@ func (r *HealthCheckReconciler) setupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendName string) error {
-	s3BackendClient := r.backendStore.GetBackendClient(s3BackendName)
-	if s3BackendClient == nil {
-		return errors.New(errBackendNotStored)
+	buckets := &v1alpha1.BucketList{}
+	matchingLabels := client.MatchingLabels{
+		s3BackendName: "true",
 	}
-
-	s3Buckets, err := s3BackendClient.ListBuckets(ctx, nil)
+	err := r.kubeClient.List(ctx, buckets, matchingLabels)
 	if err != nil {
 		return err
 	}
 
-	for _, s3Bucket := range s3Buckets.Buckets {
-		bucket := &v1alpha1.Bucket{}
-		if err := r.kubeClient.Get(ctx, types.NamespacedName{Name: *s3Bucket.Name}, bucket); err != nil {
-			r.log.Info(err.Error(), "bucket", *s3Bucket.Name)
-
-			continue
-		}
-
-		if !v1alpha1.IsHealthCheckBucket(bucket) && bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "true" {
+	for _, bucket := range buckets.Items {
+		r.log.Debug("unpause bucket", "bucket", bucket.Name)
+		if !v1alpha1.IsHealthCheckBucket(&bucket) && bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "true" {
 			bucket.Annotations[meta.AnnotationKeyReconciliationPaused] = ""
-			err = r.kubeClient.Update(ctx, bucket)
+			err = r.kubeClient.Update(ctx, &bucket)
 			if err != nil {
 				r.log.Info(err.Error(), "bucket", bucket.Name)
 			}
 		}
-	}
-
-	b := &v1alpha1.BucketList{}
-	err = r.kubeClient.List(ctx, b)
-	if err != nil {
-		r.log.Info(err.Error())
 	}
 
 	return nil

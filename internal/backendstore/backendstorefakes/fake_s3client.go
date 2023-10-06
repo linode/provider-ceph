@@ -85,21 +85,6 @@ type FakeS3Client struct {
 		result1 *s3.HeadBucketOutput
 		result2 error
 	}
-	ListBucketsStub        func(context.Context, *s3.ListBucketsInput, ...func(*s3.Options)) (*s3.ListBucketsOutput, error)
-	listBucketsMutex       sync.RWMutex
-	listBucketsArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.ListBucketsInput
-		arg3 []func(*s3.Options)
-	}
-	listBucketsReturns struct {
-		result1 *s3.ListBucketsOutput
-		result2 error
-	}
-	listBucketsReturnsOnCall map[int]struct {
-		result1 *s3.ListBucketsOutput
-		result2 error
-	}
 	ListObjectVersionsStub        func(context.Context, *s3.ListObjectVersionsInput, ...func(*s3.Options)) (*s3.ListObjectVersionsOutput, error)
 	listObjectVersionsMutex       sync.RWMutex
 	listObjectVersionsArgsForCall []struct {
@@ -494,72 +479,6 @@ func (fake *FakeS3Client) HeadBucketReturnsOnCall(i int, result1 *s3.HeadBucketO
 	}{result1, result2}
 }
 
-func (fake *FakeS3Client) ListBuckets(arg1 context.Context, arg2 *s3.ListBucketsInput, arg3 ...func(*s3.Options)) (*s3.ListBucketsOutput, error) {
-	fake.listBucketsMutex.Lock()
-	ret, specificReturn := fake.listBucketsReturnsOnCall[len(fake.listBucketsArgsForCall)]
-	fake.listBucketsArgsForCall = append(fake.listBucketsArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.ListBucketsInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
-	stub := fake.ListBucketsStub
-	fakeReturns := fake.listBucketsReturns
-	fake.recordInvocation("ListBuckets", []interface{}{arg1, arg2, arg3})
-	fake.listBucketsMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2, arg3...)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *FakeS3Client) ListBucketsCallCount() int {
-	fake.listBucketsMutex.RLock()
-	defer fake.listBucketsMutex.RUnlock()
-	return len(fake.listBucketsArgsForCall)
-}
-
-func (fake *FakeS3Client) ListBucketsCalls(stub func(context.Context, *s3.ListBucketsInput, ...func(*s3.Options)) (*s3.ListBucketsOutput, error)) {
-	fake.listBucketsMutex.Lock()
-	defer fake.listBucketsMutex.Unlock()
-	fake.ListBucketsStub = stub
-}
-
-func (fake *FakeS3Client) ListBucketsArgsForCall(i int) (context.Context, *s3.ListBucketsInput, []func(*s3.Options)) {
-	fake.listBucketsMutex.RLock()
-	defer fake.listBucketsMutex.RUnlock()
-	argsForCall := fake.listBucketsArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
-}
-
-func (fake *FakeS3Client) ListBucketsReturns(result1 *s3.ListBucketsOutput, result2 error) {
-	fake.listBucketsMutex.Lock()
-	defer fake.listBucketsMutex.Unlock()
-	fake.ListBucketsStub = nil
-	fake.listBucketsReturns = struct {
-		result1 *s3.ListBucketsOutput
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeS3Client) ListBucketsReturnsOnCall(i int, result1 *s3.ListBucketsOutput, result2 error) {
-	fake.listBucketsMutex.Lock()
-	defer fake.listBucketsMutex.Unlock()
-	fake.ListBucketsStub = nil
-	if fake.listBucketsReturnsOnCall == nil {
-		fake.listBucketsReturnsOnCall = make(map[int]struct {
-			result1 *s3.ListBucketsOutput
-			result2 error
-		})
-	}
-	fake.listBucketsReturnsOnCall[i] = struct {
-		result1 *s3.ListBucketsOutput
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *FakeS3Client) ListObjectVersions(arg1 context.Context, arg2 *s3.ListObjectVersionsInput, arg3 ...func(*s3.Options)) (*s3.ListObjectVersionsOutput, error) {
 	fake.listObjectVersionsMutex.Lock()
 	ret, specificReturn := fake.listObjectVersionsReturnsOnCall[len(fake.listObjectVersionsArgsForCall)]
@@ -837,8 +756,6 @@ func (fake *FakeS3Client) Invocations() map[string][][]interface{} {
 	defer fake.getObjectMutex.RUnlock()
 	fake.headBucketMutex.RLock()
 	defer fake.headBucketMutex.RUnlock()
-	fake.listBucketsMutex.RLock()
-	defer fake.listBucketsMutex.RUnlock()
 	fake.listObjectVersionsMutex.RLock()
 	defer fake.listObjectVersionsMutex.RUnlock()
 	fake.listObjectsV2Mutex.RLock()

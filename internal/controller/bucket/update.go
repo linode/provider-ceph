@@ -78,6 +78,19 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 				bucket.Annotations[meta.AnnotationKeyReconciliationPaused] = "true"
 			}
 
+			// Add labels for beckends if they don't exist
+			for _, beName := range bucket.Spec.Providers {
+				if _, ok := bucket.ObjectMeta.Labels[beName]; !ok {
+					if bucket.ObjectMeta.Labels == nil {
+						bucket.ObjectMeta.Labels = map[string]string{
+							beName: "true",
+						}
+					} else {
+						bucket.ObjectMeta.Labels[beName] = "true"
+					}
+				}
+			}
+
 			controllerutil.AddFinalizer(bucket, inUseFinalizer)
 
 			return NeedsObjectUpdate

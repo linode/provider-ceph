@@ -35,9 +35,11 @@ import (
 
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
+	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
@@ -118,12 +120,21 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 	}
 
+	previousHealth := providerConfig.Status.Health
+
 	if err = r.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
 		r.log.Info("Failed to do health check on s3 backend", "name", providerConfig.Name, "backend", req.Name)
 
 		providerConfig.Status.Reason = fmt.Sprintf("failed to do health check: %v", err.Error())
 
 		return
+	}
+
+	currentHealth := providerConfig.Status.Health
+
+	if currentHealth == apisv1alpha1.HealthStatusHealthy && previousHealth != currentHealth {
+		r.log.Info("Backend becomes online again", "provider", providerConfig.Name)
+		go r.unpauseBuckets(ctx, providerConfig.Name)
 	}
 
 	// Health check interval is 30s by default.
@@ -253,4 +264,52 @@ func (r *HealthCheckReconciler) setupWithManager(mgr ctrl.Manager) error {
 			MaxConcurrentReconciles: maxReconciles,
 		}.ForControllerRuntime()).
 		Complete(r)
+}
+
+func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendName string) {
+	const (
+		steps    = 4
+		duration = 10 * time.Microsecond
+		factor   = 5
+		jitter   = 0.1
+	)
+
+	buckets := &v1alpha1.BucketList{}
+	hasBackendName := client.HasLabels{s3BackendName}
+	err := retry.OnError(wait.Backoff{
+		Steps:    steps,
+		Duration: duration,
+		Factor:   factor,
+		Jitter:   jitter,
+	}, resource.IsAPIError, func() error {
+		return r.kubeClient.List(ctx, buckets, hasBackendName)
+	})
+	if err != nil {
+		r.log.Info(err.Error(), "backend", s3BackendName)
+
+		return
+	}
+
+	for _, bucket := range buckets.Items {
+		bucket := bucket
+		r.log.Debug("unpause bucket", "bucket", bucket.Name)
+		err := retry.OnError(wait.Backoff{
+			Steps:    steps,
+			Duration: duration,
+			Factor:   factor,
+			Jitter:   jitter,
+		}, resource.IsAPIError, func() error {
+			if !v1alpha1.IsHealthCheckBucket(&bucket) && bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "true" {
+				bucket.Annotations[meta.AnnotationKeyReconciliationPaused] = ""
+
+				return r.kubeClient.Update(ctx, &bucket)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			r.log.Info(err.Error(), "bucket", bucket.Name)
+		}
+	}
 }

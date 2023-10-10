@@ -134,10 +134,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	if currentHealth == apisv1alpha1.HealthStatusHealthy && previousHealth != currentHealth {
 		r.log.Info("Backend becomes online again", "provider", providerConfig.Name)
-		err = r.unpauseBuckets(ctx, providerConfig.Name)
-		if err != nil {
-			r.log.Info(err.Error(), "provider", providerConfig.Name)
-		}
+		go r.unpauseBuckets(ctx, providerConfig.Name)
 	}
 
 	// Health check interval is 30s by default.
@@ -269,20 +266,28 @@ func (r *HealthCheckReconciler) setupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendName string) error {
-	buckets := &v1alpha1.BucketList{}
-	hasBackendName := client.HasLabels{s3BackendName}
-	err := r.kubeClient.List(ctx, buckets, hasBackendName)
-	if err != nil {
-		return err
-	}
-
+func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendName string) {
 	const (
 		steps    = 4
 		duration = 10 * time.Microsecond
 		factor   = 5
 		jitter   = 0.1
 	)
+
+	buckets := &v1alpha1.BucketList{}
+	hasBackendName := client.HasLabels{s3BackendName}
+	err := retry.OnError(wait.Backoff{
+		Steps:    steps,
+		Duration: duration,
+		Factor:   factor,
+		Jitter:   jitter,
+	}, resource.IsAPIError, func() error {
+		return r.kubeClient.List(ctx, buckets, hasBackendName)
+	})
+	if err != nil {
+		r.log.Info(err.Error(), "backend", s3BackendName)
+		return
+	}
 
 	for _, bucket := range buckets.Items {
 		bucket := bucket
@@ -304,6 +309,4 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 			r.log.Info(err.Error(), "bucket", bucket.Name)
 		}
 	}
-
-	return nil
 }

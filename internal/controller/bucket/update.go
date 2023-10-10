@@ -82,12 +82,9 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			for _, beName := range bucket.Spec.Providers {
 				if _, ok := bucket.ObjectMeta.Labels[beName]; !ok {
 					if bucket.ObjectMeta.Labels == nil {
-						bucket.ObjectMeta.Labels = map[string]string{
-							beName: "true",
-						}
-					} else {
-						bucket.ObjectMeta.Labels[beName] = "true"
+						bucket.ObjectMeta.Labels = map[string]string{}
 					}
+					bucket.ObjectMeta.Labels[beName] = "true"
 				}
 			}
 

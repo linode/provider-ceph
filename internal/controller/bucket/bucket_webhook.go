@@ -52,7 +52,7 @@ func NewBucketValidator(b *backendstore.BackendStore) *BucketValidator {
 	return bucketValidator
 }
 
-//+kubebuilder:webhook:path=/validate-provider-ceph-ceph-crossplane-io-v1alpha1-bucket,mutating=false,failurePolicy=fail,sideEffects=None,groups=provider-ceph.ceph.crossplane.io,resources=buckets,verbs=create;update,versions=v1alpha1,name=bucket.providerceph.crossplane.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/validate-provider-ceph-ceph-crossplane-io-v1alpha1-bucket,mutating=false,failurePolicy=ignore,sideEffects=None,groups=provider-ceph.ceph.crossplane.io,resources=buckets,verbs=create;update,versions=v1alpha1,name=bucket.providerceph.crossplane.io,admissionReviewVersions=v1
 
 func (b *BucketValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	bucket, ok := obj.(*v1alpha1.Bucket)

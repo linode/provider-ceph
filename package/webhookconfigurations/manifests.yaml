@@ -11,7 +11,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-provider-ceph-ceph-crossplane-io-v1alpha1-bucket
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: bucket.providerceph.crossplane.io
   rules:
   - apiGroups:

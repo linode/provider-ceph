@@ -271,10 +271,8 @@ func (r *HealthCheckReconciler) setupWithManager(mgr ctrl.Manager) error {
 
 func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendName string) error {
 	buckets := &v1alpha1.BucketList{}
-	matchingLabels := client.MatchingLabels{
-		s3BackendName: "true",
-	}
-	err := r.kubeClient.List(ctx, buckets, matchingLabels)
+	hasBackendName := client.HasLabels{s3BackendName}
+	err := r.kubeClient.List(ctx, buckets, hasBackendName)
 	if err != nil {
 		return err
 	}

@@ -144,7 +144,7 @@ WAIT:
 				if bucket.ObjectMeta.Labels == nil {
 					bucket.ObjectMeta.Labels = map[string]string{}
 				}
-				bucket.ObjectMeta.Labels[beName] = "true"
+				bucket.ObjectMeta.Labels[beName] = ""
 
 				return NeedsObjectUpdate
 			}, func(_, bucket *v1alpha1.Bucket) UpdateRequired {

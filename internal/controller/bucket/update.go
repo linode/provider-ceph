@@ -84,7 +84,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 					if bucket.ObjectMeta.Labels == nil {
 						bucket.ObjectMeta.Labels = map[string]string{}
 					}
-					bucket.ObjectMeta.Labels[beName] = "true"
+					bucket.ObjectMeta.Labels[beName] = ""
 				}
 			}
 

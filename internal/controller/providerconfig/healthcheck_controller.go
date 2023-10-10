@@ -132,7 +132,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	currentHealth := providerConfig.Status.Health
 
-	if previousHealth == apisv1alpha1.HealthStatusUnhealthy && currentHealth == apisv1alpha1.HealthStatusHealthy {
+	if currentHealth == apisv1alpha1.HealthStatusHealthy && previousHealth != currentHealth {
 		r.log.Info("Backend becomes online again", "provider", providerConfig.Name)
 		err = r.unpauseBuckets(ctx, providerConfig.Name)
 		if err != nil {

@@ -286,6 +286,7 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 	})
 	if err != nil {
 		r.log.Info(err.Error(), "backend", s3BackendName)
+
 		return
 	}
 
@@ -300,8 +301,10 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 		}, resource.IsAPIError, func() error {
 			if !v1alpha1.IsHealthCheckBucket(&bucket) && bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "true" {
 				bucket.Annotations[meta.AnnotationKeyReconciliationPaused] = ""
+
 				return r.kubeClient.Update(ctx, &bucket)
 			}
+
 			return nil
 		})
 

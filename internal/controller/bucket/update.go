@@ -53,7 +53,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	err := c.updateObject(ctx, bucket,
 		func(origBucket, bucket *v1alpha1.Bucket) UpdateRequired {
 			bucket.Status.Conditions = origBucket.Status.Conditions
-			bucket.Status.AtProvider.BackendStatuses = origBucket.Status.AtProvider.BackendStatuses
+			bucket.Status.AtProvider.Backends = origBucket.Status.AtProvider.Backends
 
 			return NeedsStatusUpdate
 		},

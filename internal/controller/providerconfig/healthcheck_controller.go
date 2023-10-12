@@ -96,6 +96,9 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return
 	}
 
+	// Keep the previous health status to compare the current one later
+	previousHealth := providerConfig.Status.Health
+
 	// Assume the status is Unhealthy until we can verify otherwise.
 	providerConfig.Status.Health = apisv1alpha1.HealthStatusUnhealthy
 	providerConfig.Status.Reason = ""
@@ -119,8 +122,6 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return
 		}
 	}
-
-	previousHealth := providerConfig.Status.Health
 
 	if err = r.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
 		r.log.Info("Failed to do health check on s3 backend", "name", providerConfig.Name, "backend", req.Name)

@@ -270,7 +270,7 @@ func (r *HealthCheckReconciler) setupWithManager(mgr ctrl.Manager) error {
 func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendName string) {
 	const (
 		steps    = 4
-		duration = 10 * time.Microsecond
+		duration = 10 * time.Millisecond
 		factor   = 5
 		jitter   = 0.1
 	)

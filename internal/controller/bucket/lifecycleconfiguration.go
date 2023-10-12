@@ -87,7 +87,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 		return NeedsUpdate, errors.Wrap(err, errGetLifecycleConfig)
 	}
 
-	if bucket.Spec.ForProvider.LifecycleConfiguration == nil || bucket.Spec.LifeCycleConfigurationDisabled {
+	if bucket.Spec.ForProvider.LifecycleConfiguration == nil || bucket.Spec.LifecycleConfigurationDisabled {
 		// No lifecycle config is specified, or it has been disabled.
 		// Either way, it should not exist on any backend.
 		if LifecycleConfigurationNotFound(err) {

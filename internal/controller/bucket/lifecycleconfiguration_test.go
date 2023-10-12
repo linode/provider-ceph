@@ -124,7 +124,7 @@ func TestObserveBackend(t *testing.T) {
 						Name: "bucket",
 					},
 					Spec: v1alpha1.BucketSpec{
-						LifeCycleConfigurationDisabled: false,
+						LifecycleConfigurationDisabled: false,
 					},
 				},
 				backendName: "s3-backend-1",
@@ -158,7 +158,7 @@ func TestObserveBackend(t *testing.T) {
 						Name: "bucket",
 					},
 					Spec: v1alpha1.BucketSpec{
-						LifeCycleConfigurationDisabled: false,
+						LifecycleConfigurationDisabled: false,
 					},
 				},
 				backendName: "s3-backend-1",
@@ -192,7 +192,7 @@ func TestObserveBackend(t *testing.T) {
 						Name: "bucket",
 					},
 					Spec: v1alpha1.BucketSpec{
-						LifeCycleConfigurationDisabled: true,
+						LifecycleConfigurationDisabled: true,
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
@@ -237,7 +237,7 @@ func TestObserveBackend(t *testing.T) {
 						Name: "bucket",
 					},
 					Spec: v1alpha1.BucketSpec{
-						LifeCycleConfigurationDisabled: true,
+						LifecycleConfigurationDisabled: true,
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
@@ -288,7 +288,7 @@ func TestObserveBackend(t *testing.T) {
 						Name: "bucket",
 					},
 					Spec: v1alpha1.BucketSpec{
-						LifeCycleConfigurationDisabled: false,
+						LifecycleConfigurationDisabled: false,
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{},
@@ -335,7 +335,7 @@ func TestObserveBackend(t *testing.T) {
 						Name: "bucket",
 					},
 					Spec: v1alpha1.BucketSpec{
-						LifeCycleConfigurationDisabled: false,
+						LifecycleConfigurationDisabled: false,
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
@@ -388,7 +388,7 @@ func TestObserveBackend(t *testing.T) {
 						Name: "bucket",
 					},
 					Spec: v1alpha1.BucketSpec{
-						LifeCycleConfigurationDisabled: false,
+						LifecycleConfigurationDisabled: false,
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{

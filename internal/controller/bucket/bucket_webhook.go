@@ -92,7 +92,7 @@ func (b *BucketValidator) validateCreateOrUpdate(ctx context.Context, bucket *v1
 		}
 	}
 
-	if !bucket.Spec.LifeCycleConfigurationDisabled && bucket.Spec.ForProvider.LifecycleConfiguration != nil {
+	if !bucket.Spec.LifecycleConfigurationDisabled && bucket.Spec.ForProvider.LifecycleConfiguration != nil {
 		if err := b.validateLifecycleConfiguration(ctx, bucket); err != nil {
 			return errors.Wrap(err, errValidatingLifecycleConfig)
 		}

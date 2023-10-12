@@ -126,7 +126,7 @@ type BucketSpec struct {
 	// attempt deletion and/or avoid create/updates of the
 	// lifecycle config for the bucket on all of the bucket's
 	// backends. The Bucket CR's status is updated accordingly.
-	LifeCycleConfigurationDisabled bool `json:"lifecycleConfigurationDisabled,omitempty"`
+	LifecycleConfigurationDisabled bool `json:"lifecycleConfigurationDisabled,omitempty"`
 	// +optional
 	// AutoPause allows the user to disable further reconciliation
 	// of the bucket after successfully created or updated.

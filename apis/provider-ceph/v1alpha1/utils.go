@@ -19,6 +19,7 @@ package v1alpha1
 const (
 	HealthCheckLabelKey = "provider-ceph.crossplane.io"
 	HealthCheckLabelVal = "health-check-bucket"
+	BackendLabelPrefix  = "provider-ceph.backends."
 )
 
 // Deprecation warning: This function exists for compatibility reasons,

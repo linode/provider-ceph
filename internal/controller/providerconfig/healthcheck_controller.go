@@ -291,26 +291,26 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 		return
 	}
 
-	for _, bucket := range buckets.Items {
-		bucket := bucket
-		r.log.Debug("unpause bucket", "bucket", bucket.Name)
+	for i := range buckets.Items {
+		i := i
+		r.log.Debug("unpause bucket", "bucket", buckets.Items[i].Name)
 		err := retry.OnError(wait.Backoff{
 			Steps:    steps,
 			Duration: duration,
 			Factor:   factor,
 			Jitter:   jitter,
 		}, resource.IsAPIError, func() error {
-			if !v1alpha1.IsHealthCheckBucket(&bucket) && bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "true" {
-				bucket.Annotations[meta.AnnotationKeyReconciliationPaused] = ""
+			if !v1alpha1.IsHealthCheckBucket(&buckets.Items[i]) && buckets.Items[i].Annotations[meta.AnnotationKeyReconciliationPaused] == "true" {
+				buckets.Items[i].Annotations[meta.AnnotationKeyReconciliationPaused] = ""
 
-				return r.kubeClient.Update(ctx, &bucket)
+				return r.kubeClient.Update(ctx, &buckets.Items[i])
 			}
 
 			return nil
 		})
 
 		if err != nil {
-			r.log.Info(err.Error(), "bucket", bucket.Name)
+			r.log.Info(err.Error(), "bucket", buckets.Items[i].Name)
 		}
 	}
 }

@@ -53,18 +53,20 @@ const (
 	healthCheckFile       = "health-check-file"
 )
 
-func newHealthCheckReconciler(k client.Client, o controller.Options, s *backendstore.BackendStore) *HealthCheckReconciler {
+func newHealthCheckReconciler(k client.Client, o controller.Options, s *backendstore.BackendStore, a bool) *HealthCheckReconciler {
 	return &HealthCheckReconciler{
-		kubeClient:   k,
-		backendStore: s,
-		log:          o.Logger.WithValues("health-check-controller", providerconfig.ControllerName(apisv1alpha1.ProviderConfigGroupKind)),
+		kubeClient:      k,
+		backendStore:    s,
+		log:             o.Logger.WithValues("health-check-controller", providerconfig.ControllerName(apisv1alpha1.ProviderConfigGroupKind)),
+		autoPauseBucket: a,
 	}
 }
 
 type HealthCheckReconciler struct {
-	kubeClient   client.Client
-	backendStore *backendstore.BackendStore
-	log          logging.Logger
+	kubeClient      client.Client
+	backendStore    *backendstore.BackendStore
+	log             logging.Logger
+	autoPauseBucket bool
 }
 
 func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
@@ -96,6 +98,9 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return
 	}
 
+	// Keep the previous health status to compare the current one later
+	previousHealth := providerConfig.Status.Health
+
 	// Assume the status is Unhealthy until we can verify otherwise.
 	providerConfig.Status.Health = apisv1alpha1.HealthStatusUnhealthy
 	providerConfig.Status.Reason = ""
@@ -119,8 +124,6 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return
 		}
 	}
-
-	previousHealth := providerConfig.Status.Health
 
 	if err = r.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
 		r.log.Info("Failed to do health check on s3 backend", "name", providerConfig.Name, "backend", req.Name)
@@ -269,7 +272,7 @@ func (r *HealthCheckReconciler) setupWithManager(mgr ctrl.Manager) error {
 func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendName string) {
 	const (
 		steps    = 4
-		duration = 10 * time.Microsecond
+		duration = time.Second
 		factor   = 5
 		jitter   = 0.1
 	)
@@ -290,26 +293,28 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 		return
 	}
 
-	for _, bucket := range buckets.Items {
-		bucket := bucket
-		r.log.Debug("unpause bucket", "bucket", bucket.Name)
+	for i := range buckets.Items {
+		i := i
+		r.log.Debug("unpause bucket", "bucket", buckets.Items[i].Name)
 		err := retry.OnError(wait.Backoff{
 			Steps:    steps,
 			Duration: duration,
 			Factor:   factor,
 			Jitter:   jitter,
 		}, resource.IsAPIError, func() error {
-			if !v1alpha1.IsHealthCheckBucket(&bucket) && bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "true" {
-				bucket.Annotations[meta.AnnotationKeyReconciliationPaused] = ""
+			if !v1alpha1.IsHealthCheckBucket(&buckets.Items[i]) &&
+				(r.autoPauseBucket || buckets.Items[i].Spec.AutoPause) &&
+				buckets.Items[i].Annotations[meta.AnnotationKeyReconciliationPaused] == "true" {
+				buckets.Items[i].Annotations[meta.AnnotationKeyReconciliationPaused] = ""
 
-				return r.kubeClient.Update(ctx, &bucket)
+				return r.kubeClient.Update(ctx, &buckets.Items[i])
 			}
 
 			return nil
 		})
 
 		if err != nil {
-			r.log.Info(err.Error(), "bucket", bucket.Name)
+			r.log.Info(err.Error(), "bucket", buckets.Items[i].Name)
 		}
 	}
 }

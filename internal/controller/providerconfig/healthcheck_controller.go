@@ -53,18 +53,20 @@ const (
 	healthCheckFile       = "health-check-file"
 )
 
-func newHealthCheckReconciler(k client.Client, o controller.Options, s *backendstore.BackendStore) *HealthCheckReconciler {
+func newHealthCheckReconciler(k client.Client, o controller.Options, s *backendstore.BackendStore, a bool) *HealthCheckReconciler {
 	return &HealthCheckReconciler{
-		kubeClient:   k,
-		backendStore: s,
-		log:          o.Logger.WithValues("health-check-controller", providerconfig.ControllerName(apisv1alpha1.ProviderConfigGroupKind)),
+		kubeClient:      k,
+		backendStore:    s,
+		log:             o.Logger.WithValues("health-check-controller", providerconfig.ControllerName(apisv1alpha1.ProviderConfigGroupKind)),
+		autoPauseBucket: a,
 	}
 }
 
 type HealthCheckReconciler struct {
-	kubeClient   client.Client
-	backendStore *backendstore.BackendStore
-	log          logging.Logger
+	kubeClient      client.Client
+	backendStore    *backendstore.BackendStore
+	log             logging.Logger
+	autoPauseBucket bool
 }
 
 func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
@@ -300,7 +302,9 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 			Factor:   factor,
 			Jitter:   jitter,
 		}, resource.IsAPIError, func() error {
-			if !v1alpha1.IsHealthCheckBucket(&buckets.Items[i]) && buckets.Items[i].Annotations[meta.AnnotationKeyReconciliationPaused] == "true" {
+			if !v1alpha1.IsHealthCheckBucket(&buckets.Items[i]) &&
+				(r.autoPauseBucket || buckets.Items[i].Spec.AutoPause) &&
+				buckets.Items[i].Annotations[meta.AnnotationKeyReconciliationPaused] == "true" {
 				buckets.Items[i].Annotations[meta.AnnotationKeyReconciliationPaused] = ""
 
 				return r.kubeClient.Update(ctx, &buckets.Items[i])

@@ -80,11 +80,12 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			// Add labels for backends if they don't exist
 			for _, beName := range bucket.Spec.Providers {
-				if _, ok := bucket.ObjectMeta.Labels[beName]; !ok {
+				beLabel := v1alpha1.BackendLabelPrefix + beName
+				if _, ok := bucket.ObjectMeta.Labels[beLabel]; !ok {
 					if bucket.ObjectMeta.Labels == nil {
 						bucket.ObjectMeta.Labels = map[string]string{}
 					}
-					bucket.ObjectMeta.Labels[beName] = ""
+					bucket.ObjectMeta.Labels[beLabel] = ""
 				}
 			}
 

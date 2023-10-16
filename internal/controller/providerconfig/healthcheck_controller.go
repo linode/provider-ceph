@@ -278,7 +278,8 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 	)
 
 	buckets := &v1alpha1.BucketList{}
-	hasBackendName := client.HasLabels{s3BackendName}
+	beLabel := v1alpha1.BackendLabelPrefix + s3BackendName
+	hasBackendName := client.HasLabels{beLabel}
 	err := retry.OnError(wait.Backoff{
 		Steps:    steps,
 		Duration: duration,

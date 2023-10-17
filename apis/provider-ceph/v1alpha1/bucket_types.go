@@ -113,7 +113,7 @@ type BucketSpec struct {
 	// +optional
 	// Providers is a list of ProviderConfig names representing
 	// S3 backends on which the bucket is to be created.
-	Providers   []string         `json:"providers"`
+	Providers   []string         `json:"providers,omitempty"`
 	ForProvider BucketParameters `json:"forProvider"`
 	// Disabled allows the user to create a Bucket CR without creating
 	// buckets on any S3 backends. If an existing bucket CR is updated

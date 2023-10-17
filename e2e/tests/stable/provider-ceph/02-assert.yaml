@@ -34,6 +34,8 @@ metadata:
   - "bucket-in-use.provider-ceph.crossplane.io"
   annotations:
     crossplane.io/paused: "true"
+  labels:
+    crossplane.io/paused: "true"
 status:
   atProvider:
     backends:
@@ -47,6 +49,6 @@ status:
   - reason: Available
     status: "True"
     type: Ready
-  - reason: ReconcilePaused
-    status: "False"
+  - reason: ReconcileSuccess
+    status: "True"
     type: Synced

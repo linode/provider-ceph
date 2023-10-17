@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	"github.com/crossplane/crossplane-runtime/pkg/webhook"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
@@ -34,25 +33,18 @@ import (
 const errValidatingLifecycleConfig = "unable to validate lifecycle configuration"
 
 type BucketValidator struct {
-	validator    *webhook.Validator
 	backendStore *backendstore.BackendStore
 }
 
 func NewBucketValidator(b *backendstore.BackendStore) *BucketValidator {
-	bucketValidator := &BucketValidator{}
-	validator := webhook.NewValidator()
-
-	validator.CreationChain = append(validator.CreationChain, bucketValidator.ValidateCreate)
-	validator.UpdateChain = append(validator.UpdateChain, bucketValidator.ValidateUpdate)
-	validator.DeletionChain = append(validator.DeletionChain, bucketValidator.ValidateDelete)
-
-	bucketValidator.validator = validator
-	bucketValidator.backendStore = b
+	bucketValidator := &BucketValidator{
+		backendStore: b,
+	}
 
 	return bucketValidator
 }
 
-//+kubebuilder:webhook:path=/validate-provider-ceph-ceph-crossplane-io-v1alpha1-bucket,mutating=false,failurePolicy=fail,sideEffects=None,groups=provider-ceph.ceph.crossplane.io,resources=buckets,verbs=create;update,versions=v1alpha1,name=bucket.providerceph.crossplane.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/validate-provider-ceph-ceph-crossplane-io-v1alpha1-bucket,mutating=false,failurePolicy=fail,sideEffects=None,groups=provider-ceph.ceph.crossplane.io,resources=buckets,verbs=create;update,versions=v1alpha1,name=bucket-validation.providerceph.crossplane.io,admissionReviewVersions=v1
 
 func (b *BucketValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	bucket, ok := obj.(*v1alpha1.Bucket)

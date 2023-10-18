@@ -156,17 +156,22 @@ func main() {
 	if err != nil {
 		log.Debug("error starting tracer provider", "error", err.Error())
 	}
-	if tp != nil {
-		defer func() {
+
+	// overwrite the default terminate function called on FatalIfError()
+	app.Terminate(func(i int) {
+		// flush traces
+		if tp != nil {
 			ctx, cancel := context.WithTimeout(context.Background(), *metricsExportTimeout)
 			defer cancel()
 
-			// flush
 			if err := tp.Shutdown(ctx); err != nil {
-				log.Debug("failed to gracefully shutdown tracer provider", "error", err.Error())
+				log.Debug("failed to shutdown tracer provider and flush in-memory records", "error", err.Error())
 			}
-		}()
-	}
+		}
+
+		// default behavior
+		os.Exit(i)
+	})
 
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")

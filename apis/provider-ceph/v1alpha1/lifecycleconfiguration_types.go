@@ -125,6 +125,7 @@ type LifecycleRuleFilter struct {
 	Prefix *string `json:"prefix,omitempty"`
 
 	// This tag must exist in the object's tag set in order for the rule to apply.
+        // +optional
 	Tag *Tag `json:"tag,omitempty"`
 }
 

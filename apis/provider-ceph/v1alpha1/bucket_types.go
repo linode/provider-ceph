@@ -70,25 +70,42 @@ type BucketParameters struct {
 
 	// Specifies the Region where the bucket will be created.
 	LocationConstraint string `json:"locationConstraint,omitempty"`
+
+	// Creates a new lifecycle configuration for the bucket or replaces an existing
+	// lifecycle configuration. For information about lifecycle configuration, see
+	// Managing Access Permissions to Your Amazon S3 Resources
+	// (https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-access-control.html).
+	// +optional
+	LifecycleConfiguration *BucketLifecycleConfiguration `json:"lifecycleConfiguration,omitempty"`
 }
 
-type BackendStatuses map[string]BackendStatus
+// BackendInfo contains relevant information about an S3 backend for
+// a single bucket.
+type BackendInfo struct {
+	// BucketStatus is the condition of the Bucket on the S3 backend.
+	BucketStatus Status `json:"bucketStatus,omitempty"`
+	// LifecycleConfigurationStatus is the condition of the
+	// bucket lifecycle configuration on the S3 backend.
+	LifecycleConfigurationStatus Status `json:"lifecycleConfigurationStatus,omitempty"`
+}
 
-type BackendStatus string
+// Backends is a map of the names of the S3 backends to BackendInfo.
+type Backends map[string]*BackendInfo
+
+type Status string
 
 const (
-	BackendReadyStatus    BackendStatus = "Ready"
-	BackendNotReadyStatus BackendStatus = "NotReady"
-	BackendDeletingStatus BackendStatus = "Deleting"
+	ReadyStatus    Status = "Ready"
+	NotReadyStatus Status = "NotReady"
+	DeletingStatus Status = "Deleting"
+	NoStatus       Status = ""
 )
 
 // BucketObservation are the observable fields of a Bucket.
 type BucketObservation struct {
-	// BackendStatuses is a map of the s3 backends on which the bucket
-	// has been created and their update status.
-	BackendStatuses   BackendStatuses `json:"backendStatuses,omitempty"`
-	ConfigurableField string          `json:"configurableField"`
-	ObservableField   string          `json:"observableField,omitempty"`
+	Backends          Backends `json:"backends,omitempty"`
+	ConfigurableField string   `json:"configurableField"`
+	ObservableField   string   `json:"observableField,omitempty"`
 }
 
 // A BucketSpec defines the desired state of a Bucket.
@@ -105,6 +122,11 @@ type BucketSpec struct {
 	// CR's status is updated accordingly.
 	// This flag overrides 'Providers'.
 	Disabled bool `json:"disabled,omitempty"`
+	// LifecycleConfigurationDisabled causes provider-ceph to
+	// attempt deletion and/or avoid create/updates of the
+	// lifecycle config for the bucket on all of the bucket's
+	// backends. The Bucket CR's status is updated accordingly.
+	LifecycleConfigurationDisabled bool `json:"lifecycleConfigurationDisabled,omitempty"`
 	// +optional
 	// AutoPause allows the user to disable further reconciliation
 	// of the bucket after successfully created or updated.

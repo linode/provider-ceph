@@ -3,4 +3,5 @@ kind: ProviderConfig
 metadata:
   name: localstack-a
 status:
-  health: Unhealthy
+  health: Healthy
+

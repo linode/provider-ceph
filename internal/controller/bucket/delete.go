@@ -55,7 +55,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	}
 
 	for _, backendName := range activeBackends {
-		bucketBackends.setBucketBackendStatus(bucket.Name, backendName, v1alpha1.BackendDeletingStatus)
+		bucketBackends.setBucketStatus(bucket.Name, backendName, v1alpha1.DeletingStatus)
 
 		c.log.Info("Deleting bucket", "bucket name", bucket.Name, "backend name", backendName)
 		cl := c.backendStore.GetBackendClient(backendName)
@@ -64,7 +64,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 			var err error
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				if err = s3internal.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err == nil {
-					bucketBackends.deleteBucketBackend(bucket.Name, beName)
+					bucketBackends.deleteBackend(bucket.Name, beName)
 
 					break
 				}

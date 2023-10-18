@@ -188,3 +188,11 @@ func (b *BackendStore) BackendsAreStored() bool {
 
 	return len(b.s3Backends) != 0
 }
+
+func (s s3Backends) GetFirst() S3Client {
+	for _, v := range s {
+		return v.s3Client
+	}
+
+	return nil
+}

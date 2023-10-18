@@ -7,10 +7,16 @@ metadata:
   - "bucket-in-use.provider-ceph.crossplane.io"
 status:
   atProvider:
-    backendStatuses:
-      localstack-a: "Ready"
-      localstack-b: "Ready"
-      localstack-c: "Ready"
+    backends:
+      localstack-a:
+        bucketStatus: "Ready"
+        lifecycleConfigurationStatus: "Ready"
+      localstack-b:
+        bucketStatus: "Ready"
+        lifecycleConfigurationStatus: "Ready"
+      localstack-c:
+        bucketStatus: "Ready"
+        lifecycleConfigurationStatus: "Ready"
   conditions:
   - reason: Available
     status: "True"
@@ -30,10 +36,13 @@ metadata:
     crossplane.io/paused: "true"
 status:
   atProvider:
-    backendStatuses:
-      localstack-a: "Ready"
-      localstack-b: "Ready"
-      localstack-c: "Ready"
+    backends:
+      localstack-a:
+        bucketStatus: "Ready"
+      localstack-b:
+        bucketStatus: "Ready"
+      localstack-c:
+        bucketStatus: "Ready"
   conditions:
   - reason: Available
     status: "True"

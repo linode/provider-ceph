@@ -25,20 +25,7 @@ metadata:
   namespace: crossplane-system
 spec:
   hostBase: "${CEPH_ADDRESS}"
-  credentials:
-    source: Secret
-    secretRef:
-      namespace: crossplane-system
-      name: ceph-secret
-      key: credentials
----
-apiVersion: ceph.crossplane.io/v1alpha1
-kind: ProviderConfig
-metadata:
-  name: default
-  namespace: crossplane-system
-spec:
-  hostBase: "${CEPH_ADDRESS}"
+  healthCheckIntervalSeconds: 5
   credentials:
     source: Secret
     secretRef:

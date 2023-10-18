@@ -7,8 +7,9 @@ metadata:
   - "bucket-in-use.provider-ceph.crossplane.io"
 status:
   atProvider:
-    backendStatuses:
-      ceph-cluster: "Ready"
+    backends:
+      ceph-cluster: 
+        bucketStatus: "Ready"
   conditions:
   - reason: Available
     status: "True"
@@ -26,11 +27,9 @@ metadata:
   - "bucket-in-use.provider-ceph.crossplane.io"
 status:
   atProvider:
-    backendStatuses:
-      ceph-cluster: "Ready"
-      localstack-a: "Ready"
-      localstack-b: "Ready"
-      localstack-c: "Ready"
+    backends:
+      ceph-cluster:
+        bucketStatus: "Ready"
   conditions:
   - reason: Available
     status: "True"

@@ -16,11 +16,11 @@ import (
 func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends) {
 	bucket.Status.SetConditions(xpv1.Unavailable())
 
-	bucketBackendStatuses := bucketBackends.getBucketBackendStatuses(bucket.Name, bucket.Spec.Providers)
-	bucket.Status.AtProvider.BackendStatuses = bucketBackendStatuses
+	backends := bucketBackends.getBackends(bucket.Name, bucket.Spec.Providers)
+	bucket.Status.AtProvider.Backends = backends
 
-	for _, backendStatus := range bucketBackendStatuses {
-		if backendStatus == v1alpha1.BackendReadyStatus {
+	for _, backend := range backends {
+		if backend.BucketStatus == v1alpha1.ReadyStatus {
 			bucket.Status.SetConditions(xpv1.Available())
 
 			break

@@ -105,6 +105,219 @@ spec:
                     description: Allows grantee to write the ACL for the applicable
                       bucket.
                     type: string
+                  lifecycleConfiguration:
+                    description: Creates a new lifecycle configuration for the bucket
+                      or replaces an existing lifecycle configuration. For information
+                      about lifecycle configuration, see Managing Access Permissions
+                      to Your Amazon S3 Resources (https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-access-control.html).
+                    properties:
+                      rules:
+                        description: "A lifecycle rule for individual objects in a
+                          bucket. \n Rules is a required field"
+                        items:
+                          description: LifecycleRule for individual objects in a bucket.
+                          properties:
+                            abortIncompleteMultipartUpload:
+                              description: Specifies the days since the initiation
+                                of an incomplete multipart upload that will be waited
+                                before permanently removing all parts of the upload.
+                                For more information, see Aborting Incomplete Multipart
+                                Uploads Using a Bucket Lifecycle Policy (https://docs.aws.amazon.com/AmazonS3/latest/dev/mpuoverview.html#mpu-abort-incomplete-mpu-lifecycle-config)
+                                in the Amazon Simple Storage Service Developer Guide.
+                              properties:
+                                daysAfterInitiation:
+                                  description: Specifies the number of days after
+                                    which an incomplete multipart upload is aborted.
+                                  format: int32
+                                  maximum: 2147483647
+                                  minimum: 1
+                                  type: integer
+                              required:
+                              - daysAfterInitiation
+                              type: object
+                            expiration:
+                              description: Specifies the expiration for the lifecycle
+                                of the object in the form of date, days and, whether
+                                the object has a delete marker.
+                              properties:
+                                date:
+                                  description: Indicates at what date the object is
+                                    to be moved or deleted.
+                                  format: date-time
+                                  type: string
+                                days:
+                                  description: Indicates the lifetime, in days, of
+                                    the objects that are subject to the rule. The
+                                    value must be a non-zero positive integer.
+                                  format: int32
+                                  minimum: 1
+                                  type: integer
+                                expiredObjectDeleteMarker:
+                                  description: Indicates whether a delete marker will
+                                    be removed with no noncurrent versions. If set
+                                    to true, the delete marker will be expired; if
+                                    set to false the policy takes no action. This
+                                    cannot be specified with Days or Date in a Lifecycle
+                                    Expiration Policy.
+                                  type: boolean
+                              type: object
+                            filter:
+                              description: The Filter is used to identify objects
+                                that a Lifecycle Rule applies to. A Filter must have
+                                exactly one of Prefix, Tag, or And specified.
+                              properties:
+                                and:
+                                  description: This is used in a Lifecycle Rule Filter
+                                    to apply a logical AND to two or more predicates.
+                                    The Lifecycle Rule will apply to any object matching
+                                    all of the predicates configured inside the And
+                                    operator.
+                                  properties:
+                                    prefix:
+                                      description: Prefix identifying one or more
+                                        objects to which the rule applies.
+                                      type: string
+                                    tags:
+                                      description: All of these tags must exist in
+                                        the object's tag set in order for the rule
+                                        to apply.
+                                      items:
+                                        description: Tag is a container for a key
+                                          value name pair.
+                                        properties:
+                                          key:
+                                            description: Name of the tag. Key is a
+                                              required field
+                                            type: string
+                                          value:
+                                            description: Value of the tag. Value is
+                                              a required field
+                                            type: string
+                                        required:
+                                        - key
+                                        - value
+                                        type: object
+                                      type: array
+                                  required:
+                                  - tags
+                                  type: object
+                                prefix:
+                                  description: Prefix identifying one or more objects
+                                    to which the rule applies.
+                                  type: string
+                                tag:
+                                  description: This tag must exist in the object's
+                                    tag set in order for the rule to apply.
+                                  properties:
+                                    key:
+                                      description: Name of the tag. Key is a required
+                                        field
+                                      type: string
+                                    value:
+                                      description: Value of the tag. Value is a required
+                                        field
+                                      type: string
+                                  required:
+                                  - key
+                                  - value
+                                  type: object
+                              type: object
+                            id:
+                              description: Unique identifier for the rule. The value
+                                cannot be longer than 255 characters.
+                              type: string
+                            noncurrentVersionExpiration:
+                              description: Specifies when noncurrent object versions
+                                expire. Upon expiration, the noncurrent object versions
+                                are permanently deleted. You set this lifecycle configuration
+                                action on a bucket that has versioning enabled (or
+                                suspended) to request that noncurrent object versions
+                                are deleted at a specific period in the object's lifetime.
+                              properties:
+                                noncurrentDays:
+                                  description: Specifies the number of days an object
+                                    is noncurrent before the associated action can
+                                    be performed.
+                                  format: int32
+                                  type: integer
+                              type: object
+                            noncurrentVersionTransitions:
+                              description: Specifies the transition rule for the lifecycle
+                                rule that describes when noncurrent objects transition
+                                to a specific storage class. If your bucket is versioning-enabled
+                                (or versioning is suspended), you can set this action
+                                to request that noncurrent object versions are transitioned  to
+                                a specific storage class at a set period in the object's
+                                lifetime.
+                              items:
+                                description: NoncurrentVersionTransition contains
+                                  the transition rule that describes when noncurrent
+                                  objects transition storage class. If your bucket
+                                  is versioning-enabled (or versioning is suspended),
+                                  you can set this action to request that the storage
+                                  class of the non-current version is transitioned
+                                  at a specific period in the object's lifetime.
+                                properties:
+                                  noncurrentDays:
+                                    description: Specifies the number of days an object
+                                      is noncurrent before the associated action can
+                                      be performed.
+                                    format: int32
+                                    type: integer
+                                  storageClass:
+                                    description: The class of storage used to store
+                                      the object.
+                                    type: string
+                                required:
+                                - storageClass
+                                type: object
+                              type: array
+                            status:
+                              description: "If 'Enabled', the rule is currently being
+                                applied. If 'Disabled', the rule is not currently
+                                being applied. \n Status is a required field, valid
+                                values are Enabled or Disabled"
+                              enum:
+                              - Enabled
+                              - Disabled
+                              type: string
+                            transitions:
+                              description: Specifies when an Amazon S3 object transitions
+                                to a specified storage class.
+                              items:
+                                description: Transition specifies when an object transitions
+                                  to a specified storage class.
+                                properties:
+                                  date:
+                                    description: Indicates when objects are transitioned
+                                      to the specified storage class. The date value
+                                      must be in ISO 8601 format. The time is always
+                                      midnight UTC.
+                                    format: date-time
+                                    type: string
+                                  days:
+                                    description: Indicates the number of days after
+                                      creation when objects are transitioned to the
+                                      specified storage class. The value must be a
+                                      positive integer.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  storageClass:
+                                    description: The storage class to which you want
+                                      the object to transition.
+                                    type: string
+                                required:
+                                - storageClass
+                                type: object
+                              type: array
+                          required:
+                          - status
+                          type: object
+                        type: array
+                    required:
+                    - rules
+                    type: object
                   locationConstraint:
                     description: Specifies the Region where the bucket will be created.
                     type: string
@@ -128,6 +341,12 @@ spec:
                       this ACL expressed in the XML format."
                     type: string
                 type: object
+              lifecycleConfigurationDisabled:
+                description: LifecycleConfigurationDisabled causes provider-ceph to
+                  attempt deletion and/or avoid create/updates of the lifecycle config
+                  for the bucket on all of the bucket's backends. The Bucket CR's
+                  status is updated accordingly.
+                type: boolean
               managementPolicies:
                 default:
                 - '*'
@@ -337,11 +556,22 @@ spec:
               atProvider:
                 description: BucketObservation are the observable fields of a Bucket.
                 properties:
-                  backendStatuses:
+                  backends:
                     additionalProperties:
-                      type: string
-                    description: BackendStatuses is a map of the s3 backends on which
-                      the bucket has been created and their update status.
+                      description: BackendInfo contains relevant information about
+                        an S3 backend for a single bucket.
+                      properties:
+                        bucketStatus:
+                          description: BucketStatus is the condition of the Bucket
+                            on the S3 backend.
+                          type: string
+                        lifecycleConfigurationStatus:
+                          description: LifecycleConfigurationStatus is the condition
+                            of the bucket lifecycle configuration on the S3 backend.
+                          type: string
+                      type: object
+                    description: Backends is a map of the names of the S3 backends
+                      to BackendInfo.
                     type: object
                   configurableField:
                     type: string

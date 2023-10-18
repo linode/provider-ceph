@@ -149,8 +149,10 @@ WAIT:
 				return NeedsObjectUpdate
 			}, func(_, bucket *v1alpha1.Bucket) UpdateRequired {
 				bucket.Status.SetConditions(xpv1.Available())
-				bucket.Status.AtProvider.BackendStatuses = v1alpha1.BackendStatuses{
-					beName: v1alpha1.BackendReadyStatus,
+				bucket.Status.AtProvider.Backends = v1alpha1.Backends{
+					beName: &v1alpha1.BackendInfo{
+						BucketStatus: v1alpha1.ReadyStatus,
+					},
 				}
 
 				return NeedsStatusUpdate

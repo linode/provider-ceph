@@ -1,14 +1,16 @@
 apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
 kind: Bucket
 metadata:
-  name: bucket-for-localstack-b
-  finalizers:
-  - "finalizer.managedresource.crossplane.io"
-  - "bucket-in-use.provider-ceph.crossplane.io"
+  name: bucket-for-all-prov-set
 status:
   atProvider:
-    backendStatuses:
-      localstack-b: "Ready"
+    backends:
+      localstack-a:
+        bucketStatus: "Ready"
+      localstack-b:
+        bucketStatus: "Ready"
+      localstack-c:
+        bucketStatus: "Ready"
   conditions:
   - reason: Available
     status: "True"

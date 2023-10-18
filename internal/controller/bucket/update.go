@@ -17,11 +17,10 @@ import (
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
-	"github.com/linode/provider-ceph/internal/backendstore"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
-//nolint:gocyclo,cyclop // Function requires numerous checks.
+//nolint:gocognit,gocyclo,cyclop // Function requires numerous checks.
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
@@ -54,7 +53,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	err := c.updateObject(ctx, bucket,
 		func(origBucket, bucket *v1alpha1.Bucket) UpdateRequired {
 			bucket.Status.Conditions = origBucket.Status.Conditions
-			bucket.Status.AtProvider.BackendStatuses = origBucket.Status.AtProvider.BackendStatuses
+			bucket.Status.AtProvider.Backends = origBucket.Status.AtProvider.Backends
 
 			return NeedsStatusUpdate
 		},
@@ -63,7 +62,12 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			allBucketsReady := true
 			for _, p := range bucket.Spec.Providers {
-				if bucket.Status.AtProvider.BackendStatuses[p] != v1alpha1.BackendReadyStatus {
+				if _, ok := bucket.Status.AtProvider.Backends[p]; !ok || bucket.Status.AtProvider.Backends[p].BucketStatus != v1alpha1.ReadyStatus {
+					allBucketsReady = false
+
+					break
+				}
+				if bucket.Status.AtProvider.Backends[p].BucketStatus != v1alpha1.ReadyStatus {
 					allBucketsReady = false
 
 					break
@@ -131,7 +135,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 
 		beName := backendName
 		g.Go(func() error {
-			bucketBackends.setBucketBackendStatus(bucket.Name, beName, v1alpha1.BackendNotReadyStatus)
+			bucketBackends.setBucketStatus(bucket.Name, beName, v1alpha1.NotReadyStatus)
 
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				bucketExists, err := s3internal.BucketExists(ctx, cl, bucket.Name)
@@ -139,14 +143,14 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 					return err
 				}
 				if !bucketExists {
-					bucketBackends.deleteBucketBackend(bucket.Name, beName)
+					bucketBackends.deleteBackend(bucket.Name, beName)
 
 					return nil
 				}
 
-				bucketBackends.setBucketBackendStatus(bucket.Name, beName, v1alpha1.BackendNotReadyStatus)
+				bucketBackends.setBucketStatus(bucket.Name, beName, v1alpha1.NotReadyStatus)
 
-				err = c.update(ctx, bucket, cl)
+				err = c.update(ctx, bucket, beName, bucketBackends)
 				if err == nil {
 					// Check to see if this backend has been marked as 'Unhealthy'. It may be 'Unknown' due to
 					// the healthcheck being disabled. In which case we can only assume the backend is healthy
@@ -155,7 +159,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 						break
 					}
 
-					bucketBackends.setBucketBackendStatus(bucket.Name, beName, v1alpha1.BackendReadyStatus)
+					bucketBackends.setBucketStatus(bucket.Name, beName, v1alpha1.ReadyStatus)
 				}
 			}
 
@@ -170,9 +174,10 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 	return nil
 }
 
-func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backend backendstore.S3Client) error {
-	if s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
-		_, err := s3Backend.PutBucketAcl(ctx, s3internal.BucketToPutBucketACLInput(bucket))
+func (c *external) update(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+	cl := c.backendStore.GetBackendClient(backendName)
+	if s3types.ObjectOwnership(aws.ToString(b.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
+		_, err := cl.PutBucketAcl(ctx, s3internal.BucketToPutBucketACLInput(b))
 		if err != nil {
 			return err
 		}
@@ -181,6 +186,13 @@ func (c *external) update(ctx context.Context, bucket *v1alpha1.Bucket, s3Backen
 	//TODO: Add functionality for bucket ownership controls, using s3 apis:
 	// - DeleteBucketOwnershipControls
 	// - PutBucketOwnershipControls
+
+	for _, subResourceClient := range c.subresourceClients {
+		err := subResourceClient.Handle(ctx, b, backendName, bb)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

@@ -169,7 +169,13 @@ func (r *HealthCheckReconciler) cleanup(ctx context.Context, req ctrl.Request, b
 
 	r.log.Info("Deleting health check bucket", "name", bucketName)
 
-	return s3internal.DeleteBucket(ctx, backendClient, aws.String(bucketName))
+	if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(bucketName)); err != nil {
+		return err
+	}
+
+	r.log.Info("Deleting lifecycle configuration validation bucket", "name", v1alpha1.LifecycleConfigValidationBucketName)
+
+	return s3internal.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName))
 }
 
 func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, bucketName string) error {

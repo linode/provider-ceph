@@ -29,7 +29,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNoS3BackendsStored)
 	}
 
-	if len(bucket.Status.AtProvider.BackendStatuses) == 0 {
+	if len(bucket.Status.AtProvider.Backends) == 0 {
 		return managed.ExternalObservation{
 			ResourceExists:   false,
 			ResourceUpToDate: true,
@@ -79,7 +79,12 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			missing--
 		}
 
-		if status := bucket.Status.AtProvider.BackendStatuses[provider]; status == v1alpha1.BackendReadyStatus {
+		if _, ok := bucket.Status.AtProvider.Backends[provider]; !ok {
+			// Bucket is not on backend
+			continue
+		}
+
+		if status := bucket.Status.AtProvider.Backends[provider].BucketStatus; status == v1alpha1.ReadyStatus {
 			// Bucket is ready on backend,
 			// so it won't be counted as a missing backend.
 			missing--
@@ -90,6 +95,19 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			ResourceExists:   true,
 			ResourceUpToDate: false,
 		}, nil
+	}
+
+	for _, subResourceClient := range c.subresourceClients {
+		obs, err := subResourceClient.Observe(ctx, bucket, bucket.Spec.Providers)
+		if err != nil {
+			return managed.ExternalObservation{}, err
+		}
+		if obs != Updated {
+			return managed.ExternalObservation{
+				ResourceExists:   true,
+				ResourceUpToDate: false,
+			}, nil
+		}
 	}
 
 	// Create a new context and cancel it when we have either found the bucket

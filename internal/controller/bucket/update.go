@@ -62,7 +62,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			allBucketsReady := true
 			for _, p := range bucket.Spec.Providers {
-				if _, ok := bucket.Status.AtProvider.Backends[p]; !ok {
+				if _, ok := bucket.Status.AtProvider.Backends[p]; !ok || bucket.Status.AtProvider.Backends[p].BucketStatus != v1alpha1.ReadyStatus{
 					allBucketsReady = false
 
 					break

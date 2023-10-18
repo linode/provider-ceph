@@ -117,6 +117,7 @@ type LifecycleRuleFilter struct {
 	// This is used in a Lifecycle Rule Filter to apply a logical AND to two or
 	// more predicates. The Lifecycle Rule will apply to any object matching all
 	// of the predicates configured inside the And operator.
+        // +optional
 	And *LifecycleRuleAndOperator `json:"and,omitempty"`
 
 	// Prefix identifying one or more objects to which the rule applies.

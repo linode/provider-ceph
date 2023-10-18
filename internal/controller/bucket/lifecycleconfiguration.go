@@ -66,7 +66,6 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 			if observation != Updated {
 				return observation, nil
 			}
-
 		case err := <-errChan:
 
 			return NeedsUpdate, err

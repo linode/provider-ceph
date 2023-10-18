@@ -134,6 +134,7 @@ type LifecycleRuleFilter struct {
 // of the predicates configured inside the And operator.
 type LifecycleRuleAndOperator struct {
 	// Prefix identifying one or more objects to which the rule applies.
+        // +optional
 	Prefix *string `json:"prefix,omitempty"`
 
 	// All of these tags must exist in the object's tag set in order for the rule

@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/linode/provider-ceph/internal/otel/traces"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/alecthomas/kingpin.v2"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -71,6 +72,10 @@ func main() {
 		maxReconcileRate     = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("1000").Int()
 		reconcileTimeout     = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("3s").Duration()
 		creationGracePeriod  = app.Flag("creation-grace-period", "Duration to wait for the external API to report that a newly created external resource exists.").Default("10s").Duration()
+		tracesEnabled        = app.Flag("otel-enable-tracing", "").Default("false").Bool()
+		tracesExportTimeout  = app.Flag("otel-traces-export-timeout", "Timeout when exporting metrics").Default("2s").Duration()
+		tracesExportInterval = app.Flag("otel-traces-export-interval", "Interval at which traces are exported").Default("5s").Duration()
+		tracesExportAddress  = app.Flag("otel-traces-export-address", "Address of otel collector").Default("opentelemetry-collector.opentelemetry:4317").String()
 
 		kubeClientRate = app.Flag("kube-client-rate", "The global maximum rate per second at how many requests the client can do.").Default("1000").Int()
 
@@ -146,6 +151,24 @@ func main() {
 	klog.SetLogger(zl)
 
 	log := logging.NewLogrLogger(zl.WithName("provider-ceph"))
+
+	// Init otel tracer provider if the user sets the flag
+	if *tracesEnabled {
+		flush, err := traces.InitTracerProvider(log, *tracesExportAddress, *tracesExportTimeout, *tracesExportInterval)
+		kingpin.FatalIfError(err, "Cannot start tracer provider")
+
+		// overwrite the default terminate function called on FatalIfError()
+		app.Terminate(func(i int) {
+			// default behavior
+			defer os.Exit(i)
+
+			// flush traces
+			ctx, cancel := context.WithTimeout(context.Background(), *tracesExportTimeout)
+			defer cancel()
+
+			flush(ctx)
+		})
+	}
 
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")

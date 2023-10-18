@@ -23,8 +23,6 @@ REPO ?= provider-ceph
 # ====================================================================================
 # Setup Go
 
-NPROCS ?= 1
-GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
@@ -130,7 +128,7 @@ crossplane-cluster: $(HELM3) cluster
 	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane
 	@$(OK) Installing Crossplane
 
-# Build the controller image and the provider package. 
+# Build the controller image and the provider package.
 # Load the controller image to the Kind cluster and add the provider package
 # to the Provider.
 # The following is taken from local.xpkg.deploy.provider.
@@ -145,7 +143,7 @@ load-package: $(KIND) build
 	@$(OK) deploying provider package $(PROJECT_NAME) $(VERSION)
 
 # Spin up a Kind cluster and localstack and install Crossplane via Helm.
-# Build the controller image and the provider package. 
+# Build the controller image and the provider package.
 # Load the controller image to the Kind cluster and add the provider package
 # to the Provider.
 # Run Kuttl test suite on newly built controller image.
@@ -182,7 +180,7 @@ dev: dev-cluster run
 # Best for development - locally run provider-ceph controller.
 mirrord: dev-cluster crossplane-cluster load-package
 
-mirrord-run: 
+mirrord-run:
 	@$(INFO) Starting mirrord on deployment
 	$(MIRRORD) exec -f .mirrord/mirrord.json make run
 
@@ -255,7 +253,7 @@ help-special: crossplane.help
 AWS ?= /usr/local/bin/aws
 aws:
 ifeq (,$(wildcard $(AWS)))
-	curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o $(shell pwd)/bin/awscliv2.zip
-	unzip $(shell pwd)/bin/awscliv2.zip -d $(shell pwd)/bin/
-	$(shell pwd)/bin/aws/install
+	curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o $PWD/bin/awscliv2.zip
+	unzip $PWD/bin/awscliv2.zip -d $PWD/bin/
+	$PWD/bin/aws/install
 endif

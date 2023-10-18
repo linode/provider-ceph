@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,6 +43,7 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/otel/traces"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
@@ -70,6 +72,9 @@ type HealthCheckReconciler struct {
 }
 
 func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
+	ctx, span := otel.Tracer("").Start(ctx, "HealthCheckReconciler")
+	defer span.End()
+
 	r.log.Info("Reconciling health of s3 backend", "name", req.Name)
 
 	bucketName := req.Name + healthCheckSuffix
@@ -93,6 +98,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			pc.Status.Health = apisv1alpha1.HealthStatusUnknown
 		}); updateErr != nil {
 			err = errors.Wrap(updateErr, errUpdateHealth)
+			traces.SetAndRecordError(span, err)
 		}
 
 		return
@@ -126,6 +132,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if err = r.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
+		traces.SetAndRecordError(span, err)
 		r.log.Info("Failed to do health check on s3 backend", "name", providerConfig.Name, "backend", req.Name)
 
 		providerConfig.Status.Reason = fmt.Sprintf("failed to do health check: %v", err.Error())
@@ -166,9 +173,15 @@ func (r *HealthCheckReconciler) cleanup(ctx context.Context, req ctrl.Request, b
 }
 
 func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, bucketName string) error {
+	ctx, span := otel.Tracer("").Start(ctx, "HealthCheckReconciler.doHealthCheck")
+	defer span.End()
+
 	s3BackendClient := r.backendStore.GetBackendClient(providerConfig.Name)
 	if s3BackendClient == nil {
-		return errors.New(errBackendNotStored)
+		err := errors.New(errBackendNotStored)
+		traces.SetAndRecordError(span, err)
+
+		return err
 	}
 
 	_, putErr := s3BackendClient.PutObject(ctx, &s3.PutObjectInput{

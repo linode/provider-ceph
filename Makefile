@@ -62,9 +62,6 @@ XPKGS = provider-ceph
 # we ensure image is present in daemon.
 xpkg.build.provider-ceph: do.build.images
 
-something:
-	echo something: $GO_TEST_PARALLEL
-
 fallthrough: submodules
 	@echo Initial setup complete. Running make again . . .
 	@make

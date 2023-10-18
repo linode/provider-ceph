@@ -51,6 +51,7 @@ type LifecycleRule struct {
 	Filter *LifecycleRuleFilter `json:"filter,omitempty"`
 
 	// Unique identifier for the rule. The value cannot be longer than 255 characters.
+        // +optional
 	ID *string `json:"id,omitempty"`
 
 	// Specifies when noncurrent object versions expire. Upon expiration, the noncurrent

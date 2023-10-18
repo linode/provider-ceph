@@ -89,6 +89,8 @@ type LifecycleRule struct {
 type AbortIncompleteMultipartUpload struct {
 	// Specifies the number of days after which an incomplete multipart
 	// upload is aborted.
+         // +kubebuilder:validation:Minimum=1
+         // +kubebuilder:validation:Maximum=2147483647
 	DaysAfterInitiation int32 `json:"daysAfterInitiation"`
 }
 

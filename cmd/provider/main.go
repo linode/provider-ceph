@@ -72,9 +72,9 @@ func main() {
 		maxReconcileRate      = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("1000").Int()
 		reconcileTimeout      = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("3s").Duration()
 		creationGracePeriod   = app.Flag("creation-grace-period", "Duration to wait for the external API to report that a newly created external resource exists.").Default("10s").Duration()
-		metricsExportTimeout  = app.Flag("metrics-export-timeout", "Timeout when exporting metrics").Default("2s").Duration()
-		metricsExportInterval = app.Flag("metrics-export-interval", "Interval at which metrics are exported").Default("5s").Duration()
-		metricsExportAddress  = app.Flag("metrics-export-address", "Address of otel collector").Default("opentelemetry-collector.opentelemetry:4317").String()
+		metricsExportTimeout  = app.Flag("otel-metrics-export-timeout", "Timeout when exporting metrics").Default("2s").Duration()
+		metricsExportInterval = app.Flag("otel-metrics-export-interval", "Interval at which metrics are exported").Default("5s").Duration()
+		metricsExportAddress  = app.Flag("otel-metrics-export-address", "Address of otel collector").Default("opentelemetry-collector.opentelemetry:4317").String()
 
 		kubeClientRate = app.Flag("kube-client-rate", "The global maximum rate per second at how many requests the client can do.").Default("1000").Int()
 

@@ -154,7 +154,7 @@ func main() {
 
 	// Init otel tracer provider if the user sets the flag
 	if *tracesEnabled {
-		tp, err := traces.InitTracerProvider(*tracesExportAddress, *tracesExportTimeout, *tracesExportInterval)
+		flush, err := traces.InitTracerProvider(log, *tracesExportAddress, *tracesExportTimeout, *tracesExportInterval)
 		kingpin.FatalIfError(err, "Cannot start tracer provider")
 
 		// overwrite the default terminate function called on FatalIfError()
@@ -166,9 +166,7 @@ func main() {
 			ctx, cancel := context.WithTimeout(context.Background(), *tracesExportTimeout)
 			defer cancel()
 
-			if err := tp.Shutdown(ctx); err != nil {
-				log.Debug("failed to shutdown tracer provider and flush in-memory records", "error", err.Error())
-			}
+			flush(ctx)
 		})
 	}
 

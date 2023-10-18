@@ -22,12 +22,6 @@ import (
 // Failing in doing so returns an error since service actively export their traces and
 // require the Collector to be up.
 func InitTracerProvider(otelCollectorAddress string, dialTimeout, exportInterval time.Duration) (*otelsdktrace.TracerProvider, error) {
-	if otelCollectorAddress == "" {
-		// feature disabled
-		// calls to the global tracer provider will return a no-op implementation
-		return nil, nil
-	}
-
 	runtimeResources, err := otel.RuntimeResources()
 	if err != nil {
 		return nil, fmt.Errorf("failed to gather runtime resources for traces provider: %w", err)

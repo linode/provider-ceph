@@ -12,13 +12,16 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
 
-const ServiceName = "provider-ceph"
+const (
+	ServiceName                = "provider-ceph"
+	TimeoutGatherHostResources = time.Millisecond * 500
+)
 
 // RuntimeResources creates an otel sdk resource struct describing the service
 // and runtime (host, process, runtime, etc). When used together with a
 // TracerProvider this data will be included in all traces created from it.
 func RuntimeResources() (*otelresource.Resource, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+	ctx, cancel := context.WithTimeout(context.Background(), TimeoutGatherHostResources)
 	defer cancel()
 	runtimeResources, err := otelresource.New(
 		ctx,

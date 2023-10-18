@@ -180,6 +180,7 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 	if s3BackendClient == nil {
 		err := errors.New(errBackendNotStored)
 		traces.SetAndRecordError(span, err)
+
 		return err
 	}
 

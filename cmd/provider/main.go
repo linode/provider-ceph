@@ -65,16 +65,17 @@ func main() {
 		leaderElection = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()
 		leaderRenew    = app.Flag("leader-renew", "Set leader election renewal.").Short('r').Default("10s").OverrideDefaultFromEnvar("LEADER_ELECTION_RENEW").Duration()
 
-		syncInterval          = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
-		pollInterval          = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("30m").Duration()
-		bucketExistsCache     = app.Flag("bucket-exists-cache", "How long the provider caches bucket exists result").Short('c').Default("5s").Duration()
-		reconcileConcurrency  = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("100").Int()
-		maxReconcileRate      = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("1000").Int()
-		reconcileTimeout      = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("3s").Duration()
-		creationGracePeriod   = app.Flag("creation-grace-period", "Duration to wait for the external API to report that a newly created external resource exists.").Default("10s").Duration()
-		metricsExportTimeout  = app.Flag("otel-metrics-export-timeout", "Timeout when exporting metrics").Default("2s").Duration()
-		metricsExportInterval = app.Flag("otel-metrics-export-interval", "Interval at which metrics are exported").Default("5s").Duration()
-		metricsExportAddress  = app.Flag("otel-metrics-export-address", "Address of otel collector").Default("opentelemetry-collector.opentelemetry:4317").String()
+		syncInterval         = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
+		pollInterval         = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("30m").Duration()
+		bucketExistsCache    = app.Flag("bucket-exists-cache", "How long the provider caches bucket exists result").Short('c').Default("5s").Duration()
+		reconcileConcurrency = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("100").Int()
+		maxReconcileRate     = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("1000").Int()
+		reconcileTimeout     = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("3s").Duration()
+		creationGracePeriod  = app.Flag("creation-grace-period", "Duration to wait for the external API to report that a newly created external resource exists.").Default("10s").Duration()
+		tracesEnabled        = app.Flag("otel-enable-tracing", "").Default("false").Bool()
+		tracesExportTimeout  = app.Flag("otel-traces-export-timeout", "Timeout when exporting metrics").Default("2s").Duration()
+		tracesExportInterval = app.Flag("otel-traces-export-interval", "Interval at which traces are exported").Default("5s").Duration()
+		tracesExportAddress  = app.Flag("otel-traces-export-address", "Address of otel collector").Default("opentelemetry-collector.opentelemetry:4317").String()
 
 		kubeClientRate = app.Flag("kube-client-rate", "The global maximum rate per second at how many requests the client can do.").Default("1000").Int()
 
@@ -151,27 +152,25 @@ func main() {
 
 	log := logging.NewLogrLogger(zl.WithName("provider-ceph"))
 
-	// Init otel tracer provider
-	tp, err := traces.InitTracerProvider(*metricsExportAddress, *metricsExportTimeout, *metricsExportInterval)
-	if err != nil {
-		log.Debug("error starting tracer provider", "error", err.Error())
-	}
+	// Init otel tracer provider if the user sets the flag
+	if *tracesEnabled {
+		tp, err := traces.InitTracerProvider(*tracesExportAddress, *tracesExportTimeout, *tracesExportInterval)
+		kingpin.FatalIfError(err, "Cannot start tracer provider")
 
-	// overwrite the default terminate function called on FatalIfError()
-	app.Terminate(func(i int) {
-		// flush traces
-		if tp != nil {
-			ctx, cancel := context.WithTimeout(context.Background(), *metricsExportTimeout)
+		// overwrite the default terminate function called on FatalIfError()
+		app.Terminate(func(i int) {
+			// default behavior
+			defer os.Exit(i)
+
+			// flush traces
+			ctx, cancel := context.WithTimeout(context.Background(), *tracesExportTimeout)
 			defer cancel()
 
 			if err := tp.Shutdown(ctx); err != nil {
 				log.Debug("failed to shutdown tracer provider and flush in-memory records", "error", err.Error())
 			}
-		}
-
-		// default behavior
-		os.Exit(i)
-	})
+		})
+	}
 
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")

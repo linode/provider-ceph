@@ -20,7 +20,7 @@ import (
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
-//nolint:gocyclo,cyclop // Function requires numerous checks.
+//nolint:gocognit,gocyclo,cyclop // Function requires numerous checks.
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
@@ -62,7 +62,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			allBucketsReady := true
 			for _, p := range bucket.Spec.Providers {
-				if _, ok := bucket.Status.AtProvider.Backends[p]; !ok || bucket.Status.AtProvider.Backends[p].BucketStatus != v1alpha1.ReadyStatus{
+				if _, ok := bucket.Status.AtProvider.Backends[p]; !ok || bucket.Status.AtProvider.Backends[p].BucketStatus != v1alpha1.ReadyStatus {
 					allBucketsReady = false
 
 					break

@@ -129,6 +129,8 @@ spec:
                                   description: Specifies the number of days after
                                     which an incomplete multipart upload is aborted.
                                   format: int32
+                                  maximum: 2147483647
+                                  minimum: 1
                                   type: integer
                               required:
                               - daysAfterInitiation

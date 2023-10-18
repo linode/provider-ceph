@@ -51,7 +51,7 @@ type LifecycleRule struct {
 	Filter *LifecycleRuleFilter `json:"filter,omitempty"`
 
 	// Unique identifier for the rule. The value cannot be longer than 255 characters.
-        // +optional
+	// +optional
 	ID *string `json:"id,omitempty"`
 
 	// Specifies when noncurrent object versions expire. Upon expiration, the noncurrent
@@ -89,8 +89,8 @@ type LifecycleRule struct {
 type AbortIncompleteMultipartUpload struct {
 	// Specifies the number of days after which an incomplete multipart
 	// upload is aborted.
-         // +kubebuilder:validation:Minimum=1
-         // +kubebuilder:validation:Maximum=2147483647
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=2147483647
 	DaysAfterInitiation int32 `json:"daysAfterInitiation"`
 }
 
@@ -117,15 +117,15 @@ type LifecycleRuleFilter struct {
 	// This is used in a Lifecycle Rule Filter to apply a logical AND to two or
 	// more predicates. The Lifecycle Rule will apply to any object matching all
 	// of the predicates configured inside the And operator.
-        // +optional
+	// +optional
 	And *LifecycleRuleAndOperator `json:"and,omitempty"`
 
 	// Prefix identifying one or more objects to which the rule applies.
-        // +optional
+	// +optional
 	Prefix *string `json:"prefix,omitempty"`
 
 	// This tag must exist in the object's tag set in order for the rule to apply.
-        // +optional
+	// +optional
 	Tag *Tag `json:"tag,omitempty"`
 }
 
@@ -134,7 +134,7 @@ type LifecycleRuleFilter struct {
 // of the predicates configured inside the And operator.
 type LifecycleRuleAndOperator struct {
 	// Prefix identifying one or more objects to which the rule applies.
-        // +optional
+	// +optional
 	Prefix *string `json:"prefix,omitempty"`
 
 	// All of these tags must exist in the object's tag set in order for the rule

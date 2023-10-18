@@ -62,7 +62,6 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 			l.log.Info("Context timeout", "bucket_name", bucket.Name)
 
 			return NeedsUpdate, ctx.Err()
-
 		case observation := <-observationChan:
 			if observation != Updated {
 				return observation, nil

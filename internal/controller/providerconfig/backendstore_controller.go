@@ -45,14 +45,14 @@ const (
 
 func newBackendStoreReconciler(k client.Client, o controller.Options, s *backendstore.BackendStore) *BackendStoreReconciler {
 	return &BackendStoreReconciler{
-		kube:         k,
+		kubeClient:   k,
 		backendStore: s,
 		log:          o.Logger.WithValues("backend-store-controller", providerconfig.ControllerName(apisv1alpha1.ProviderConfigGroupKind)),
 	}
 }
 
 type BackendStoreReconciler struct {
-	kube         client.Client
+	kubeClient   client.Client
 	backendStore *backendstore.BackendStore
 	log          logging.Logger
 }
@@ -60,7 +60,7 @@ type BackendStoreReconciler struct {
 func (r *BackendStoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	r.log.Info("Reconciling backend store", "name", req.Name)
 	providerConfig := &apisv1alpha1.ProviderConfig{}
-	if err := r.kube.Get(ctx, req.NamespacedName, providerConfig); err != nil {
+	if err := r.kubeClient.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
 			r.log.Info("Marking s3 backend as inactive on backend store", "name", req.Name)
 			r.backendStore.ToggleBackendActiveStatus(req.Name, false)
@@ -101,7 +101,7 @@ func (r *BackendStoreReconciler) addOrUpdateBackend(ctx context.Context, pc *api
 func (r *BackendStoreReconciler) getProviderConfigSecret(ctx context.Context, secretNamespace, secretName string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{}
 	ns := types.NamespacedName{Namespace: secretNamespace, Name: secretName}
-	if err := r.kube.Get(ctx, ns, secret); err != nil {
+	if err := r.kubeClient.Get(ctx, ns, secret); err != nil {
 		return nil, errors.Wrap(err, "cannot get provider secret")
 	}
 

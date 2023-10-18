@@ -30,6 +30,21 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
+  image: kindest/node:v${kind_node}
+  extraPortMappings:
+  - containerPort: 32566
+    hostPort: 32566
+  - containerPort: 32567
+    hostPort: 32567
+  - containerPort: 32568
+    hostPort: 32568
+  kubeadmConfigPatches:
+  - |
+    kind: ClusterConfiguration
+    apiServer:
+        extraArgs:
+          max-mutating-requests-inflight: "2000"
+          max-requests-inflight: "4000"
 EOF
 	# write kuttl config file for version
 	if [ ! -d "./e2e/kuttl/ceph" ]; then
@@ -51,7 +66,10 @@ testDirs:
 - ./e2e/tests/stable
 kindConfig: e2e/kind/kind-config-${major}.yaml
 startKIND: false
-timeout: 90
+kindNodeCache: true
+kindContainers:
+- localstack/localstack:2.2
+timeout: 120
 EOF
 
 	# tests use 'ceph' testDir for manual tests
@@ -63,7 +81,10 @@ testDirs:
 - ./e2e/tests/ceph
 kindConfig: e2e/kind/kind-config-${major}.yaml
 startKIND: false
-timeout: 90
+kindNodeCache: true
+kindContainers:
+- localstack/localstack:2.2
+timeout: 120
 EOF
 
 file=./.github/workflows/kuttl-e2e-test-${major}.yaml
@@ -78,7 +99,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUTTL: /usr/local/bin/kubectl-kuttl
-      COMPOSE: /usr/local/bin/docker-compose
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.9.1
@@ -87,13 +107,11 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.20'
+          go-version: '1.21'
       - name: Install dependencies
         run: |
           sudo curl -Lo \$KUTTL https://github.com/kudobuilder/kuttl/releases/download/v0.13.0/kubectl-kuttl_0.13.0_linux_x86_64
           sudo chmod +x \$KUTTL
-          sudo curl -Lo \$COMPOSE https://github.com/docker/compose/releases/download/v2.17.3/docker-compose-linux-x86_64
-          sudo chmod +x \$COMPOSE
       - name: Build
         run: make submodules build
       - name: Create test environment

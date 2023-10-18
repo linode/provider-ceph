@@ -41,7 +41,7 @@ type ProviderConfigSpec struct {
 
 	DisableHealthCheck bool `json:"disableHealthCheck,omitempty"`
 
-	// +kubebuilder:validation:Minimum:=0
+	// +kubebuilder:validation:Minimum:=2
 	// +kubebuilder:default:=30
 	HealthCheckIntervalSeconds int32 `json:"healthCheckIntervalSeconds,omitempty"`
 }
@@ -67,8 +67,9 @@ type ProviderConfigStatus struct {
 
 	// Health of the s3 backend represented by the ProviderConfig determined
 	// by periodic health check.
-	//+kubebuilder:validation:Enum=Healthy;Unhealthy;Unknown
+	// +kubebuilder:validation:Enum=Healthy;Unhealthy;Unknown
 	Health                    HealthStatus `json:"health,omitempty"`
+	Reason                    string       `json:"reason,omitempty"`
 	xpv1.ProviderConfigStatus `json:",inline"`
 }
 

@@ -3,3 +3,18 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
+  image: kindest/node:v1.27.3
+  extraPortMappings:
+  - containerPort: 32566
+    hostPort: 32566
+  - containerPort: 32567
+    hostPort: 32567
+  - containerPort: 32568
+    hostPort: 32568
+  kubeadmConfigPatches:
+  - |
+    kind: ClusterConfiguration
+    apiServer:
+        extraArgs:
+          max-mutating-requests-inflight: "2000"
+          max-requests-inflight: "4000"

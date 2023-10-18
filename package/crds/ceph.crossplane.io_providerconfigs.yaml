@@ -100,7 +100,7 @@ spec:
               healthCheckIntervalSeconds:
                 default: 30
                 format: int32
-                minimum: 0
+                minimum: 2
                 type: integer
               hostBase:
                 description: HostBase url specified in s3cfg.
@@ -158,6 +158,8 @@ spec:
                 - Healthy
                 - Unhealthy
                 - Unknown
+                type: string
+              reason:
                 type: string
               users:
                 description: Users of this provider configuration.

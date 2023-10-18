@@ -85,8 +85,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			var err error
 
 			for i := 0; i < s3internal.RequestRetries; i++ {
-				_, err = cl.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(originalBucket))
-				if resource.Ignore(isAlreadyExists, err) == nil {
+				_, err = s3internal.CreateBucket(ctx, cl, s3internal.BucketToCreateBucketInput(originalBucket))
+				if resource.Ignore(s3internal.IsAlreadyExists, err) == nil {
 					break
 				}
 			}
@@ -139,6 +139,12 @@ WAIT:
 				// This workaround doesn't eliminates the problem, if this update fails,
 				// Crossplane skips object forever.
 				delete(bucket.ObjectMeta.Annotations, meta.AnnotationKeyExternalCreatePending)
+
+				// Add labels for the backend
+				if bucket.ObjectMeta.Labels == nil {
+					bucket.ObjectMeta.Labels = map[string]string{}
+				}
+				bucket.ObjectMeta.Labels[v1alpha1.BackendLabelPrefix+beName] = ""
 
 				return NeedsObjectUpdate
 			}, func(_, bucket *v1alpha1.Bucket) UpdateRequired {

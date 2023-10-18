@@ -1,0 +1,41 @@
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: localstack-a
+spec:
+  hostBase: "0.0.0.0:32566"
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: localstack
+      key: credentials
+  disableHealthCheck: false
+---
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: localstack-b
+spec:
+  hostBase: "0.0.0.0:32567"
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: localstack
+      key: credentials
+  disableHealthCheck: false
+---
+apiVersion: ceph.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: localstack-c
+spec:
+  hostBase: "0.0.0.0:32568"
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: localstack
+      key: credentials
+  disableHealthCheck: false

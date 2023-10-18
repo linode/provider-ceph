@@ -12,7 +12,7 @@ import (
 )
 
 // Setup adds controllers to reconcile the backend store and backend health.
-func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore) error {
+func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore, a bool) error {
 	name := providerconfig.ControllerName(apisv1alpha1.ProviderConfigGroupKind)
 
 	of := resource.ProviderConfigKinds{
@@ -28,7 +28,7 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore)
 
 	// Add an 'internal' controller to the manager for the ProviderConfig.
 	// This will be used to reconcile the health of each backend.
-	if err := newHealthCheckReconciler(mgr.GetClient(), o, s).setupWithManager(mgr); err != nil {
+	if err := newHealthCheckReconciler(mgr.GetClient(), o, s, a).setupWithManager(mgr); err != nil {
 		return err
 	}
 

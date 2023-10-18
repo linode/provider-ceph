@@ -50,6 +50,7 @@ import (
 	ceph "github.com/linode/provider-ceph/internal/controller"
 	"github.com/linode/provider-ceph/internal/controller/bucket"
 	"github.com/linode/provider-ceph/internal/features"
+	"github.com/linode/provider-ceph/internal/s3/cache"
 )
 
 var defaultZapConfig = map[string]string{
@@ -66,9 +67,11 @@ func main() {
 
 		syncInterval          = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
 		pollInterval          = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("30m").Duration()
+		bucketExistsCache     = app.Flag("bucket-exists-cache", "How long the provider caches bucket exists result").Short('c').Default("5s").Duration()
 		reconcileConcurrency  = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("100").Int()
 		maxReconcileRate      = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("1000").Int()
-		reconcileTimeout      = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("1s").Duration()
+		reconcileTimeout      = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("3s").Duration()
+		creationGracePeriod   = app.Flag("creation-grace-period", "Duration to wait for the external API to report that a newly created external resource exists.").Default("10s").Duration()
 		metricsExportTimeout  = app.Flag("metrics-export-timeout", "Timeout when exporting metrics").Default("2s").Duration()
 		metricsExportInterval = app.Flag("metrics-export-interval", "Interval at which metrics are exported").Default("5s").Duration()
 		metricsExportAddress  = app.Flag("metrics-export-address", "Address of otel collector").Default("opentelemetry-collector.opentelemetry:4317").String()
@@ -170,6 +173,8 @@ func main() {
 
 	cfg = ratelimiter.LimitRESTConfig(cfg, *kubeClientRate)
 
+	cache.BucketExistsCacheTTL = *bucketExistsCache
+
 	const oneDotTwo = 1.2
 	const two = 2
 
@@ -232,6 +237,6 @@ func main() {
 			Complete(), "Cannot setup bucket validating webhook")
 	}
 
-	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore, *autoPauseBucket, *pollInterval, *reconcileTimeout), "Cannot setup Ceph controllers")
+	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore, *autoPauseBucket, *pollInterval, *reconcileTimeout, *creationGracePeriod), "Cannot setup Ceph controllers")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }

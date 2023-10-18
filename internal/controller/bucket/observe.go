@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
@@ -17,7 +18,7 @@ import (
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
-//nolint:gocyclo,cyclop // Function requires numerous checks.
+//nolint:gocyclo,cyclop,gocognit // Function requires numerous checks.
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
@@ -32,6 +33,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{
 			ResourceExists:   false,
 			ResourceUpToDate: true,
+		}, nil
+	}
+
+	if !v1alpha1.IsHealthCheckBucket(bucket) && (bucket.Spec.AutoPause || c.autoPauseBucket) && bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "" {
+		return managed.ExternalObservation{
+			ResourceExists:   true,
+			ResourceUpToDate: false,
 		}, nil
 	}
 

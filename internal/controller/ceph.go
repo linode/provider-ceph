@@ -29,12 +29,12 @@ import (
 
 // Setup creates all Ceph controllers with the supplied logger and adds them to
 // the supplied manager.
-func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore, a bool, p, t time.Duration) error {
-	if err := providerconfig.Setup(mgr, o, s); err != nil {
+func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore, a bool, p, t, cgp time.Duration) error {
+	if err := providerconfig.Setup(mgr, o, s, a); err != nil {
 		return err
 	}
 
-	if err := bucket.Setup(mgr, o, s, a, p, t); err != nil {
+	if err := bucket.Setup(mgr, o, s, a, p, t, cgp); err != nil {
 		return err
 	}
 

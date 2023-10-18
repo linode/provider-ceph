@@ -1,0 +1,22 @@
+{
+    "target": {
+        "path": "deploy/provider-ceph-provider-cep",
+        "namespace": "crossplane-system"
+    },
+    "agent": {
+      "log_level": "info",
+      "namespace": "crossplane-system",
+      "privileged": true
+    },
+    "feature": {
+        "network": {
+            "incoming": "steal",
+            "outgoing": false
+        },
+        "fs": "local",
+        "env": true
+    },
+    "operator": false,
+    "pause": true,
+    "accept_invalid_certificates": true
+}

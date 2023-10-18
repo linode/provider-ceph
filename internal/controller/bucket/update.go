@@ -28,14 +28,14 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotBucket)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
-	defer cancel()
-
 	if v1alpha1.IsHealthCheckBucket(bucket) {
 		c.log.Info("Update is NOOP for health check bucket - updates performed by health-check-controller", "bucket", bucket.Name)
 
 		return managed.ExternalUpdate{}, nil
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
+	defer cancel()
 
 	if bucket.Spec.Disabled {
 		c.log.Info("Bucket is disabled - remove any existing buckets from backends", "bucket name", bucket.Name)
@@ -51,36 +51,48 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
-	err := c.updateObject(ctx, bucket, func(origBucket, bucket *v1alpha1.Bucket) UpdateRequired {
-		bucket.Status.Conditions = origBucket.Status.Conditions
-		bucket.Status.AtProvider.BackendStatuses = origBucket.Status.AtProvider.BackendStatuses
+	err := c.updateObject(ctx, bucket,
+		func(origBucket, bucket *v1alpha1.Bucket) UpdateRequired {
+			bucket.Status.Conditions = origBucket.Status.Conditions
+			bucket.Status.AtProvider.BackendStatuses = origBucket.Status.AtProvider.BackendStatuses
 
-		return NeedsStatusUpdate
-	}, func(origBucket, bucket *v1alpha1.Bucket) UpdateRequired {
-		bucket.Spec.Providers = origBucket.Spec.Providers
+			return NeedsStatusUpdate
+		},
+		func(origBucket, bucket *v1alpha1.Bucket) UpdateRequired {
+			bucket.Spec.Providers = origBucket.Spec.Providers
 
-		allBucketsReady := true
-		for _, p := range bucket.Spec.Providers {
-			if bucket.Status.AtProvider.BackendStatuses[p] != v1alpha1.BackendReadyStatus {
-				allBucketsReady = false
+			allBucketsReady := true
+			for _, p := range bucket.Spec.Providers {
+				if bucket.Status.AtProvider.BackendStatuses[p] != v1alpha1.BackendReadyStatus {
+					allBucketsReady = false
 
-				break
+					break
+				}
 			}
-		}
 
-		if !v1alpha1.IsHealthCheckBucket(bucket) &&
-			allBucketsReady &&
-			(bucket.Spec.AutoPause || c.autoPauseBucket) &&
-			bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "" {
-			c.log.Info("Auto pausing bucket", "bucket_name", bucket.Name)
+			if !v1alpha1.IsHealthCheckBucket(bucket) &&
+				allBucketsReady &&
+				(bucket.Spec.AutoPause || c.autoPauseBucket) &&
+				bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "" {
+				c.log.Info("Auto pausing bucket", "bucket_name", bucket.Name)
+				bucket.Annotations[meta.AnnotationKeyReconciliationPaused] = "true"
+			}
 
-			bucket.Annotations[meta.AnnotationKeyReconciliationPaused] = "true"
-		}
+			// Add labels for backends if they don't exist
+			for _, beName := range bucket.Spec.Providers {
+				beLabel := v1alpha1.BackendLabelPrefix + beName
+				if _, ok := bucket.ObjectMeta.Labels[beLabel]; !ok {
+					if bucket.ObjectMeta.Labels == nil {
+						bucket.ObjectMeta.Labels = map[string]string{}
+					}
+					bucket.ObjectMeta.Labels[beLabel] = ""
+				}
+			}
 
-		controllerutil.AddFinalizer(bucket, inUseFinalizer)
+			controllerutil.AddFinalizer(bucket, inUseFinalizer)
 
-		return NeedsObjectUpdate
-	})
+			return NeedsObjectUpdate
+		})
 	if err != nil {
 		c.log.Info("Failed to update bucket", "bucket_name", bucket.Name)
 	}

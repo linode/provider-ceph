@@ -2,9 +2,7 @@ package bucket
 
 import (
 	"context"
-	"fmt"
 
-	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
@@ -14,13 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
-
-// isAlreadyExists helper function to test for ErrCodeBucketAlreadyOwnedByYou error
-func isAlreadyExists(err error) bool {
-	var alreadyOwnedByYou *s3types.BucketAlreadyOwnedByYou
-
-	return errors.As(err, &alreadyOwnedByYou)
-}
 
 func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends) {
 	bucket.Status.SetConditions(xpv1.Unavailable())
@@ -44,14 +35,14 @@ const (
 	NeedsObjectUpdate
 )
 
-// Callbacks have two parameters, first bucket is the original, the second is the new version og bucket.
+// Callbacks have two parameters, first bucket is the original, the second is the new version of bucket.
 func (c *external) updateObject(ctx context.Context, bucket *v1alpha1.Bucket, callbacks ...func(*v1alpha1.Bucket, *v1alpha1.Bucket) UpdateRequired) error {
 	origBucket := bucket.DeepCopy()
 
 	nn := types.NamespacedName{Name: bucket.GetName()}
 
 	const (
-		steps  = 4
+		steps  = 3
 		divide = 2
 		factor = 0.5
 		jitter = 0.1
@@ -85,7 +76,7 @@ func (c *external) updateObject(ctx context.Context, bucket *v1alpha1.Bucket, ca
 				break
 			}
 
-			return fmt.Errorf("unable to update object: %w", err)
+			return errors.Wrap(err, "unable to update object")
 		}
 	}
 

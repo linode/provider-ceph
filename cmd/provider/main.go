@@ -30,9 +30,14 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
@@ -40,6 +45,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
@@ -51,6 +57,7 @@ import (
 	"github.com/linode/provider-ceph/internal/controller/bucket"
 	"github.com/linode/provider-ceph/internal/features"
 	"github.com/linode/provider-ceph/internal/s3/cache"
+	kcache "sigs.k8s.io/controller-runtime/pkg/cache"
 )
 
 var defaultZapConfig = map[string]string{
@@ -66,6 +73,7 @@ func main() {
 		leaderRenew    = app.Flag("leader-renew", "Set leader election renewal.").Short('r').Default("10s").OverrideDefaultFromEnvar("LEADER_ELECTION_RENEW").Duration()
 
 		syncInterval         = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
+		syncTimeout          = app.Flag("sync-timeout", "Cache sync timeout.").Default("10s").Duration()
 		pollInterval         = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("30m").Duration()
 		bucketExistsCache    = app.Flag("bucket-exists-cache", "How long the provider caches bucket exists result").Short('c').Default("5s").Duration()
 		reconcileConcurrency = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("100").Int()
@@ -85,8 +93,8 @@ func main() {
 
 		autoPauseBucket = app.Flag("auto-pause-bucket", "Enable auto pause of reconciliation of ready buckets").Default("false").Envar("AUTO_PAUSE_BUCKET").Bool()
 
-		webhookTLSCertDir        = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
-		enableValidationWebhooks = app.Flag("enable-validation-webhooks", "Enable support for Webhooks.").Default("false").Bool()
+		webhookTLSCertDir = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
+		_                 = app.Flag("enable-validation-webhooks", "Enable support for Webhooks. [Deprecated, has no effect]").Default("false").Bool()
 	)
 
 	var zo zap.Options
@@ -183,8 +191,18 @@ func main() {
 	leaseDuration := time.Duration(int(oneDotTwo*float64(*leaderRenew))) * time.Second
 	leaderRetryDuration := *leaderRenew / two
 
+	pausedSelector, err := labels.NewRequirement(meta.AnnotationKeyReconciliationPaused, selection.NotIn, []string{"true"})
+	kingpin.FatalIfError(err, "Cannot create label selector")
+
+	providerSCheme := scheme.Scheme
+	kingpin.FatalIfError(apis.AddToScheme(providerSCheme), "Cannot add Ceph APIs to scheme")
+
+	cacheHTTPClient, err := rest.HTTPClientFor(cfg)
+	kingpin.FatalIfError(err, "Cannot create HTTP client")
+
+	cacheHTTPClient.Timeout = *syncTimeout
+
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		SyncPeriod:                 syncInterval,
 		LeaderElection:             *leaderElection,
 		LeaderElectionID:           "crossplane-leader-election-provider-ceph-ibyaiby",
 		LeaderElectionNamespace:    *namespace,
@@ -193,9 +211,21 @@ func main() {
 		LeaseDuration:              &leaseDuration,
 		RetryPeriod:                &leaderRetryDuration,
 		WebhookServer:              webhook.NewServer(webhook.Options{CertDir: *webhookTLSCertDir}),
+		Scheme:                     providerSCheme,
+		Cache: kcache.Options{
+			HTTPClient: cacheHTTPClient,
+			SyncPeriod: syncInterval,
+			Scheme:     providerSCheme,
+			ByObject: map[client.Object]kcache.ByObject{
+				&providercephv1alpha1.Bucket{}: {
+					Label: labels.NewSelector().Add(*pausedSelector),
+				},
+				&v1alpha1.ProviderConfig{}: {},
+			},
+		},
+		NewCache: kcache.New,
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
-	kingpin.FatalIfError(apis.AddToScheme(mgr.GetScheme()), "Cannot add Ceph APIs to scheme")
 
 	o := controller.Options{
 		Logger:                  log,
@@ -231,13 +261,11 @@ func main() {
 
 	backendStore := backendstore.NewBackendStore()
 
-	if *enableValidationWebhooks {
-		bucketValidator := bucket.NewBucketValidator(backendStore)
-		kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
-			For(&providercephv1alpha1.Bucket{}).
-			WithValidator(bucketValidator).
-			Complete(), "Cannot setup bucket validating webhook")
-	}
+	kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
+		For(&providercephv1alpha1.Bucket{}).
+		WithDefaulter(bucket.NewBucketMutator()).
+		WithValidator(bucket.NewBucketValidator(backendStore)).
+		Complete(), "Cannot setup bucket validating webhook")
 
 	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore, *autoPauseBucket, *pollInterval, *reconcileTimeout, *creationGracePeriod), "Cannot setup Ceph controllers")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")

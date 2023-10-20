@@ -167,6 +167,10 @@ type NoncurrentVersionExpiration struct {
 	// Specifies the number of days an object is noncurrent before the associated action
 	// can be performed.
 	NoncurrentDays int32 `json:"noncurrentDays,omitempty"`
+
+	// Specifies how many noncurrent versions will be retained.
+	// +optional
+	NewerNoncurrentVersions int32 `json:"newerNoncurrentVersions,omitempty"`
 }
 
 // NoncurrentVersionTransition contains the transition rule that describes when noncurrent objects
@@ -180,6 +184,10 @@ type NoncurrentVersionTransition struct {
 
 	// The class of storage used to store the object.
 	StorageClass string `json:"storageClass"`
+
+	// Specifies how many noncurrent versions will be retained.
+	// +optional
+	NewerNoncurrentVersions int32 `json:"newerNoncurrentVersions,omitempty"`
 }
 
 // Transition specifies when an object transitions to a specified storage class.

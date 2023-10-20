@@ -173,6 +173,16 @@ spec:
                                     all of the predicates configured inside the And
                                     operator.
                                   properties:
+                                    objectSizeGreaterThan:
+                                      description: Minimum object size to which the
+                                        rule applies.
+                                      format: int64
+                                      type: integer
+                                    objectSizeLessThan:
+                                      description: Maximum object size to which the
+                                        rule applies.
+                                      format: int64
+                                      type: integer
                                     prefix:
                                       description: Prefix identifying one or more
                                         objects to which the rule applies.
@@ -201,6 +211,16 @@ spec:
                                   required:
                                   - tags
                                   type: object
+                                objectSizeGreaterThan:
+                                  description: Minimum object size to which the rule
+                                    applies.
+                                  format: int64
+                                  type: integer
+                                objectSizeLessThan:
+                                  description: Maximum object size to which the rule
+                                    applies.
+                                  format: int64
+                                  type: integer
                                 prefix:
                                   description: Prefix identifying one or more objects
                                     to which the rule applies.
@@ -234,6 +254,11 @@ spec:
                                 suspended) to request that noncurrent object versions
                                 are deleted at a specific period in the object's lifetime.
                               properties:
+                                newerNoncurrentVersions:
+                                  description: Specifies how many noncurrent versions
+                                    will be retained.
+                                  format: int32
+                                  type: integer
                                 noncurrentDays:
                                   description: Specifies the number of days an object
                                     is noncurrent before the associated action can
@@ -258,6 +283,11 @@ spec:
                                   class of the non-current version is transitioned
                                   at a specific period in the object's lifetime.
                                 properties:
+                                  newerNoncurrentVersions:
+                                    description: Specifies how many noncurrent versions
+                                      will be retained.
+                                    format: int32
+                                    type: integer
                                   noncurrentDays:
                                     description: Specifies the number of days an object
                                       is noncurrent before the associated action can

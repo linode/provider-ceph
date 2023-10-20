@@ -127,6 +127,14 @@ type LifecycleRuleFilter struct {
 	// This tag must exist in the object's tag set in order for the rule to apply.
 	// +optional
 	Tag *Tag `json:"tag,omitempty"`
+
+	// Minimum object size to which the rule applies.
+	// +optional
+	ObjectSizeGreaterThan int64 `json:"objectSizeGreaterThan,omitempty"`
+
+	// Maximum object size to which the rule applies.
+	// +optional
+	ObjectSizeLessThan int64 `json:"objectSizeLessThan,omitempty"`
 }
 
 // LifecycleRuleAndOperator is used in a Lifecycle Rule Filter to apply a logical AND to two or
@@ -140,6 +148,14 @@ type LifecycleRuleAndOperator struct {
 	// All of these tags must exist in the object's tag set in order for the rule
 	// to apply.
 	Tags []Tag `json:"tags"`
+
+	// Minimum object size to which the rule applies.
+	// +optional
+	ObjectSizeGreaterThan int64 `json:"objectSizeGreaterThan,omitempty"`
+
+	// Maximum object size to which the rule applies.
+	// +optional
+	ObjectSizeLessThan int64 `json:"objectSizeLessThan,omitempty"`
 }
 
 // NoncurrentVersionExpiration specifies when noncurrent object versions expire. Upon expiration,
@@ -151,6 +167,10 @@ type NoncurrentVersionExpiration struct {
 	// Specifies the number of days an object is noncurrent before the associated action
 	// can be performed.
 	NoncurrentDays int32 `json:"noncurrentDays,omitempty"`
+
+	// Specifies how many noncurrent versions will be retained.
+	// +optional
+	NewerNoncurrentVersions int32 `json:"newerNoncurrentVersions,omitempty"`
 }
 
 // NoncurrentVersionTransition contains the transition rule that describes when noncurrent objects
@@ -164,6 +184,10 @@ type NoncurrentVersionTransition struct {
 
 	// The class of storage used to store the object.
 	StorageClass string `json:"storageClass"`
+
+	// Specifies how many noncurrent versions will be retained.
+	// +optional
+	NewerNoncurrentVersions int32 `json:"newerNoncurrentVersions,omitempty"`
 }
 
 // Transition specifies when an object transitions to a specified storage class.

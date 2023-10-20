@@ -173,6 +173,16 @@ spec:
                                     all of the predicates configured inside the And
                                     operator.
                                   properties:
+                                    objectSizeGreaterThan:
+                                      description: Minimum object size to which the
+                                        rule applies.
+                                      format: int64
+                                      type: integer
+                                    objectSizeLessThan:
+                                      description: Maximum object size to which the
+                                        rule applies.
+                                      format: int64
+                                      type: integer
                                     prefix:
                                       description: Prefix identifying one or more
                                         objects to which the rule applies.
@@ -201,6 +211,16 @@ spec:
                                   required:
                                   - tags
                                   type: object
+                                objectSizeGreaterThan:
+                                  description: Minimum object size to which the rule
+                                    applies.
+                                  format: int64
+                                  type: integer
+                                objectSizeLessThan:
+                                  description: Maximum object size to which the rule
+                                    applies.
+                                  format: int64
+                                  type: integer
                                 prefix:
                                   description: Prefix identifying one or more objects
                                     to which the rule applies.

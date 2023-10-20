@@ -127,6 +127,14 @@ type LifecycleRuleFilter struct {
 	// This tag must exist in the object's tag set in order for the rule to apply.
 	// +optional
 	Tag *Tag `json:"tag,omitempty"`
+
+	// Minimum object size to which the rule applies.
+	// +optional
+	ObjectSizeGreaterThan int64 `json:"objectSizeGreaterThan,omitempty"`
+
+	// Maximum object size to which the rule applies.
+	// +optional
+	ObjectSizeLessThan int64 `json:"objectSizeLessThan,omitempty"`
 }
 
 // LifecycleRuleAndOperator is used in a Lifecycle Rule Filter to apply a logical AND to two or
@@ -140,6 +148,14 @@ type LifecycleRuleAndOperator struct {
 	// All of these tags must exist in the object's tag set in order for the rule
 	// to apply.
 	Tags []Tag `json:"tags"`
+
+	// Minimum object size to which the rule applies.
+	// +optional
+	ObjectSizeGreaterThan int64 `json:"objectSizeGreaterThan,omitempty"`
+
+	// Maximum object size to which the rule applies.
+	// +optional
+	ObjectSizeLessThan int64 `json:"objectSizeLessThan,omitempty"`
 }
 
 // NoncurrentVersionExpiration specifies when noncurrent object versions expire. Upon expiration,

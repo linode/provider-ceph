@@ -2,5 +2,5 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
   - command: kubectl delete bucket bucket-for-all-prov-set
-  - command: kubectl patch --type=merge buckets bucket-for-all-prov-empty -p '{"metadata":{"annotations":{"crossplane.io/paused":"false"}}}'
+  - command: kubectl patch --type=merge buckets bucket-for-all-prov-empty -p '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
   - command: kubectl delete bucket bucket-for-all-prov-empty

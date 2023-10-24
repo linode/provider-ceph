@@ -32,8 +32,6 @@ metadata:
   finalizers:
   - "finalizer.managedresource.crossplane.io"
   - "bucket-in-use.provider-ceph.crossplane.io"
-  annotations:
-    crossplane.io/paused: "true"
   labels:
     crossplane.io/paused: "true"
 status:

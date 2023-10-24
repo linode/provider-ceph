@@ -36,7 +36,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		}, nil
 	}
 
-	if !v1alpha1.IsHealthCheckBucket(bucket) && (bucket.Spec.AutoPause || c.autoPauseBucket) && bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "" {
+	if !v1alpha1.IsHealthCheckBucket(bucket) && (bucket.Spec.AutoPause || c.autoPauseBucket) && bucket.Labels[meta.AnnotationKeyReconciliationPaused] == "" {
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,

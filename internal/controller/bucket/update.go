@@ -77,9 +77,13 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			if !v1alpha1.IsHealthCheckBucket(bucket) &&
 				allBucketsReady &&
 				(bucket.Spec.AutoPause || c.autoPauseBucket) &&
-				bucket.Annotations[meta.AnnotationKeyReconciliationPaused] == "" {
+				bucket.Labels[meta.AnnotationKeyReconciliationPaused] == "" {
 				c.log.Info("Auto pausing bucket", "bucket_name", bucket.Name)
-				bucket.Annotations[meta.AnnotationKeyReconciliationPaused] = "true"
+
+				if bucket.ObjectMeta.Labels == nil {
+					bucket.ObjectMeta.Labels = map[string]string{}
+				}
+				bucket.Labels[meta.AnnotationKeyReconciliationPaused] = "true"
 			}
 
 			// Add labels for backends if they don't exist

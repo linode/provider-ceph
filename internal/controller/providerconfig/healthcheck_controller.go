@@ -324,8 +324,8 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 		}, resource.IsAPIError, func() error {
 			if !v1alpha1.IsHealthCheckBucket(&buckets.Items[i]) &&
 				(r.autoPauseBucket || buckets.Items[i].Spec.AutoPause) &&
-				buckets.Items[i].Annotations[meta.AnnotationKeyReconciliationPaused] == "true" {
-				buckets.Items[i].Annotations[meta.AnnotationKeyReconciliationPaused] = ""
+				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] == "true" {
+				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] = ""
 
 				return r.kubeClient.Update(ctx, &buckets.Items[i])
 			}

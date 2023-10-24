@@ -263,7 +263,6 @@ func main() {
 
 	kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
 		For(&providercephv1alpha1.Bucket{}).
-		WithDefaulter(bucket.NewBucketMutator()).
 		WithValidator(bucket.NewBucketValidator(backendStore)).
 		Complete(), "Cannot setup bucket validating webhook")
 

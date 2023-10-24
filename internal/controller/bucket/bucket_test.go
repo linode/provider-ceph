@@ -995,10 +995,10 @@ func TestUpdate(t *testing.T) {
 
 					return cmp.Diff(
 						map[string]string{
-							"test":                                 "test",
 							meta.AnnotationKeyReconciliationPaused: "true",
+							"provider-ceph.backends.s3-backend-1":  "",
 						},
-						bucket.Annotations,
+						bucket.Labels,
 					)
 				},
 			},

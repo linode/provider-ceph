@@ -99,6 +99,8 @@ const (
 	NotReadyStatus Status = "NotReady"
 	DeletingStatus Status = "Deleting"
 	NoStatus       Status = ""
+
+	ValidationRequiredLabel = "provider-ceph.crossplane.io/validation-required"
 )
 
 // BucketObservation are the observable fields of a Bucket.

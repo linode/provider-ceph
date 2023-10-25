@@ -119,7 +119,7 @@ jobs:
         id: check-diff
         run: |
           mkdir _output
-          make check-diff
+          make check-diff-pkg
 
       - name: Show diff
         if: failure() && steps.check-diff.outcome == 'failure'

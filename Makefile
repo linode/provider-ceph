@@ -58,6 +58,8 @@ XPKGS = provider-ceph
 -include build/makelib/xpkg.mk
 -include build/makelib/local.xpkg.mk
 
+VAL_WBHK_STAGE ?= $(ROOT_DIR)/staging/validatingwebhookconfiguration
+
 # NOTE(hasheddan): we force image building to happen prior to xpkg build so that
 # we ensure image is present in daemon.
 xpkg.build.provider-ceph: do.build.images
@@ -128,13 +130,27 @@ crossplane-cluster: $(HELM3) cluster
 	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane
 	@$(OK) Installing Crossplane
 
+# Generate the provider-ceph package and webhookconfiguration manifest.
+generate-pkg: generate kustomize-webhook
+
+# Ensure generate-pkg target doesn't create a diff
+check-diff-pkg: generate-pkg
+	@$(INFO) checking that branch is clean
+	@if git status --porcelain | grep . ; then $(ERR) There are uncommitted changes after running make generate-pkg. Please ensure you commit all generated files in this branch after running make generate-pkg. && false; else $(OK) branch is clean; fi
+
+# Kustomize the webhookconfiguration manifest that is created by 'generate' target.
+kustomize-webhook: $(KUSTOMIZE)
+	@cp $(XPKG_DIR)/webhookconfigurations/manifests.yaml $(VAL_WBHK_STAGE)
+	@$(KUSTOMIZE) build $(VAL_WBHK_STAGE) -o $(XPKG_DIR)/webhookconfigurations/manifests.yaml
+	@rm $(VAL_WBHK_STAGE)/manifests.yaml
+
 # Build the controller image and the provider package.
 # Load the controller image to the Kind cluster and add the provider package
 # to the Provider.
 # The following is taken from local.xpkg.deploy.provider.
 # However, it is modified to use the "--zap-devel" flag instead of "-d" which does
 # not exist in this project and would therefore cause the controller to CrashLoop.
-load-package: $(KIND) build
+load-package: $(KIND) build kustomize-webhook
 	@$(MAKE) local.xpkg.sync
 	@$(INFO) deploying provider package $(PROJECT_NAME)
 	@$(KIND) load docker-image $(BUILD_REGISTRY)/$(PROJECT_NAME)-$(ARCH) -n $(KIND_CLUSTER_NAME)
@@ -233,9 +249,12 @@ provider.addtype: $(GOMPLATE)
 	@PROVIDER=$(provider) GROUP=$(group) KIND=$(kind) APIVERSION=$(apiversion) ./hack/helpers/addtype.sh
 
 define CROSSPLANE_MAKE_HELP
+
 Crossplane Targets:
-    submodules            Update the submodules, such as the common build scripts.
-    run                   Run crossplane locally, out-of-cluster. Useful for development.
+    submodules      Update the submodules, such as the common build scripts.
+    run             Run crossplane locally, out-of-cluster. Useful for development.
+    generate-pkg    Generate the provider-ceph package and webhook configuration manifest.
+    check-diff-pkg  Ensure the reviewable target from generate-pkg doesn't create a git diff.
 
 endef
 # The reason CROSSPLANE_MAKE_HELP is used instead of CROSSPLANE_HELP is because the crossplane

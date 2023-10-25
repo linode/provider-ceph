@@ -2,6 +2,8 @@ apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
 kind: Bucket
 metadata:
   name: test-bucket
+  labels:
+    provider-ceph.crossplane.io/validation-required: "true"
 spec:
   providers:
   - ceph-cluster
@@ -11,5 +13,7 @@ apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
 kind: Bucket
 metadata:
   name: test-bucket-all
+  labels:
+    provider-ceph.crossplane.io/validation-required: "true"
 spec:
   forProvider: {} 

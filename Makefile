@@ -133,11 +133,16 @@ crossplane-cluster: $(HELM3) cluster
 # Generate the provider-ceph package and webhookconfiguration manifest.
 generate-pkg: generate kustomize-webhook
 
+# Ensure generate-pkg target doesn't create a diff
+check-diff-pkg: generate-pkg
+	@$(INFO) checking that branch is clean
+	@if git status --porcelain | grep . ; then $(ERR) There are uncommitted changes after running make generate-pkg. Please ensure you commit all generated files in this branch after running make generate-pkg. && false; else $(OK) branch is clean; fi
+
 # Kustomize the webhookconfiguration manifest that is created by 'generate' target.
 kustomize-webhook: $(KUSTOMIZE)
 	@cp $(XPKG_DIR)/webhookconfigurations/manifests.yaml $(VAL_WBHK_STAGE)
 	@$(KUSTOMIZE) build $(VAL_WBHK_STAGE) -o $(XPKG_DIR)/webhookconfigurations/manifests.yaml
-	@ rm $(VAL_WBHK_STAGE)/manifests.yaml
+	@rm $(VAL_WBHK_STAGE)/manifests.yaml
 
 # Build the controller image and the provider package.
 # Load the controller image to the Kind cluster and add the provider package
@@ -249,6 +254,7 @@ Crossplane Targets:
     submodules      Update the submodules, such as the common build scripts.
     run             Run crossplane locally, out-of-cluster. Useful for development.
     generate-pkg    Generate the provider-ceph package and webhook configuration manifest.
+    check-diff-pkg  Ensure the reviewable target from generate-pkg doesn't create a git diff.
 
 endef
 # The reason CROSSPLANE_MAKE_HELP is used instead of CROSSPLANE_HELP is because the crossplane

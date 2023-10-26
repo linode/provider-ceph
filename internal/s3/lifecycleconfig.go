@@ -39,35 +39,48 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 		}
 		if local.Expiration != nil {
 			rule.Expiration = &types.LifecycleExpiration{
-				Days:                      local.Expiration.Days,
 				ExpiredObjectDeleteMarker: local.Expiration.ExpiredObjectDeleteMarker,
+			}
+			if local.Expiration.Days != nil {
+				rule.Expiration.Days = *local.Expiration.Days
 			}
 			if local.Expiration.Date != nil {
 				rule.Expiration.Date = &local.Expiration.Date.Time
 			}
 		}
 		if local.NoncurrentVersionExpiration != nil {
-			rule.NoncurrentVersionExpiration = &types.NoncurrentVersionExpiration{NoncurrentDays: local.NoncurrentVersionExpiration.NoncurrentDays}
+			if local.NoncurrentVersionExpiration.NoncurrentDays != nil {
+				rule.NoncurrentVersionExpiration = &types.NoncurrentVersionExpiration{NoncurrentDays: *local.NoncurrentVersionExpiration.NoncurrentDays}
+			}
 		}
 		if local.NoncurrentVersionTransitions != nil {
-			rule.NoncurrentVersionTransitions = make([]types.NoncurrentVersionTransition, len(local.NoncurrentVersionTransitions))
-			for tIndex, transition := range local.NoncurrentVersionTransitions {
-				rule.NoncurrentVersionTransitions[tIndex] = types.NoncurrentVersionTransition{
-					NoncurrentDays: transition.NoncurrentDays,
-					StorageClass:   types.TransitionStorageClass(transition.StorageClass),
+			rule.NoncurrentVersionTransitions = make([]types.NoncurrentVersionTransition, 0)
+			for _, transition := range local.NoncurrentVersionTransitions {
+				nonCurrentVersionTransition := types.NoncurrentVersionTransition{}
+				if transition.NoncurrentDays != nil {
+					nonCurrentVersionTransition.NoncurrentDays = *transition.NoncurrentDays
 				}
+				if transition.NewerNoncurrentVersions != nil {
+					nonCurrentVersionTransition.NewerNoncurrentVersions = *transition.NewerNoncurrentVersions
+				}
+				nonCurrentVersionTransition.StorageClass = types.TransitionStorageClass(transition.StorageClass)
+
+				rule.NoncurrentVersionTransitions = append(rule.NoncurrentVersionTransitions, nonCurrentVersionTransition)
 			}
 		}
 		if local.Transitions != nil {
-			rule.Transitions = make([]types.Transition, len(local.Transitions))
-			for tIndex, transition := range local.Transitions {
-				rule.Transitions[tIndex] = types.Transition{
-					Days:         transition.Days,
-					StorageClass: types.TransitionStorageClass(transition.StorageClass),
+			rule.Transitions = make([]types.Transition, 0)
+			for _, localTransition := range local.Transitions {
+				transition := types.Transition{}
+				if localTransition.Days != nil {
+					transition.Days = *localTransition.Days
 				}
-				if transition.Date != nil {
-					rule.Transitions[tIndex].Date = &transition.Date.Time
+				if localTransition.Date != nil {
+					transition.Date = &localTransition.Date.Time
 				}
+
+				transition.StorageClass = types.TransitionStorageClass(localTransition.StorageClass)
+				rule.Transitions = append(rule.Transitions, transition)
 			}
 		}
 		// This is done because S3 expects an empty filter, and never nil
@@ -81,9 +94,11 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 				rule.Filter = &types.LifecycleRuleFilterMemberTag{Value: types.Tag{Key: aws.String(local.Filter.Tag.Key), Value: aws.String(local.Filter.Tag.Value)}}
 			}
 			if local.Filter.And != nil {
-				andOperator := types.LifecycleRuleAndOperator{
-					Prefix: local.Filter.And.Prefix,
+				andOperator := types.LifecycleRuleAndOperator{}
+				if local.Filter.And.Prefix != nil {
+					andOperator.Prefix = local.Filter.And.Prefix
 				}
+
 				if local.Filter.And.Tags != nil {
 					andOperator.Tags = sortS3TagSet(copyTags(local.Filter.And.Tags))
 				}

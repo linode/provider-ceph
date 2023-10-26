@@ -102,7 +102,7 @@ type LifecycleExpiration struct {
 	// Indicates the lifetime, in days, of the objects that are subject to the rule.
 	// The value must be a non-zero positive integer.
 	// +kubebuilder:validation:Minimum=1
-	Days int32 `json:"days,omitempty"`
+	Days *int32 `json:"days,omitempty"`
 
 	// Indicates whether a delete marker will be removed with no noncurrent
 	// versions. If set to true, the delete marker will be expired; if set to false
@@ -130,11 +130,11 @@ type LifecycleRuleFilter struct {
 
 	// Minimum object size to which the rule applies.
 	// +optional
-	ObjectSizeGreaterThan int64 `json:"objectSizeGreaterThan,omitempty"`
+	ObjectSizeGreaterThan *int64 `json:"objectSizeGreaterThan,omitempty"`
 
 	// Maximum object size to which the rule applies.
 	// +optional
-	ObjectSizeLessThan int64 `json:"objectSizeLessThan,omitempty"`
+	ObjectSizeLessThan *int64 `json:"objectSizeLessThan,omitempty"`
 }
 
 // LifecycleRuleAndOperator is used in a Lifecycle Rule Filter to apply a logical AND to two or
@@ -151,11 +151,11 @@ type LifecycleRuleAndOperator struct {
 
 	// Minimum object size to which the rule applies.
 	// +optional
-	ObjectSizeGreaterThan int64 `json:"objectSizeGreaterThan,omitempty"`
+	ObjectSizeGreaterThan *int64 `json:"objectSizeGreaterThan,omitempty"`
 
 	// Maximum object size to which the rule applies.
 	// +optional
-	ObjectSizeLessThan int64 `json:"objectSizeLessThan,omitempty"`
+	ObjectSizeLessThan *int64 `json:"objectSizeLessThan,omitempty"`
 }
 
 // NoncurrentVersionExpiration specifies when noncurrent object versions expire. Upon expiration,
@@ -166,11 +166,11 @@ type LifecycleRuleAndOperator struct {
 type NoncurrentVersionExpiration struct {
 	// Specifies the number of days an object is noncurrent before the associated action
 	// can be performed.
-	NoncurrentDays int32 `json:"noncurrentDays,omitempty"`
+	NoncurrentDays *int32 `json:"noncurrentDays,omitempty"`
 
 	// Specifies how many noncurrent versions will be retained.
 	// +optional
-	NewerNoncurrentVersions int32 `json:"newerNoncurrentVersions,omitempty"`
+	NewerNoncurrentVersions *int32 `json:"newerNoncurrentVersions,omitempty"`
 }
 
 // NoncurrentVersionTransition contains the transition rule that describes when noncurrent objects
@@ -180,14 +180,14 @@ type NoncurrentVersionExpiration struct {
 type NoncurrentVersionTransition struct {
 	// Specifies the number of days an object is noncurrent before the associated action
 	// can be performed.
-	NoncurrentDays int32 `json:"noncurrentDays,omitempty"`
+	NoncurrentDays *int32 `json:"noncurrentDays,omitempty"`
 
 	// The class of storage used to store the object.
 	StorageClass string `json:"storageClass"`
 
 	// Specifies how many noncurrent versions will be retained.
 	// +optional
-	NewerNoncurrentVersions int32 `json:"newerNoncurrentVersions,omitempty"`
+	NewerNoncurrentVersions *int32 `json:"newerNoncurrentVersions,omitempty"`
 }
 
 // Transition specifies when an object transitions to a specified storage class.
@@ -199,7 +199,7 @@ type Transition struct {
 	// Indicates the number of days after creation when objects are transitioned
 	// to the specified storage class. The value must be a positive integer.
 	// +kubebuilder:validation:Minimum=1
-	Days int32 `json:"days,omitempty"`
+	Days *int32 `json:"days,omitempty"`
 
 	// The storage class to which you want the object to transition.
 	StorageClass string `json:"storageClass"`

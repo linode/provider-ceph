@@ -15,7 +15,9 @@ import (
 func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 	bucketname := "bucket"
 	filterPrefix := "someprefix/"
-
+	days90 := int32(90)
+	days365 := int32(365)
+	days3650 := int32(3650)
 	t.Parallel()
 
 	type args struct {
@@ -40,7 +42,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 						{
 							Status: "Enabled",
 							Expiration: &v1alpha1.LifecycleExpiration{
-								Days: int32(365),
+								Days: &days365,
 							},
 						},
 					},
@@ -54,7 +56,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 							{
 								Status: "Enabled",
 								Expiration: &types.LifecycleExpiration{
-									Days: int32(365),
+									Days: days365,
 								},
 								Filter: &types.LifecycleRuleFilterMemberPrefix{},
 							},
@@ -71,14 +73,14 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 						{
 							Status: "Enabled",
 							Expiration: &v1alpha1.LifecycleExpiration{
-								Days: int32(3650),
+								Days: &days3650,
 							},
 							Filter: &v1alpha1.LifecycleRuleFilter{
 								Prefix: &filterPrefix,
 							},
 							Transitions: []v1alpha1.Transition{
 								{
-									Days:         int32(365),
+									Days:         &days365,
 									StorageClass: "STANDARD_IA",
 								},
 							},
@@ -86,11 +88,11 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 						{
 							Status: "Enabled",
 							Expiration: &v1alpha1.LifecycleExpiration{
-								Days: int32(3650),
+								Days: &days3650,
 							},
 							Transitions: []v1alpha1.Transition{
 								{
-									Days:         int32(365),
+									Days:         &days365,
 									StorageClass: "GLACIER",
 								},
 							},
@@ -98,14 +100,14 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 						{
 							Status: "Enabled",
 							Expiration: &v1alpha1.LifecycleExpiration{
-								Days: int32(365),
+								Days: &days365,
 							},
 							Filter: &v1alpha1.LifecycleRuleFilter{
 								Prefix: &filterPrefix,
 							},
 							Transitions: []v1alpha1.Transition{
 								{
-									Days:         int32(90),
+									Days:         &days90,
 									StorageClass: "DEEP_ARCHIVE",
 								},
 							},
@@ -121,14 +123,14 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 							{
 								Status: "Enabled",
 								Expiration: &types.LifecycleExpiration{
-									Days: int32(3650),
+									Days: days3650,
 								},
 								Filter: &types.LifecycleRuleFilterMemberPrefix{
 									Value: filterPrefix,
 								},
 								Transitions: []types.Transition{
 									{
-										Days:         int32(365),
+										Days:         days365,
 										StorageClass: types.TransitionStorageClassStandardIa,
 									},
 								},
@@ -136,12 +138,12 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 							{
 								Status: "Enabled",
 								Expiration: &types.LifecycleExpiration{
-									Days: int32(3650),
+									Days: days3650,
 								},
 								Filter: &types.LifecycleRuleFilterMemberPrefix{},
 								Transitions: []types.Transition{
 									{
-										Days:         int32(365),
+										Days:         days365,
 										StorageClass: types.TransitionStorageClassGlacier,
 									},
 								},
@@ -149,14 +151,14 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 							{
 								Status: "Enabled",
 								Expiration: &types.LifecycleExpiration{
-									Days: int32(365),
+									Days: days365,
 								},
 								Filter: &types.LifecycleRuleFilterMemberPrefix{
 									Value: filterPrefix,
 								},
 								Transitions: []types.Transition{
 									{
-										Days:         int32(90),
+										Days:         days90,
 										StorageClass: types.TransitionStorageClassDeepArchive,
 									},
 								},

@@ -35,7 +35,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var errExternal = "external error"
+var (
+	errExternal = "external error"
+	days1       = int32(1)
+	days3       = int32(3)
+)
 
 // Unlike many Kubernetes projects Crossplane does not use third party testing
 // libraries, per the common Go test review comments. Crossplane encourages the
@@ -198,7 +202,7 @@ func TestObserveBackend(t *testing.T) {
 								Rules: []v1alpha1.LifecycleRule{
 									{
 										Expiration: &v1alpha1.LifecycleExpiration{
-											Days: 1,
+											Days: &days1,
 										},
 									},
 								},
@@ -243,7 +247,7 @@ func TestObserveBackend(t *testing.T) {
 								Rules: []v1alpha1.LifecycleRule{
 									{
 										Expiration: &v1alpha1.LifecycleExpiration{
-											Days: 1,
+											Days: &days1,
 										},
 									},
 								},
@@ -268,7 +272,7 @@ func TestObserveBackend(t *testing.T) {
 								Rules: []s3types.LifecycleRule{
 									{
 										Expiration: &s3types.LifecycleExpiration{
-											Days: 1,
+											Days: days1,
 										},
 									},
 								},
@@ -342,7 +346,7 @@ func TestObserveBackend(t *testing.T) {
 									{
 										Status: "Enabled",
 										Expiration: &v1alpha1.LifecycleExpiration{
-											Days: int32(1),
+											Days: &days1,
 										},
 									},
 								},
@@ -394,7 +398,7 @@ func TestObserveBackend(t *testing.T) {
 								Rules: []v1alpha1.LifecycleRule{
 									{
 										Expiration: &v1alpha1.LifecycleExpiration{
-											Days: int32(3),
+											Days: &days3,
 										},
 									},
 								},

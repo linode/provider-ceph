@@ -36,7 +36,7 @@ guide may also be of use.
 Install the provider by using the Upbound CLI after changing the image tag to the latest release:
 
 ```
-up ctp provider install linode/provider-ceph:v0.0.24
+up ctp provider install xpkg.upbound.io/linode/provider-ceph:v0.0.24
 ```
 
 Alternatively, you can use declarative installation:

@@ -19,7 +19,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.19.0
 	go.uber.org/zap v1.25.0
 	golang.org/x/sync v0.3.0
-	google.golang.org/grpc v1.58.2
+	google.golang.org/grpc v1.58.3
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	k8s.io/api v0.28.0
 	k8s.io/apimachinery v0.28.0

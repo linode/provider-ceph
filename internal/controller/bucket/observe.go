@@ -24,6 +24,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if !ok {
 		return managed.ExternalObservation{}, errors.New(errNotBucket)
 	}
+	c.log.Info("Observe", "bucket_name", bucket.Name)
 
 	if !c.backendStore.BackendsAreStored() {
 		return managed.ExternalObservation{}, errors.New(errNoS3BackendsStored)

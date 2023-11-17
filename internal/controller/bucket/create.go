@@ -25,6 +25,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotBucket)
 	}
 
+	c.log.Info("Create", "bucket_name", bucket.Name)
+
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
@@ -65,7 +67,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			continue
 		}
 
-		c.log.Info("Creating bucket", "bucket name", originalBucket.Name, "backend name", beName)
+		c.log.Info("Creating bucket on backend", "bucket name", originalBucket.Name, "backend name", beName)
 
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {

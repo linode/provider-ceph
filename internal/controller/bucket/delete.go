@@ -21,6 +21,8 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.New(errNotBucket)
 	}
 
+	c.log.Info("Delete", "bucket_name", bucket.Name)
+
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
@@ -57,7 +59,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	for _, backendName := range activeBackends {
 		bucketBackends.setBucketStatus(bucket.Name, backendName, v1alpha1.DeletingStatus)
 
-		c.log.Info("Deleting bucket", "bucket name", bucket.Name, "backend name", backendName)
+		c.log.Info("Deleting bucket on backend", "bucket name", bucket.Name, "backend name", backendName)
 		cl := c.backendStore.GetBackendClient(backendName)
 		beName := backendName
 		g.Go(func() error {

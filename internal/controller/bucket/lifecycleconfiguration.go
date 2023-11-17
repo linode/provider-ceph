@@ -87,16 +87,22 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	if bucket.Spec.ForProvider.LifecycleConfiguration == nil || bucket.Spec.LifecycleConfigurationDisabled {
 		// No lifecycle config is specified, or it has been disabled.
 		// Either way, it should not exist on any backend.
-		if LifecycleConfigurationNotFound(err) {
+		if LifecycleConfigurationNotFound(err) || len(response.Rules) == 0 {
 			// No lifecycle config found on this backend.
+			l.log.Info("no lifecycle found on backend - no action required", "bucket_name", bucket.Name, "backend_name", backendName)
+
 			return Updated, nil
 		} else {
-			l.log.Info("lifecycle found on backend - requires deletion", "bucket_name", bucket.Name)
+			l.log.Info("lifecycle found on backend - requires deletion", "bucket_name", bucket.Name, "backend_name", backendName)
 
 			return NeedsDeletion, nil
 		}
 	}
 
+	// A lifecycle configuration has been discovered on the backend in question
+	// and a lifecycle configuration is also specified in the CR.
+	// So we must compare these 'local' and 'external' lifecycle configurations
+	// in order to decide if an Update is required.
 	var local []v1alpha1.LifecycleRule
 	if bucket.Spec.ForProvider.LifecycleConfiguration != nil {
 		local = bucket.Spec.ForProvider.LifecycleConfiguration.Rules
@@ -118,10 +124,12 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	// is almost never expected.
 	if !cmp.Equal(external, s3internal.GenerateLifecycleRules(local),
 		cmpopts.IgnoreFields(s3types.LifecycleRule{}, "ID"), cmpopts.IgnoreTypes(document.NoSerde{})) {
-		l.log.Info("lifecycle configuration requires update", "bucket_name", bucket.Name)
+		l.log.Info("lifecycle configuration requires update", "bucket_name", bucket.Name, "backend_name", backendName)
 
 		return NeedsUpdate, nil
 	}
+
+	l.log.Info("lifecycle configuration is up to date - no action required", "bucket_name", bucket.Name, "backend_name", backendName)
 
 	return Updated, nil
 }

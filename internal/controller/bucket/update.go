@@ -145,6 +145,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 				bucketExists, err := s3internal.BucketExists(ctx, cl, bucket.Name)
 				if err != nil {
 					c.log.Info("Error occurred attempting HeadBucket", "err", err.Error(), "bucket_name", bucket.Name, "backend_ name", beName)
+
 					return err
 				}
 				if !bucketExists {
@@ -162,10 +163,9 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 				// Check if this backend has been marked as 'Unhealthy'. In which case the
 				// Bucket must remain in 'NotReady' state for this backend.
 				if c.backendStore.GetBackendHealthStatus(beName) == apisv1alpha1.HealthStatusUnhealthy {
-
 					return nil
 				}
-				// Bucket has been successfullly updated and the backend is either 'Healthy' or 'Unknown'.
+				// Bucket has been successfully updated and the backend is either 'Healthy' or 'Unknown'.
 				// It may be 'Unknown' due to the healthcheck being disabled, in which case we can only assume
 				// the backend is healthy. Either way, set the bucket status as 'Ready' for this backend.
 				bucketBackends.setBucketStatus(bucket.Name, beName, v1alpha1.ReadyStatus)

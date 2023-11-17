@@ -111,7 +111,11 @@ func TestObserveBackend(t *testing.T) {
 
 						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
-								Rules: []s3types.LifecycleRule{},
+								Rules: []s3types.LifecycleRule{
+									{
+										Status: "Enabled",
+									},
+								},
 							}, nil
 						},
 					}
@@ -179,7 +183,11 @@ func TestObserveBackend(t *testing.T) {
 
 						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
-								Rules: []s3types.LifecycleRule{},
+								Rules: []s3types.LifecycleRule{
+									{
+										Status: "Enabled",
+									},
+								},
 							}, nil
 						},
 					}

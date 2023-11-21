@@ -2,10 +2,14 @@ package bucket
 
 import (
 	"context"
+	"fmt"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/backendstore"
+	s3internal "github.com/linode/provider-ceph/internal/s3"
 	"github.com/pkg/errors"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -81,4 +85,37 @@ func (c *external) updateObject(ctx context.Context, bucket *v1alpha1.Bucket, ca
 	}
 
 	return nil
+}
+
+func (c *external) GetClient(ctx context.Context, bucket *v1alpha1.Bucket, beName string) (backendstore.S3Client, error) {
+	if bucket.Spec.ForProvider.AssumeRole == nil {
+		return c.backendStore.GetBackendS3Client(beName), nil
+	}
+
+	arOutput, err := c.backendStore.GetBackendSTSClient(beName).AssumeRole(ctx, s3internal.AssumeRoleInput(bucket.Spec.ForProvider.AssumeRole))
+	if err != nil {
+		return nil, err
+	}
+
+	if arOutput.Credentials == nil {
+		return nil, fmt.Errorf("No credentials in AssumeRoleOutput")
+	}
+	if arOutput.Credentials.AccessKeyId == nil {
+		return nil, fmt.Errorf("No access key in AssumeRoleOutput")
+
+	}
+	if arOutput.Credentials.SecretAccessKey == nil {
+		return nil, fmt.Errorf("No secret access key in AssumeRoleOutput")
+	}
+
+	data := map[string][]byte{
+		"access_key": []byte(*arOutput.Credentials.AccessKeyId),
+		"secret_key": []byte(*arOutput.Credentials.SecretAccessKey)}
+
+	pc := &apisv1alpha1.ProviderConfig{}
+	if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
+		return nil, err
+	}
+
+	return s3internal.NewS3Client(ctx, data, pc.Spec.HostBase, pc.Spec.UseHTTPS)
 }

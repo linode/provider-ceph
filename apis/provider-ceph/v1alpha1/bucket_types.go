@@ -77,6 +77,26 @@ type BucketParameters struct {
 	// (https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-access-control.html).
 	// +optional
 	LifecycleConfiguration *BucketLifecycleConfiguration `json:"lifecycleConfiguration,omitempty"`
+
+	// Returns a set of temporary security credentials consisting of an access key ID,
+	// a secret access key, and a security token. The credentials are used to build
+	// a new S3 client to perform subsequent operations for this bucket.
+	AssumeRole *AssumeRole `json:"assumeRole,omitempty"`
+}
+
+type AssumeRole struct {
+	// The Amazon Resource Name (ARN) of the role to assume.
+	// +optional
+	RoleArn *string `json:"roleArn,omitempty"`
+	// An identifier for the assumed role session.
+	// +optional
+	RoleSessionName *string `json:"roleSessionName,omitempty"`
+	// An IAM policy in JSON format that you want to use as an inline session policy.
+	// +optional
+	Policy *string `json:"policy,omitempty"`
+	// A list of session tags that you want to pass.
+	// +optional
+	Tags []Tag `json:"tags,omitempty"`
 }
 
 // BackendInfo contains relevant information about an S3 backend for

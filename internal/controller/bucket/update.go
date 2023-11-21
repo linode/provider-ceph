@@ -128,7 +128,12 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 			continue
 		}
 
-		cl := c.backendStore.GetBackendS3Client(backendName)
+		cl, err := c.GetClient(ctx, bucket, backendName)
+		if err != nil {
+			c.log.Info("Error occurred attempting to create a new client - bucket cannot be updated on backend", "error", err.Error(), "bucket_name", bucket.Name, "backend_name", backendName)
+
+			continue
+		}
 		if cl == nil {
 			c.log.Info("Backend client not found for backend - bucket cannot be updated on backend", "bucket name", bucket.Name, "backend name", backendName)
 

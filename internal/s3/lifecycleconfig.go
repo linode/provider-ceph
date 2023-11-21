@@ -100,7 +100,7 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 				}
 
 				if local.Filter.And.Tags != nil {
-					andOperator.Tags = sortS3TagSet(copyTags(local.Filter.And.Tags))
+					andOperator.Tags = sortS3TagSet(copyS3Tags(local.Filter.And.Tags))
 				}
 				rule.Filter = &types.LifecycleRuleFilterMemberAnd{Value: andOperator}
 			}
@@ -111,8 +111,8 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 	return result
 }
 
-// copyTags converts a list of local v1beta.Tags to S3 Tags
-func copyTags(tags []v1alpha1.Tag) []types.Tag {
+// copyS3Tags converts a list of local v1beta.Tags to S3 Tags
+func copyS3Tags(tags []v1alpha1.Tag) []types.Tag {
 	out := make([]types.Tag, 0)
 	for _, one := range tags {
 		out = append(out, types.Tag{Key: aws.String(one.Key), Value: aws.String(one.Value)})

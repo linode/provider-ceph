@@ -57,8 +57,12 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	for beName := range activeBackends {
 		originalBucket := bucket.DeepCopy()
+		cl, err := c.GetClient(ctx, bucket, beName)
+		if err != nil {
+			c.log.Info("Error occurred attempting to create a new client - bucket cannot be created on backend", "error", err.Error(), "bucket_name", bucket.Name, "backend_name", beName)
 
-		cl := c.backendStore.GetBackendS3Client(beName)
+			continue
+		}
 		if cl == nil {
 			c.log.Info("Backend client not found for backend - bucket cannot be created on backend", "bucket name", originalBucket.Name, "backend name", beName)
 

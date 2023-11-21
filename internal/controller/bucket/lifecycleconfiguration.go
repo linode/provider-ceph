@@ -77,7 +77,7 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
 	l.log.Info("Observing subresource lifecycle configuration", "bucket_name", bucket.Name, "backend_name", backendName)
 
-	s3Client := l.backendStore.GetBackendClient(backendName)
+	s3Client := l.backendStore.GetBackendS3Client(backendName)
 
 	response, err := s3Client.GetBucketLifecycleConfiguration(ctx, &s3.GetBucketLifecycleConfigurationInput{Bucket: aws.String(bucket.Name)})
 	if resource.Ignore(LifecycleConfigurationNotFound, err) != nil {
@@ -156,7 +156,7 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 
 func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
 	l.log.Info("Updating lifecycle configuration", "bucket_name", b.Name, "backend_name", backendName)
-	s3Client := l.backendStore.GetBackendClient(backendName)
+	s3Client := l.backendStore.GetBackendS3Client(backendName)
 
 	_, err := s3Client.PutBucketLifecycleConfiguration(ctx, s3internal.GenerateLifecycleConfigurationInput(b.Name, b.Spec.ForProvider.LifecycleConfiguration))
 	if err != nil {
@@ -168,7 +168,7 @@ func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1
 
 func (l *LifecycleConfigurationClient) delete(ctx context.Context, bucketName, backendName string) error {
 	l.log.Info("Deleting lifecycle configuration", "bucket_name", bucketName, "backend_name", backendName)
-	s3Client := l.backendStore.GetBackendClient(backendName)
+	s3Client := l.backendStore.GetBackendS3Client(backendName)
 
 	_, err := s3Client.DeleteBucketLifecycle(ctx,
 		&s3.DeleteBucketLifecycleInput{

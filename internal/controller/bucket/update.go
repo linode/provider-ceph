@@ -128,7 +128,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 			continue
 		}
 
-		cl := c.backendStore.GetBackendClient(backendName)
+		cl := c.backendStore.GetBackendS3Client(backendName)
 		if cl == nil {
 			c.log.Info("Backend client not found for backend - bucket cannot be updated on backend", "bucket name", bucket.Name, "backend name", backendName)
 
@@ -179,7 +179,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 }
 
 func (c *external) update(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
-	cl := c.backendStore.GetBackendClient(backendName)
+	cl := c.backendStore.GetBackendS3Client(backendName)
 	if s3types.ObjectOwnership(aws.ToString(b.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
 		_, err := cl.PutBucketAcl(ctx, s3internal.BucketToPutBucketACLInput(b))
 		if err != nil {

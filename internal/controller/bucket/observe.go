@@ -69,7 +69,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
 	}
 
-	allBackendClients := c.backendStore.GetBackendClients(bucket.Spec.Providers)
+	allBackendClients := c.backendStore.GetBackendS3Clients(bucket.Spec.Providers)
 
 	missing := len(bucket.Spec.Providers)
 	for _, provider := range bucket.Spec.Providers {

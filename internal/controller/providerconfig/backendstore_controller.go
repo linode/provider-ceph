@@ -37,7 +37,8 @@ import (
 )
 
 const (
-	errCreateClient = "cannot create s3 client"
+	errCreateS3Client  = "cannot create s3 client"
+	errCreateSTSClient = "cannot create sts client"
 	// #nosec
 	errGetSecret        = "cannot get Secret"
 	errBackendNotStored = "s3 backend is not stored"
@@ -82,9 +83,21 @@ func (r *BackendStoreReconciler) addOrUpdateBackend(ctx context.Context, pc *api
 		return err
 	}
 
-	s3client, err := s3internal.NewClient(ctx, secret.Data, &pc.Spec)
+	s3client, err := s3internal.NewS3Client(ctx, secret.Data, pc.Spec.HostBase, pc.Spec.UseHTTPS)
 	if err != nil {
-		return errors.Wrap(err, errCreateClient)
+		return errors.Wrap(err, errCreateS3Client)
+	}
+
+	// If an STSAddress has not been set in the ProviderConfig Spec, use the HostBase.
+	// The STSAddress is only necessary if we wish to contact an STS compliant authentication
+	// service separate to the HostBase (i.e RGW address).
+	stsAddress := pc.Spec.STSAddress
+	if stsAddress == "" {
+		stsAddress = pc.Spec.HostBase
+	}
+	stsclient, err := s3internal.NewSTSClient(ctx, secret.Data, stsAddress, pc.Spec.UseHTTPS)
+	if err != nil {
+		return errors.Wrap(err, errCreateSTSClient)
 	}
 
 	var health apisv1alpha1.HealthStatus
@@ -93,7 +106,7 @@ func (r *BackendStoreReconciler) addOrUpdateBackend(ctx context.Context, pc *api
 		health = pc.Status.Health
 	}
 
-	r.backendStore.AddOrUpdateBackend(pc.Name, s3client, true, health)
+	r.backendStore.AddOrUpdateBackend(pc.Name, s3client, stsclient, true, health)
 
 	return nil
 }

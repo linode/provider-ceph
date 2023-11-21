@@ -33,6 +33,11 @@ type ProviderConfigSpec struct {
 	// HostBase url specified in s3cfg.
 	HostBase string `json:"hostBase"`
 
+	// STSAddress is a separate url for an external authenticator service.
+	// This service should be able to handle the AssumeRole S3 API call.
+	// +optional
+	STSAddress string `json:"stsAddress,omitempty"`
+
 	// HostBucket url specified in s3cfg.
 	HostBucket string `json:"hostBucket,omitempty"`
 

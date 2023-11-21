@@ -160,7 +160,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 func (r *HealthCheckReconciler) cleanup(ctx context.Context, req ctrl.Request, bucketName string) error {
 	// The ProviderConfig representing an s3 backend has been deleted,
 	// therefore we need to delete the health check bucket from the s3 backend.
-	backendClient := r.backendStore.GetBackendClient(req.Name)
+	backendClient := r.backendStore.GetBackendS3Client(req.Name)
 	if backendClient == nil {
 		r.log.Info("Backend client not found", "name", bucketName)
 
@@ -182,7 +182,7 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 	ctx, span := otel.Tracer("").Start(ctx, "HealthCheckReconciler.doHealthCheck")
 	defer span.End()
 
-	s3BackendClient := r.backendStore.GetBackendClient(providerConfig.Name)
+	s3BackendClient := r.backendStore.GetBackendS3Client(providerConfig.Name)
 	if s3BackendClient == nil {
 		err := errors.New(errBackendNotStored)
 		traces.SetAndRecordError(span, err)
@@ -214,7 +214,7 @@ func (r *HealthCheckReconciler) doHealthCheck(ctx context.Context, providerConfi
 }
 
 func (r *HealthCheckReconciler) bucketExists(ctx context.Context, s3BackendName, bucketName string) error {
-	s3BackendClient := r.backendStore.GetBackendClient(s3BackendName)
+	s3BackendClient := r.backendStore.GetBackendS3Client(s3BackendName)
 	if s3BackendClient == nil {
 		return errors.New(errBackendNotStored)
 	}
@@ -225,7 +225,7 @@ func (r *HealthCheckReconciler) bucketExists(ctx context.Context, s3BackendName,
 }
 
 func (r *HealthCheckReconciler) createBucket(ctx context.Context, s3BackendName, bucketName string) error {
-	s3BackendClient := r.backendStore.GetBackendClient(s3BackendName)
+	s3BackendClient := r.backendStore.GetBackendS3Client(s3BackendName)
 	if s3BackendClient == nil {
 		return errors.New(errBackendNotStored)
 	}

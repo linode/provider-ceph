@@ -10,7 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 const (
@@ -20,12 +20,32 @@ const (
 	secretKey = "secret_key"
 )
 
-func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec) (*s3.Client, error) {
-	hostBase := resolveHostBase(pcSpec.HostBase, pcSpec.UseHTTPS)
+func NewS3Client(ctx context.Context, data map[string][]byte, address string, useHTTPS bool) (*s3.Client, error) {
+	sessionConfig, err := buildSessionConfig(ctx, data, address, useHTTPS)
+	if err != nil {
+		return nil, err
+	}
+
+	return s3.NewFromConfig(*sessionConfig, func(o *s3.Options) {
+		o.UsePathStyle = true
+	}), nil
+}
+
+func NewSTSClient(ctx context.Context, data map[string][]byte, address string, useHTTPS bool) (*sts.Client, error) {
+	sessionConfig, err := buildSessionConfig(ctx, data, address, useHTTPS)
+	if err != nil {
+		return nil, err
+	}
+
+	return sts.NewFromConfig(*sessionConfig, func(o *sts.Options) {}), nil
+}
+
+func buildSessionConfig(ctx context.Context, data map[string][]byte, address string, useHTTPS bool) (*aws.Config, error) {
+	resolvedAddress := resolveHostBase(address, useHTTPS)
 
 	endpointResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
-			URL: hostBase,
+			URL: resolvedAddress,
 		}, nil
 	})
 
@@ -43,9 +63,7 @@ func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1
 
 	sessionConfig.Credentials = aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(string(data[accessKey]), string(data[secretKey]), ""))
 
-	return s3.NewFromConfig(sessionConfig, func(o *s3.Options) {
-		o.UsePathStyle = true
-	}), nil
+	return &sessionConfig, nil
 }
 
 func resolveHostBase(hostBase string, useHTTPS bool) string {

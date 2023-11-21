@@ -58,7 +58,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		bucketBackends.setBucketStatus(bucket.Name, backendName, v1alpha1.DeletingStatus)
 
 		c.log.Info("Deleting bucket", "bucket name", bucket.Name, "backend name", backendName)
-		cl := c.backendStore.GetBackendClient(backendName)
+		cl := c.backendStore.GetBackendS3Client(backendName)
 		beName := backendName
 		g.Go(func() error {
 			var err error

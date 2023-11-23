@@ -93,8 +93,8 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		r.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
 
-		if updateErr := UpdateProviderConfigStatus(ctx, r.kubeClient, providerConfig, func(_, pc *apisv1alpha1.ProviderConfig) {
-			pc.Status.Health = apisv1alpha1.HealthStatusUnknown
+		if updateErr := UpdateProviderConfigStatus(ctx, r.kubeClient, providerConfig, func(_, pcLatest *apisv1alpha1.ProviderConfig) {
+			pcLatest.Status.Health = apisv1alpha1.HealthStatusUnknown
 		}); updateErr != nil {
 			err = errors.Wrap(updateErr, errUpdateHealth)
 			traces.SetAndRecordError(span, err)
@@ -113,9 +113,9 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	defer func() {
 		r.backendStore.SetBackendHealthStatus(req.Name, providerConfig.Status.Health)
 
-		if updateErr := UpdateProviderConfigStatus(ctx, r.kubeClient, providerConfig, func(pcCopy, pc *apisv1alpha1.ProviderConfig) {
-			pc.Status.Health = pcCopy.Status.Health
-			pc.Status.Reason = pcCopy.Status.Reason
+		if updateErr := UpdateProviderConfigStatus(ctx, r.kubeClient, providerConfig, func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
+			pcLatest.Status.Health = pcDeepCopy.Status.Health
+			pcLatest.Status.Reason = pcDeepCopy.Status.Reason
 		}); updateErr != nil {
 			err = errors.Wrap(updateErr, err.Error())
 		}

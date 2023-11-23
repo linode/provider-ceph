@@ -90,7 +90,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	s3Client := l.backendStore.GetBackendClient(backendName)
 
 	response, err := s3Client.GetBucketLifecycleConfiguration(ctx, &s3.GetBucketLifecycleConfigurationInput{Bucket: aws.String(bucket.Name)})
-	if resource.IgnoreAny(err, LifecycleConfigurationNotFound, BucketNotFound) != nil {
+	if resource.IgnoreAny(err, LifecycleConfigurationNotFound, IsBucketNotFound) != nil {
 		return NeedsUpdate, errors.Wrap(err, errGetLifecycleConfig)
 	}
 

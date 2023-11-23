@@ -60,6 +60,7 @@ func newHealthCheckReconciler(k client.Client, o controller.Options, s *backends
 		backendStore:    s,
 		log:             o.Logger.WithValues("health-check-controller", providerconfig.ControllerName(apisv1alpha1.ProviderConfigGroupKind)),
 		autoPauseBucket: a,
+		unpauseHandler:  newUnpauseHandler(),
 	}
 }
 
@@ -68,6 +69,7 @@ type HealthCheckReconciler struct {
 	backendStore    *backendstore.BackendStore
 	log             logging.Logger
 	autoPauseBucket bool
+	unpauseHandler  *unpauseHandler
 }
 
 func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
@@ -146,8 +148,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// Check if the backend is no longer healthy. In which case, we need to unpause all
 	// Bucket CRs that have buckets stored on this backend. We do this to allow these
 	// Bucket CRs be reconciled again.
-	healthAfterCheck := providerConfig.Status.Health
-	if healthBeforeCheck == apisv1alpha1.HealthStatusHealthy && healthBeforeCheck != healthAfterCheck {
+	if healthBeforeCheck == apisv1alpha1.HealthStatusHealthy && healthBeforeCheck != providerConfig.Status.Health {
 		r.log.Info("Backend is no longer healthy - unpausing all Buckets on backend to allow Observation", "backend_name", providerConfig.Name)
 		go r.unpauseBuckets(ctx, providerConfig.Name)
 	}
@@ -258,6 +259,12 @@ func (r *HealthCheckReconciler) setupWithManager(mgr ctrl.Manager) error {
 // backend label. Then, using retry.OnError(), it attempts to unpause each of these buckets
 // by unsetting the Pause label.
 func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendName string) {
+	if r.unpauseHandler.IsUnpauseInProgress(s3BackendName) {
+		return
+	}
+	r.unpauseHandler.SetUnpauseInProgress(s3BackendName, true)
+	defer r.unpauseHandler.SetUnpauseInProgress(s3BackendName, false)
+
 	const (
 		steps    = 4
 		duration = time.Second

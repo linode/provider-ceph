@@ -29,14 +29,24 @@ func NewLifecycleConfigurationClient(backendStore *backendstore.BackendStore, lo
 	return &LifecycleConfigurationClient{backendStore: backendStore, log: log}
 }
 
-// LifecycleNotFoundErrCode is the error code sent by AWS when the lifecycle config does not exist
+// LifecycleNotFoundErrCode is the error code sent by Ceph when the lifecycle config does not exist
 var LifecycleNotFoundErrCode = "NoSuchLifecycleConfiguration"
 
-// LifecycleConfigurationNotFound is parses the aws Error and validates if the lifecycle configuration does not exist
+// LifecycleConfigurationNotFound is parses the error and validates if the lifecycle configuration does not exist
 func LifecycleConfigurationNotFound(err error) bool {
 	var awsErr smithy.APIError
 
 	return errors.As(err, &awsErr) && awsErr.ErrorCode() == LifecycleNotFoundErrCode
+}
+
+// NoSuchBucketErrCode is the error code sent by Ceph when the bucket does not exist
+var NoSuchBucketErrCode = "NoSuchBucket"
+
+// BucketNotFound parses the error and validates if the bucket does not exist
+func IsBucketNotFound(err error) bool {
+	var awsErr smithy.APIError
+
+	return errors.As(err, &awsErr) && awsErr.ErrorCode() == NoSuchBucketErrCode
 }
 
 func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
@@ -80,18 +90,20 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	s3Client := l.backendStore.GetBackendClient(backendName)
 
 	response, err := s3Client.GetBucketLifecycleConfiguration(ctx, &s3.GetBucketLifecycleConfigurationInput{Bucket: aws.String(bucket.Name)})
-	if resource.Ignore(LifecycleConfigurationNotFound, err) != nil {
+	if resource.IgnoreAny(err, LifecycleConfigurationNotFound, IsBucketNotFound) != nil {
 		return NeedsUpdate, errors.Wrap(err, errGetLifecycleConfig)
 	}
 
 	if bucket.Spec.ForProvider.LifecycleConfiguration == nil || bucket.Spec.LifecycleConfigurationDisabled {
 		// No lifecycle config is specified, or it has been disabled.
 		// Either way, it should not exist on any backend.
-		if LifecycleConfigurationNotFound(err) || len(response.Rules) == 0 {
+		if response == nil || len(response.Rules) == 0 {
 			// No lifecycle config found on this backend.
+			l.log.Info("no lifecycle configuration found on backend - no action required", "bucket_name", bucket.Name, "backend_name", backendName)
+
 			return Updated, nil
 		} else {
-			l.log.Info("lifecycle found on backend - requires deletion", "bucket_name", bucket.Name)
+			l.log.Info("lifecycle configuration found on backend - requires deletion", "bucket_name", bucket.Name, "backend_name", backendName)
 
 			return NeedsDeletion, nil
 		}

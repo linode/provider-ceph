@@ -28,7 +28,6 @@ import (
 	"go.opentelemetry.io/otel"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -94,7 +93,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		r.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
 
-		if updateErr := r.updateProviderConfigStatus(ctx, providerConfig, func(_, pc *apisv1alpha1.ProviderConfig) {
+		if updateErr := UpdateProviderConfigStatus(ctx, r.kubeClient, providerConfig, func(_, pc *apisv1alpha1.ProviderConfig) {
 			pc.Status.Health = apisv1alpha1.HealthStatusUnknown
 		}); updateErr != nil {
 			err = errors.Wrap(updateErr, errUpdateHealth)
@@ -114,9 +113,9 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	defer func() {
 		r.backendStore.SetBackendHealthStatus(req.Name, providerConfig.Status.Health)
 
-		if updateErr := r.updateProviderConfigStatus(ctx, providerConfig, func(orig, pc *apisv1alpha1.ProviderConfig) {
-			pc.Status.Health = orig.Status.Health
-			pc.Status.Reason = orig.Status.Reason
+		if updateErr := UpdateProviderConfigStatus(ctx, r.kubeClient, providerConfig, func(pcCopy, pc *apisv1alpha1.ProviderConfig) {
+			pc.Status.Health = pcCopy.Status.Health
+			pc.Status.Reason = pcCopy.Status.Reason
 		}); updateErr != nil {
 			err = errors.Wrap(updateErr, err.Error())
 		}
@@ -242,46 +241,6 @@ func (r *HealthCheckReconciler) createBucket(ctx context.Context, s3BackendName,
 	})
 
 	return resource.Ignore(s3internal.IsAlreadyExists, err)
-}
-
-// Callbacks have two parameters, first config is the original, the second is the new version of config.
-func (r *HealthCheckReconciler) updateProviderConfigStatus(ctx context.Context, pc *apisv1alpha1.ProviderConfig, callbacks ...func(*apisv1alpha1.ProviderConfig, *apisv1alpha1.ProviderConfig)) error {
-	origPC := pc.DeepCopy()
-
-	nn := types.NamespacedName{Name: pc.GetName(), Namespace: pc.Namespace}
-
-	const (
-		steps  = 4
-		factor = 0.5
-		jitter = 0.1
-	)
-
-	for _, cb := range callbacks {
-		err := retry.OnError(wait.Backoff{
-			Steps:    steps,
-			Duration: (time.Duration(pc.Spec.HealthCheckIntervalSeconds) * time.Second) - time.Second,
-			Factor:   factor,
-			Jitter:   jitter,
-		}, resource.IsAPIError, func() error {
-			if err := r.kubeClient.Get(ctx, nn, pc); err != nil {
-				return err
-			}
-
-			cb(origPC, pc)
-
-			return r.kubeClient.Status().Update(ctx, pc)
-		})
-
-		if err != nil {
-			if kerrors.IsNotFound(err) {
-				break
-			}
-
-			return errors.Wrap(err, "Failed to update ProviderConfig status")
-		}
-	}
-
-	return nil
 }
 
 func (r *HealthCheckReconciler) setupWithManager(mgr ctrl.Manager) error {

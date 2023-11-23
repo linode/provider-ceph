@@ -43,7 +43,7 @@ func LifecycleConfigurationNotFound(err error) bool {
 var NoSuchBucketErrCode = "NoSuchBucket"
 
 // BucketNotFound parses the error and validates if the bucket does not exist
-func BucketNotFound(err error) bool {
+func IsBucketNotFound(err error) bool {
 	var awsErr smithy.APIError
 
 	return errors.As(err, &awsErr) && awsErr.ErrorCode() == NoSuchBucketErrCode

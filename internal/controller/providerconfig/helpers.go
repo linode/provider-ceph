@@ -23,22 +23,26 @@ import (
 // with the changes which will be persisted in pc (and as a result, it's DeepCopy).
 //
 // Callback example 1, updating the latest version of pc with a field from your version of pc:
-// func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
-//   pcLatest.Status.SomeOtherField = pcDeepCopy.Status.SomeOtherField
-// },
+//
+//	func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
+//	  pcLatest.Status.SomeOtherField = pcDeepCopy.Status.SomeOtherField
+//	},
 //
 // Callback example 2, updating the latest version of pc with a string:
-// func(_, pcLatest *apisv1alpha1.ProviderConfig) {
-//   pcLatest.Status.SomeOtherField = "some-value"
-// },
+//
+//	func(_, pcLatest *apisv1alpha1.ProviderConfig) {
+//	  pcLatest.Status.SomeOtherField = "some-value"
+//	},
 //
 // Example usage with above callback example 1:
-// err := UpdateProviderConfigStatus(ctx, pc, func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
-//   pcLatest.Status.SomeOtherField = pcDeepCopy.Status.SomeOtherField
-// })
-// if err != nil {
-//   // Handle error
-// }
+//
+//	err := UpdateProviderConfigStatus(ctx, pc, func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
+//	  pcLatest.Status.SomeOtherField = pcDeepCopy.Status.SomeOtherField
+//	})
+//
+//	if err != nil {
+//	  // Handle error
+//	}
 func UpdateProviderConfigStatus(ctx context.Context, kubeClient client.Client, pc *apisv1alpha1.ProviderConfig, callback func(*apisv1alpha1.ProviderConfig, *apisv1alpha1.ProviderConfig)) error {
 	const (
 		steps  = 4

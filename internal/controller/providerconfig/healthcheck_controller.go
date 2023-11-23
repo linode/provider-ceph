@@ -322,8 +322,7 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 			Factor:   factor,
 			Jitter:   jitter,
 		}, resource.IsAPIError, func() error {
-			if !v1alpha1.IsHealthCheckBucket(&buckets.Items[i]) &&
-				(r.autoPauseBucket || buckets.Items[i].Spec.AutoPause) &&
+			if (r.autoPauseBucket || buckets.Items[i].Spec.AutoPause) &&
 				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] == "true" {
 				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] = ""
 

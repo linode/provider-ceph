@@ -27,12 +27,6 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotBucket)
 	}
 
-	if v1alpha1.IsHealthCheckBucket(bucket) {
-		c.log.Info("Update is NOOP for health check bucket - updates performed by health-check-controller", "bucket", bucket.Name)
-
-		return managed.ExternalUpdate{}, nil
-	}
-
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
@@ -74,8 +68,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 				}
 			}
 
-			if !v1alpha1.IsHealthCheckBucket(bucket) &&
-				allBucketsReady &&
+			if allBucketsReady &&
 				(bucket.Spec.AutoPause || c.autoPauseBucket) &&
 				bucket.Labels[meta.AnnotationKeyReconciliationPaused] != "true" {
 				c.log.Info("Auto pausing bucket", "bucket_name", bucket.Name)

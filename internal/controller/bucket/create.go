@@ -72,12 +72,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
 		}
 
-		if v1alpha1.IsHealthCheckBucket(bucket) && pc.Spec.DisableHealthCheck {
-			c.log.Info("Health check is disabled on backend - health-check-bucket will not be created", "backend name", beName)
-
-			continue
-		}
-
 		errorsLeft++
 
 		beName := beName

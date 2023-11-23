@@ -17,19 +17,5 @@ limitations under the License.
 package v1alpha1
 
 const (
-	HealthCheckLabelKey = "provider-ceph.crossplane.io"
-	HealthCheckLabelVal = "health-check-bucket"
-	BackendLabelPrefix  = "provider-ceph.backends."
+	BackendLabelPrefix = "provider-ceph.backends."
 )
-
-// Deprecation warning: This function exists for compatibility reasons,
-// and would be removed soon.
-func IsHealthCheckBucket(bucket *Bucket) bool {
-	if val, ok := bucket.GetLabels()[HealthCheckLabelKey]; ok {
-		if val == HealthCheckLabelVal {
-			return true
-		}
-	}
-
-	return false
-}

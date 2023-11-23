@@ -483,64 +483,6 @@ func TestObserve(t *testing.T) {
 				},
 			},
 		},
-		"Bucket check on external - OK, Health check bucket ignores auto pause": {
-			fields: fields{
-				backendStore: func() *backendstore.BackendStore {
-					fake := backendstorefakes.FakeS3Client{
-						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
-							return &s3.HeadBucketOutput{}, nil
-						},
-					}
-
-					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
-
-					return bs
-				}(),
-				autoPauseBucket: true,
-			},
-			args: args{
-				mg: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{inUseFinalizer},
-						Labels: map[string]string{
-							v1alpha1.HealthCheckLabelKey: v1alpha1.HealthCheckLabelVal,
-						},
-					},
-					Spec: v1alpha1.BucketSpec{
-						Providers: []string{"s3-backend-1"},
-						ResourceSpec: v1.ResourceSpec{
-							ProviderConfigReference: &v1.Reference{
-								Name: "s3-backend-1",
-							},
-						},
-					},
-					Status: v1alpha1.BucketStatus{
-						AtProvider: v1alpha1.BucketObservation{
-							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
-								},
-							},
-						},
-						ResourceStatus: v1.ResourceStatus{
-							ConditionedStatus: v1.ConditionedStatus{
-								Conditions: []v1.Condition{
-									v1.Available(),
-								},
-							},
-						},
-					},
-				},
-			},
-			want: want{
-				o: managed.ExternalObservation{
-					ResourceExists:    true,
-					ResourceUpToDate:  true,
-					ConnectionDetails: managed.ConnectionDetails{},
-				},
-			},
-		},
 	}
 	for name, tc := range cases {
 		tc := tc
@@ -819,23 +761,6 @@ func TestUpdate(t *testing.T) {
 			},
 			want: want{
 				err: errors.New(errNotBucket),
-			},
-		},
-		"OK - Health check bucket": {
-			fields: fields{
-				backendStore: backendstore.NewBackendStore(),
-			},
-			args: args{
-				mg: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							v1alpha1.HealthCheckLabelKey: v1alpha1.HealthCheckLabelVal,
-						},
-					},
-				},
-			},
-			want: want{
-				o: managed.ExternalUpdate{},
 			},
 		},
 		"Bucket is disabled": {

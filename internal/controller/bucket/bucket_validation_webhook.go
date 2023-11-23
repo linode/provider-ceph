@@ -73,14 +73,6 @@ func (b *BucketValidator) ValidateDelete(ctx context.Context, obj runtime.Object
 }
 
 func (b *BucketValidator) validateCreateOrUpdate(ctx context.Context, bucket *v1alpha1.Bucket) error {
-	// Ignore validation for health check buckets as they do not
-	// behave as 'normal' buckets. For example, health check buckets
-	// need to be updated after their owning ProviderConfig has been deleted.
-	// This is to remove a finalizer and enable garbage collection.
-	if v1alpha1.IsHealthCheckBucket(bucket) {
-		return nil
-	}
-
 	if len(bucket.Spec.Providers) != 0 {
 		missingProviders := utils.MissingStrings(bucket.Spec.Providers, b.backendStore.GetAllActiveBackendNames())
 		if len(missingProviders) != 0 {

@@ -24,12 +24,6 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
-	if v1alpha1.IsHealthCheckBucket(bucket) {
-		c.log.Info("Delete is NOOP for health check bucket as it is owned by, and garbage collected on deletion of its related providerconfig", "bucket", bucket.Name)
-
-		return nil
-	}
-
 	// There are two scenarios where the bucket status needs to be updated during a
 	// Delete invocation:
 	// 1. The caller attempts to delete the CR and an error occurs during the call to

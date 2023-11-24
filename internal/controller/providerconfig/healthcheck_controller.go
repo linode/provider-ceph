@@ -143,12 +143,12 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return
 	}
 
-	// Check if the backend is no longer healthy. In which case, we need to unpause all
-	// Bucket CRs that have buckets stored on this backend. We do this to allow these
-	// Bucket CRs be reconciled again.
+	// Check if the backend is healthy, where prior to the check it was unhealthy.
+	// In which case, we need to unpause all Bucket CRs that have buckets stored
+	// on this backend. We do this to allow these Bucket CRs be reconciled again.
 	healthAfterCheck := providerConfig.Status.Health
-	if healthBeforeCheck == apisv1alpha1.HealthStatusHealthy && healthBeforeCheck != healthAfterCheck {
-		r.log.Info("Backend is no longer healthy - unpausing all Buckets on backend to allow Observation", "backend_name", providerConfig.Name)
+	if healthAfterCheck == apisv1alpha1.HealthStatusHealthy && healthBeforeCheck != healthAfterCheck {
+		r.log.Info("Backend is healthy where previously it was unhealthy - unpausing all Buckets on backend to allow Observation", "backend_name", providerConfig.Name)
 		go r.unpauseBuckets(ctx, providerConfig.Name)
 	}
 

@@ -49,6 +49,7 @@ import (
 const (
 	errPutHealthCheckFile = "failed to upload health check file"
 	errGetHealthCheckFile = "failed to get health check file"
+	errDoHealthCheck      = "failed to perform health check"
 	errUpdateHealth       = "failed to update health status of provider config"
 	healthCheckSuffix     = "-health-check"
 	healthCheckFile       = "health-check-file"
@@ -140,7 +141,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		traces.SetAndRecordError(span, err)
 		r.log.Info("Failed to do health check on s3 backend", "bucket_name", bucketName, "backend_name", providerConfig.Name)
 
-		providerConfig.Status.Reason = fmt.Sprintf("failed to do health check: %v", err.Error())
+		providerConfig.Status.Reason = errDoHealthCheck + ": " + err.Error()
 
 		return
 	}

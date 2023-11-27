@@ -272,6 +272,15 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-3",
 								Labels: map[string]string{
+									v1alpha1.BackendLabelPrefix + backendName: "true",
+									meta.AnnotationKeyReconciliationPaused:    "",
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "bucket-4",
+								Labels: map[string]string{
 									meta.AnnotationKeyReconciliationPaused: "true",
 								},
 							},
@@ -323,6 +332,15 @@ func TestReconcile(t *testing.T) {
 						{
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-3",
+								Labels: map[string]string{
+									v1alpha1.BackendLabelPrefix + backendName: "true",
+									meta.AnnotationKeyReconciliationPaused:    "",
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "bucket-4",
 								Labels: map[string]string{
 									meta.AnnotationKeyReconciliationPaused: "true",
 								},

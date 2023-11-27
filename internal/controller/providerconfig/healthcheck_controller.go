@@ -28,6 +28,7 @@ import (
 	"go.opentelemetry.io/otel"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -274,16 +275,21 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 		jitter   = 0.1
 	)
 
+	// Only list Buckets that (a) were created on s3BackendName
+	// and (b) are already paused.
+	labels := labels.SelectorFromSet(labels.Set(map[string]string{
+		v1alpha1.BackendLabelPrefix + s3BackendName: "true",
+		meta.AnnotationKeyReconciliationPaused:      "true",
+	}))
+
 	buckets := &v1alpha1.BucketList{}
-	beLabel := v1alpha1.BackendLabelPrefix + s3BackendName
-	hasBackendName := client.HasLabels{beLabel}
 	err := retry.OnError(wait.Backoff{
 		Steps:    steps,
 		Duration: duration,
 		Factor:   factor,
 		Jitter:   jitter,
 	}, resource.IsAPIError, func() error {
-		return r.kubeClient.List(ctx, buckets, hasBackendName)
+		return r.kubeClient.List(ctx, buckets, &client.ListOptions{LabelSelector: labels})
 	})
 	if err != nil {
 		r.log.Info("Error attempting to list Buckets on backend", "error", err.Error(), "backend_name", s3BackendName)

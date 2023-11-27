@@ -277,7 +277,7 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 
 	// Only list Buckets that (a) were created on s3BackendName
 	// and (b) are already paused.
-	labels := labels.SelectorFromSet(labels.Set(map[string]string{
+	listLabels := labels.SelectorFromSet(labels.Set(map[string]string{
 		v1alpha1.BackendLabelPrefix + s3BackendName: "true",
 		meta.AnnotationKeyReconciliationPaused:      "true",
 	}))
@@ -289,7 +289,7 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 		Factor:   factor,
 		Jitter:   jitter,
 	}, resource.IsAPIError, func() error {
-		return r.kubeClient.List(ctx, buckets, &client.ListOptions{LabelSelector: labels})
+		return r.kubeClient.List(ctx, buckets, &client.ListOptions{LabelSelector: listLabels})
 	})
 	if err != nil {
 		r.log.Info("Error attempting to list Buckets on backend", "error", err.Error(), "backend_name", s3BackendName)

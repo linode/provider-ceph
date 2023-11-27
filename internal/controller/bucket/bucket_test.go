@@ -135,12 +135,21 @@ func TestObserve(t *testing.T) {
 							},
 						},
 					},
+					Status: v1alpha1.BucketStatus{
+						AtProvider: v1alpha1.BucketObservation{
+							Backends: v1alpha1.Backends{
+								"s3-backend-1": &v1alpha1.BackendInfo{
+									BucketStatus: v1alpha1.ReadyStatus,
+								},
+							},
+						},
+					},
 				},
 			},
 			want: want{
 				o: managed.ExternalObservation{
-					ResourceExists:   false,
-					ResourceUpToDate: true,
+					ResourceExists:   true,
+					ResourceUpToDate: false,
 				},
 			},
 		},

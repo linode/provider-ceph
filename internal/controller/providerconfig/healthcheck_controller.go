@@ -28,6 +28,7 @@ import (
 	"go.opentelemetry.io/otel"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -49,6 +50,7 @@ import (
 const (
 	errPutHealthCheckFile = "failed to upload health check file"
 	errGetHealthCheckFile = "failed to get health check file"
+	errDoHealthCheck      = "failed to perform health check"
 	errUpdateHealth       = "failed to update health status of provider config"
 	healthCheckSuffix     = "-health-check"
 	healthCheckFile       = "health-check-file"
@@ -138,7 +140,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		traces.SetAndRecordError(span, err)
 		r.log.Info("Failed to do health check on s3 backend", "bucket_name", bucketName, "backend_name", providerConfig.Name)
 
-		providerConfig.Status.Reason = fmt.Sprintf("failed to do health check: %v", err.Error())
+		providerConfig.Status.Reason = errDoHealthCheck + ": " + err.Error()
 
 		return
 	}
@@ -265,16 +267,21 @@ func (r *HealthCheckReconciler) unpauseBuckets(ctx context.Context, s3BackendNam
 		jitter   = 0.1
 	)
 
+	// Only list Buckets that (a) were created on s3BackendName
+	// and (b) are already paused.
+	listLabels := labels.SelectorFromSet(labels.Set(map[string]string{
+		v1alpha1.BackendLabelPrefix + s3BackendName: "true",
+		meta.AnnotationKeyReconciliationPaused:      "true",
+	}))
+
 	buckets := &v1alpha1.BucketList{}
-	beLabel := v1alpha1.BackendLabelPrefix + s3BackendName
-	hasBackendName := client.HasLabels{beLabel}
 	err := retry.OnError(wait.Backoff{
 		Steps:    steps,
 		Duration: duration,
 		Factor:   factor,
 		Jitter:   jitter,
 	}, resource.IsAPIError, func() error {
-		return r.kubeClient.List(ctx, buckets, hasBackendName)
+		return r.kubeClient.List(ctx, buckets, &client.ListOptions{LabelSelector: listLabels})
 	})
 	if err != nil {
 		r.log.Info("Error attempting to list Buckets on backend", "error", err.Error(), "backend_name", s3BackendName)

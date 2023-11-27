@@ -128,22 +128,22 @@ WAIT:
 		case beName := <-readyChan:
 			c.log.Info("Bucket created", "backend name", beName, "bucket_name", bucket.Name)
 
-			err := c.updateObject(ctx, bucket, func(_, bucket *v1alpha1.Bucket) UpdateRequired {
+			err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
 				// Remove the annotation, because Crossplane is not always able to do it.
 				// This workaround doesn't eliminates the problem, if this update fails,
 				// Crossplane skips object forever.
-				delete(bucket.ObjectMeta.Annotations, meta.AnnotationKeyExternalCreatePending)
+				delete(bucketLatest.ObjectMeta.Annotations, meta.AnnotationKeyExternalCreatePending)
 
 				// Add labels for the backend
-				if bucket.ObjectMeta.Labels == nil {
-					bucket.ObjectMeta.Labels = map[string]string{}
+				if bucketLatest.ObjectMeta.Labels == nil {
+					bucketLatest.ObjectMeta.Labels = map[string]string{}
 				}
-				bucket.ObjectMeta.Labels[v1alpha1.BackendLabelPrefix+beName] = ""
+				bucketLatest.ObjectMeta.Labels[v1alpha1.BackendLabelPrefix+beName] = ""
 
 				return NeedsObjectUpdate
-			}, func(_, bucket *v1alpha1.Bucket) UpdateRequired {
-				bucket.Status.SetConditions(xpv1.Available())
-				bucket.Status.AtProvider.Backends = v1alpha1.Backends{
+			}, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+				bucketLatest.Status.SetConditions(xpv1.Available())
+				bucketLatest.Status.AtProvider.Backends = v1alpha1.Backends{
 					beName: &v1alpha1.BackendInfo{
 						BucketStatus: v1alpha1.ReadyStatus,
 					},
@@ -152,7 +152,7 @@ WAIT:
 				return NeedsStatusUpdate
 			})
 			if err != nil {
-				c.log.Info("Failed to update backend status", "backend name", beName, "bucket_name", bucket.Name)
+				c.log.Info("Failed to update Bucket CR", "backend name", beName, "bucket_name", bucket.Name)
 			}
 
 			return managed.ExternalCreation{}, err
@@ -171,13 +171,13 @@ WAIT:
 		}
 	}
 
-	err = c.updateObject(ctx, bucket, func(_, bucket *v1alpha1.Bucket) UpdateRequired {
-		bucket.Status.SetConditions(xpv1.Unavailable())
+	err = c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+		bucketLatest.Status.SetConditions(xpv1.Unavailable())
 
 		return NeedsStatusUpdate
 	})
 	if err != nil {
-		c.log.Info("Failed to update backend unavailable status", "bucket_name", bucket.Name)
+		c.log.Info("Failed to update backend unavailable status on Bucket CR", "bucket_name", bucket.Name)
 	}
 
 	return managed.ExternalCreation{}, err

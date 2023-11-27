@@ -44,24 +44,24 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
-	err := c.updateObject(ctx, bucket,
-		func(origBucket, bucket *v1alpha1.Bucket) UpdateRequired {
-			bucket.Status.Conditions = origBucket.Status.Conditions
-			bucket.Status.AtProvider.Backends = origBucket.Status.AtProvider.Backends
+	err := c.updateBucketCR(ctx, bucket,
+		func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+			bucketLatest.Status.Conditions = bucketDeepCopy.Status.Conditions
+			bucketLatest.Status.AtProvider.Backends = bucketDeepCopy.Status.AtProvider.Backends
 
 			return NeedsStatusUpdate
 		},
-		func(origBucket, bucket *v1alpha1.Bucket) UpdateRequired {
-			bucket.Spec.Providers = origBucket.Spec.Providers
+		func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+			bucketLatest.Spec.Providers = bucketDeepCopy.Spec.Providers
 
 			allBucketsReady := true
-			for _, p := range bucket.Spec.Providers {
-				if _, ok := bucket.Status.AtProvider.Backends[p]; !ok || bucket.Status.AtProvider.Backends[p].BucketStatus != v1alpha1.ReadyStatus {
+			for _, p := range bucketLatest.Spec.Providers {
+				if _, ok := bucketLatest.Status.AtProvider.Backends[p]; !ok || bucketLatest.Status.AtProvider.Backends[p].BucketStatus != v1alpha1.ReadyStatus {
 					allBucketsReady = false
 
 					break
 				}
-				if bucket.Status.AtProvider.Backends[p].BucketStatus != v1alpha1.ReadyStatus {
+				if bucketLatest.Status.AtProvider.Backends[p].BucketStatus != v1alpha1.ReadyStatus {
 					allBucketsReady = false
 
 					break
@@ -69,33 +69,33 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			}
 
 			if allBucketsReady &&
-				(bucket.Spec.AutoPause || c.autoPauseBucket) &&
-				bucket.Labels[meta.AnnotationKeyReconciliationPaused] != "true" {
+				(bucketLatest.Spec.AutoPause || c.autoPauseBucket) &&
+				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] != "true" {
 				c.log.Info("Auto pausing bucket", "bucket_name", bucket.Name)
 
-				if bucket.ObjectMeta.Labels == nil {
-					bucket.ObjectMeta.Labels = map[string]string{}
+				if bucketLatest.ObjectMeta.Labels == nil {
+					bucketLatest.ObjectMeta.Labels = map[string]string{}
 				}
-				bucket.Labels[meta.AnnotationKeyReconciliationPaused] = "true"
+				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = "true"
 			}
 
 			// Add labels for backends if they don't exist
 			for _, beName := range bucket.Spec.Providers {
 				beLabel := v1alpha1.BackendLabelPrefix + beName
-				if _, ok := bucket.ObjectMeta.Labels[beLabel]; !ok {
-					if bucket.ObjectMeta.Labels == nil {
-						bucket.ObjectMeta.Labels = map[string]string{}
+				if _, ok := bucketLatest.ObjectMeta.Labels[beLabel]; !ok {
+					if bucketLatest.ObjectMeta.Labels == nil {
+						bucketLatest.ObjectMeta.Labels = map[string]string{}
 					}
-					bucket.ObjectMeta.Labels[beLabel] = ""
+					bucketLatest.ObjectMeta.Labels[beLabel] = ""
 				}
 			}
 
-			controllerutil.AddFinalizer(bucket, inUseFinalizer)
+			controllerutil.AddFinalizer(bucketLatest, inUseFinalizer)
 
 			return NeedsObjectUpdate
 		})
 	if err != nil {
-		c.log.Info("Failed to update bucket", "bucket_name", bucket.Name)
+		c.log.Info("Failed to update Bucket CR", "bucket_name", bucket.Name)
 	}
 
 	return managed.ExternalUpdate{}, err

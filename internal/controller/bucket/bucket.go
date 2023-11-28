@@ -17,10 +17,8 @@ limitations under the License.
 package bucket
 
 import (
-	"context"
 	"time"
 
-	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -71,11 +69,11 @@ const (
 type NoOpService struct{}
 
 var (
-	newNoOpService = func(_ []byte) (interface{}, error) { return &NoOpService{}, nil }
+	NewNoOpService = func(_ []byte) (interface{}, error) { return &NoOpService{}, nil }
 )
 
 // Setup adds a controller that reconciles Bucket managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore, autoPauseBucket bool, pollInterval, operationTimeout, creationGracePeriod time.Duration) error {
+func Setup(mgr ctrl.Manager, o controller.Options, c *Connector) error {
 	name := managed.ControllerName(v1alpha1.BucketGroupKind)
 
 	cps := []managed.ConnectionPublisher{managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())}
@@ -85,22 +83,13 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore,
 
 	opts := []managed.ReconcilerOption{
 		managed.WithCriticalAnnotationUpdater(managed.NewRetryingCriticalAnnotationUpdater(mgr.GetClient())),
-		managed.WithTimeout(operationTimeout + time.Second),
-		managed.WithPollInterval(pollInterval),
-		managed.WithExternalConnecter(&connector{
-			kube:               mgr.GetClient(),
-			autoPauseBucket:    autoPauseBucket,
-			operationTimeout:   operationTimeout,
-			usage:              resource.NewProviderConfigUsageTracker(mgr.GetClient(), &apisv1alpha1.ProviderConfigUsage{}),
-			newServiceFn:       newNoOpService,
-			backendStore:       s,
-			subresourceClients: NewSubresourceClients(s, o.Logger.WithValues("controller", name)),
-			log:                o.Logger.WithValues("controller", name),
-		}),
-		managed.WithLogger(o.Logger.WithValues("controller", name)),
+		managed.WithTimeout(c.operationTimeout + time.Second),
+		managed.WithPollInterval(c.pollInterval),
+		managed.WithExternalConnecter(c),
+		managed.WithLogger(o.Logger.WithValues("bucket reconciler", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
 		managed.WithConnectionPublishers(cps...),
-		managed.WithCreationGracePeriod(creationGracePeriod),
+		managed.WithCreationGracePeriod(c.creationGracePeriod),
 	}
 
 	if o.Features.Enabled(features.EnableAlphaManagementPolicies) {
@@ -116,41 +105,8 @@ func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore,
 		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
 }
 
-// A connector is expected to produce an ExternalClient when its Connect method
-// is called.
-type connector struct {
-	kube               client.Client
-	autoPauseBucket    bool
-	operationTimeout   time.Duration
-	usage              resource.Tracker
-	newServiceFn       func(creds []byte) (interface{}, error)
-	backendStore       *backendstore.BackendStore
-	subresourceClients []SubresourceClient
-	log                logging.Logger
-}
-
-// Connect typically produces an ExternalClient by:
-// 1. Tracking that the managed resource is using a ProviderConfig.
-// 2. Getting the managed resource's ProviderConfig.
-// 3. Getting the credentials specified by the ProviderConfig.
-// 4. Using the credentials to form a client.
-func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	if err := c.usage.Track(ctx, mg); err != nil {
-		return nil, errors.Wrap(err, errTrackPCUsage)
-	}
-
-	return &external{
-			kubeClient:         c.kube,
-			autoPauseBucket:    c.autoPauseBucket,
-			operationTimeout:   c.operationTimeout,
-			backendStore:       c.backendStore,
-			subresourceClients: c.subresourceClients,
-			log:                c.log},
-		nil
-}
-
-// An ExternalClient observes, then either creates, updates, or deletes an
-// external resource to ensure it reflects the managed resource's desired state.
+// external observes, then either creates, updates, or deletes an external
+// resource to ensure it reflects the managed resource's desired state.
 type external struct {
 	kubeClient         client.Client
 	autoPauseBucket    bool

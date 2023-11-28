@@ -4,13 +4,10 @@ import (
 	"context"
 
 	"golang.org/x/sync/errgroup"
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/pkg/errors"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
@@ -18,7 +15,7 @@ import (
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
-//nolint:gocyclo,cyclop,gocognit // Function requires numerous checks.
+//nolint:gocyclo,cyclop // Function requires numerous checks.
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
@@ -36,7 +33,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		}, nil
 	}
 
-	if (bucket.Spec.AutoPause || c.autoPauseBucket) && bucket.Labels[meta.AnnotationKeyReconciliationPaused] == "" {
+	if (bucket.Spec.AutoPause || c.autoPauseBucket) && !isBucketPaused(bucket) {
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,
@@ -50,53 +47,28 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		}, nil
 	}
 
-	available := false
-	for _, c := range bucket.Status.Conditions {
-		if c.Type == xpv1.TypeReady && c.Reason == xpv1.ReasonAvailable && c.Status == corev1.ConditionTrue {
-			available = true
-
-			break
-		}
-	}
-	if !available {
+	if !isBucketAvailable(bucket) {
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,
 		}, nil
 	}
 
+	// If no Providers are specified in the Bucket Spec, the bucket is to be created on all backends.
 	if len(bucket.Spec.Providers) == 0 {
 		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
 	}
+	backendClients := c.backendStore.GetBackendClients(bucket.Spec.Providers)
 
-	allBackendClients := c.backendStore.GetBackendClients(bucket.Spec.Providers)
-
-	missing := len(bucket.Spec.Providers)
-	for _, provider := range bucket.Spec.Providers {
-		if _, ok := allBackendClients[provider]; !ok {
-			// We don't want to create bucket on a missing backend,
-			// so it won't be counted as a missing backend.
-			missing--
-		}
-
-		if _, ok := bucket.Status.AtProvider.Backends[provider]; !ok {
-			// Bucket is not on backend
-			continue
-		}
-
-		if status := bucket.Status.AtProvider.Backends[provider].BucketStatus; status == v1alpha1.ReadyStatus {
-			// Bucket is ready on backend,
-			// so it won't be counted as a missing backend.
-			missing--
-		}
-	}
-	if missing != 0 {
+	// Check that the bucket is Ready on the desired backends.
+	if !isBucketReadyOnBackends(bucket, backendClients) {
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,
 		}, nil
 	}
 
+	// Observe sub-resources for the Bucket to check if they too are up to date.
 	for _, subResourceClient := range c.subresourceClients {
 		obs, err := subResourceClient.Observe(ctx, bucket, bucket.Spec.Providers)
 		if err != nil {
@@ -118,7 +90,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	g := new(errgroup.Group)
 
 	// Check for the bucket on each backend in a separate go routine
-	for _, backendClient := range allBackendClients {
+	for _, backendClient := range backendClients {
 		backendClient := backendClient
 		g.Go(func() error {
 			bucketExists, err := s3internal.BucketExists(ctxC, backendClient, bucket.Name)
@@ -135,6 +107,10 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		})
 	}
 
+	// If the bucket is disabled, or if we have received an error finding the bucket on a backend,
+	// then the Bucket can be considered NOT up to date.
+	// A disabled bucket is considered not up to date so that Update can be performed next to
+	// perform the necessary cleanup.
 	resourceUpToDate := !bucket.Spec.Disabled
 	if err := g.Wait(); err != nil {
 		resourceUpToDate = false

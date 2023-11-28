@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package providerconfig
+package healthcheck
 
 import (
 	"context"
@@ -23,7 +23,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
@@ -374,7 +373,11 @@ func TestReconcile(t *testing.T) {
 			bs := backendstore.NewBackendStore()
 			bs.AddOrUpdateBackend(backendName, &fakeS3Client, tc.fields.autopause, apisv1alpha1.HealthStatusHealthy)
 
-			r := newHealthCheckReconciler(c, controller.Options{Logger: logging.NewNopLogger()}, bs, tc.fields.autopause)
+			r := NewController(
+				WithAutoPause(&tc.fields.autopause),
+				WithBackendStore(bs),
+				WithKubeClient(c),
+				WithLogger(logging.NewNopLogger()))
 
 			got, err := r.Reconcile(context.Background(), tc.args.req)
 			assert.Equal(t, tc.want.res, got, "unexpected result")

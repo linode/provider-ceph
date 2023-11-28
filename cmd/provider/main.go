@@ -55,6 +55,10 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	ceph "github.com/linode/provider-ceph/internal/controller"
 	"github.com/linode/provider-ceph/internal/controller/bucket"
+	"github.com/linode/provider-ceph/internal/controller/providerconfig"
+	"github.com/linode/provider-ceph/internal/controller/providerconfig/backendmonitor"
+	"github.com/linode/provider-ceph/internal/controller/providerconfig/healthcheck"
+
 	"github.com/linode/provider-ceph/internal/features"
 	"github.com/linode/provider-ceph/internal/s3/cache"
 	kcache "sigs.k8s.io/controller-runtime/pkg/cache"
@@ -265,6 +269,18 @@ func main() {
 		For(&providercephv1alpha1.Bucket{}).
 		WithValidator(bucket.NewBucketValidator(backendStore)).
 		Complete(), "Cannot setup bucket validating webhook")
+
+	kingpin.FatalIfError(providerconfig.Setup(mgr, o,
+		backendmonitor.NewController(
+			backendmonitor.WithKubeClient(mgr.GetClient()),
+			backendmonitor.WithBackendStore(backendStore),
+			backendmonitor.WithLogger(o.Logger)),
+		healthcheck.NewController(
+			healthcheck.WithAutoPause(autoPauseBucket),
+			healthcheck.WithBackendStore(backendStore),
+			healthcheck.WithKubeClient(mgr.GetClient()),
+			healthcheck.WithLogger(o.Logger))),
+		"Cannot setup ProviderConfig controllers")
 
 	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore, *autoPauseBucket, *pollInterval, *reconcileTimeout, *creationGracePeriod), "Cannot setup Ceph controllers")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")

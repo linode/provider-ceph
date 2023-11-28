@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 )
@@ -33,7 +34,7 @@ type SubresourceClient interface {
 // NewSubresourceClients creates the array of all sub resource clients.
 func NewSubresourceClients(backendStore *backendstore.BackendStore, log logging.Logger) []SubresourceClient {
 	return []SubresourceClient{
-		NewLifecycleConfigurationClient(backendStore, log),
+		NewLifecycleConfigurationClient(backendStore, log.WithValues("lifecycle-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
 	}
 }
 

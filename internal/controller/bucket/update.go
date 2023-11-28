@@ -70,7 +70,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			if allBucketsReady &&
 				(bucketLatest.Spec.AutoPause || c.autoPauseBucket) &&
-				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] != "true" {
+				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] == "" {
 				c.log.Info("Auto pausing bucket", "bucket_name", bucket.Name)
 
 				if bucketLatest.ObjectMeta.Labels == nil {

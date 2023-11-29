@@ -110,3 +110,14 @@ func (c *Connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 			log:                c.log},
 		nil
 }
+
+// external observes, then either creates, updates, or deletes an external
+// resource to ensure it reflects the managed resource's desired state.
+type external struct {
+	kubeClient         client.Client
+	autoPauseBucket    bool
+	operationTimeout   time.Duration
+	backendStore       *backendstore.BackendStore
+	subresourceClients []SubresourceClient
+	log                logging.Logger
+}

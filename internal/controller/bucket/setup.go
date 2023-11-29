@@ -20,49 +20,17 @@ import (
 	"time"
 
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/crossplane/crossplane-runtime/pkg/connection"
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
-	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/features"
-)
-
-const (
-	errNotBucket                = "managed resource is not a Bucket custom resource"
-	errTrackPCUsage             = "cannot track ProviderConfig usage"
-	errCacheInit                = "cannot init Bucket cache"
-	errGetPC                    = "cannot get ProviderConfig"
-	errListPC                   = "cannot list ProviderConfigs"
-	errGetBucket                = "cannot get Bucket"
-	errListBuckets              = "cannot list Buckets"
-	errCreateBucket             = "cannot create Bucket"
-	errDeleteBucket             = "cannot delete Bucket"
-	errUpdateBucket             = "cannot update Bucket"
-	errListObjects              = "cannot list objects"
-	errDeleteObject             = "cannot delete object"
-	errGetCreds                 = "cannot get credentials"
-	errBackendNotStored         = "s3 backend is not stored"
-	errBackendInactive          = "s3 backend is inactive"
-	errNoS3BackendsStored       = "no s3 backends stored"
-	errNoS3BackendsRegistered   = "no s3 backends registered"
-	errMissingS3Backend         = "missing s3 backends"
-	errCodeBucketNotFound       = "NotFound"
-	errFailedToCreateClient     = "failed to create s3 client"
-	errBucketCreationInProgress = "bucket creation in progress"
-	errPutLifecycleConfig       = "cannot put Bucket lifecycle configuration"
-	errDeleteLifecycle          = "cannot delete Bucket lifecycle"
-	errGetLifecycleConfig       = "cannot get Bucket lifecycle configuration"
-
-	inUseFinalizer = "bucket-in-use.provider-ceph.crossplane.io"
 )
 
 // A NoOpService does nothing.
@@ -103,15 +71,4 @@ func Setup(mgr ctrl.Manager, o controller.Options, c *Connector) error {
 		WithOptions(o.ForControllerRuntime()).
 		For(&v1alpha1.Bucket{}).
 		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
-}
-
-// external observes, then either creates, updates, or deletes an external
-// resource to ensure it reflects the managed resource's desired state.
-type external struct {
-	kubeClient         client.Client
-	autoPauseBucket    bool
-	operationTimeout   time.Duration
-	backendStore       *backendstore.BackendStore
-	subresourceClients []SubresourceClient
-	log                logging.Logger
 }

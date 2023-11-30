@@ -173,10 +173,8 @@ kuttl: $(KUTTL) crossplane-cluster load-package
 	@$(MAKE) cluster-clean
 
 ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
-	docker pull localstack/localstack:2.2
 	@$(INFO) Creating kind cluster
 	@$(KIND) create cluster --name=$(KIND_CLUSTER_NAME)
-	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) localstack/localstack:2.2
 	@$(OK) Creating kind cluster
 	@$(KUTTL) test --config e2e/kuttl/ceph/provider-ceph-$(LATEST_KUBE_VERSION).yaml
 

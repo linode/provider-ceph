@@ -223,7 +223,7 @@ func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 
 	_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
 	if err != nil {
-		return false, resource.Ignore(IsNotFound, err)
+		return false, resource.IgnoreAny(err, NoSuchBucket, IsNotFound)
 	}
 
 	cache.Set(bucketName)

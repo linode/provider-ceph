@@ -29,7 +29,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	defer cancel()
 
 	if bucket.Spec.Disabled {
-		c.log.Info("Bucket is disabled - no buckets to be created on backends", "bucket name", bucket.Name)
+		c.log.Info("Bucket is disabled - no buckets to be created on backends", "bucket_name", bucket.Name)
 
 		return managed.ExternalCreation{}, nil
 	}
@@ -51,7 +51,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	updated := atomic.Bool{}
-	errorsLeft := 0
+	backendCount := 0
 	errChan := make(chan error, len(activeBackends))
 	readyChan := make(chan string)
 
@@ -60,21 +60,22 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 		cl := c.backendStore.GetBackendClient(beName)
 		if cl == nil {
-			c.log.Info("Backend client not found for backend - bucket cannot be created on backend", "bucket name", originalBucket.Name, "backend name", beName)
+			c.log.Info("Backend client not found for backend - bucket cannot be created on backend", "bucket_name", originalBucket.Name, "backend_name", beName)
 
 			continue
 		}
 
-		c.log.Info("Creating bucket", "bucket name", originalBucket.Name, "backend name", beName)
+		c.log.Info("Creating bucket on backend", "bucket_name", originalBucket.Name, "backend_name", beName)
 
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
-			c.log.Info("Failed to fetch provider config", "backend name", beName, "bucket_name", originalBucket.Name, "err", err.Error())
+			c.log.Info("Failed to fetch provider config", "bucket_name", originalBucket.Name, "backend_name", beName, "err", err.Error())
 
 			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
 		}
 
-		errorsLeft++
+		// Increment the backend counter. We need this later to know when the operation should finish.
+		backendCount++
 
 		beName := beName
 		go func() {
@@ -88,7 +89,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			}
 
 			if !updated.CompareAndSwap(false, true) {
-				c.log.Info("Bucket already updated", "bucket_name", originalBucket.Name)
+				c.log.Info("Bucket already up to date on backend", "bucket_name", originalBucket.Name, "backend_name", beName)
 
 				errChan <- nil
 
@@ -103,32 +104,33 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 				return
 			}
 
+			// Once a bucket is created successfully on ANY backend, the bucket is considered ready.
+			// Therefore we send the name of the backend on which the bucket is first created to the ready channel.
 			readyChan <- beName
 			errChan <- nil
 		}()
 	}
 
-	if errorsLeft == 0 {
+	if backendCount == 0 {
 		c.log.Info("Failed to find any backend for bucket", "bucket_name", bucket.Name)
 
 		return managed.ExternalCreation{}, nil
 	}
 
-	return c.waitForCreationAndUpdateObject(ctx, bucket, readyChan, errChan, errorsLeft)
+	return c.waitForCreationAndUpdateBucketCR(ctx, bucket, readyChan, errChan, backendCount)
 }
 
-func (c *external) waitForCreationAndUpdateObject(ctx context.Context, bucket *v1alpha1.Bucket, readyChan <-chan string, errChan <-chan error, errorsLeft int) (managed.ExternalCreation, error) {
+func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, readyChan <-chan string, errChan <-chan error, backendCount int) (managed.ExternalCreation, error) {
 	var err error
-
 WAIT:
 	for {
 		select {
 		case <-ctx.Done():
-			c.log.Info("Context timeout", "bucket_name", bucket.Name)
+			c.log.Info("Context timeout waiting for bucket creation", "bucket_name", bucket.Name)
 
 			return managed.ExternalCreation{}, ctx.Err()
 		case beName := <-readyChan:
-			c.log.Info("Bucket created", "backend name", beName, "bucket_name", bucket.Name)
+			c.log.Info("Bucket created on backend", "bucket_name", bucket.Name, "backend_name", beName)
 
 			err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
 				// Remove the annotation, because Crossplane is not always able to do it.
@@ -154,24 +156,34 @@ WAIT:
 				return NeedsStatusUpdate
 			})
 			if err != nil {
-				c.log.Info("Failed to update Bucket CR", "backend name", beName, "bucket_name", bucket.Name)
+				c.log.Info("Failed to update Bucket CR with backend info", "bucket_name", bucket.Name, "backend_name", beName, "err", err.Error())
 			}
 
 			return managed.ExternalCreation{}, err
 		case err = <-errChan:
-			errorsLeft--
+			// An error occurred attempting to create a bucket on a backend, decrement the backend counter.
+			backendCount--
 
 			if err != nil {
+<<<<<<< HEAD
 				c.log.Info("Failed to create on backend", "bucket_name", bucket.Name, "err", err.Error())
 
-				if errorsLeft > 0 {
+=======
+>>>>>>> 13b7669... Create logs
+				// If there are still backends remaining, we can continue to
+				// wait for a bucket to be successfully created.
+				if backendCount > 0 {
 					continue
 				}
 
+				// No bucket was created and we have no backends left, break out of
+				// the loop and update the Bucket CR Status.
 				break WAIT
 			}
 		}
 	}
+
+	c.log.Info("Failed to create bucket on any backend", "bucket_name", bucket.Name)
 
 	err = c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
 		bucketLatest.Status.SetConditions(xpv1.Unavailable())

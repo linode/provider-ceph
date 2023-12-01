@@ -217,10 +217,6 @@ func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 	ctx, span := otel.Tracer("").Start(ctx, "BucketExists")
 	defer span.End()
 
-	if cache.Exists(bucketName) {
-		return true, nil
-	}
-
 	_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
 	if err != nil {
 		return false, resource.Ignore(IsNotFound, err)

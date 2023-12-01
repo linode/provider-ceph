@@ -127,8 +127,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, readyChan <-chan string, errChan <-chan error, backendCount int) (managed.ExternalCreation, error) {
 	var err error
-WAIT:
-	for {
+
+	for i := 0; i < backendCount; i++ {
 		select {
 		case <-ctx.Done():
 			c.log.Info("Context timeout waiting for bucket creation", "bucket_name", bucket.Name)
@@ -166,20 +166,7 @@ WAIT:
 
 			return managed.ExternalCreation{}, err
 		case err = <-errChan:
-			// An error occurred attempting to create a bucket on a backend, decrement the backend counter.
-			backendCount--
-
-			if err != nil {
-				// If there are still backends remaining, we can continue to
-				// wait for a bucket to be successfully created.
-				if backendCount > 0 {
-					continue
-				}
-
-				// No bucket was created and we have no backends left, break out of
-				// the loop and update the Bucket CR Status.
-				break WAIT
-			}
+			continue
 		}
 	}
 

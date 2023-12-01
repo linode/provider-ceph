@@ -50,7 +50,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errMissingS3Backend)
 	}
 
-	updated := atomic.Bool{}
+	atomicBool := atomic.Bool{}
 	backendCount := 0
 	errChan := make(chan error, len(activeBackends))
 	readyChan := make(chan string)
@@ -87,19 +87,24 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 					break
 				}
 			}
-
-			if !updated.CompareAndSwap(false, true) {
-				c.log.Info("Bucket already up to date on backend", "bucket_name", originalBucket.Name, "backend_name", beName)
-
-				errChan <- nil
-
-				return
-			}
-
 			if err != nil {
 				c.log.Info("Failed to create bucket on backend", "backend name", beName, "bucket_name", originalBucket.Name, "err", err.Error())
 
 				errChan <- err
+
+				return
+			}
+
+			// This compare-and-swap operation is the atomic equivalent of:
+			//	if *atomicBool == false {
+			//		*atomicBool = true
+			//		return true
+			//	}
+			//	return false
+			if !atomicBool.CompareAndSwap(false, true) {
+				c.log.Info("Bucket already created on backend - terminate thread without error", "bucket_name", originalBucket.Name, "backend_name", beName)
+
+				errChan <- nil
 
 				return
 			}
@@ -165,11 +170,6 @@ WAIT:
 			backendCount--
 
 			if err != nil {
-<<<<<<< HEAD
-				c.log.Info("Failed to create on backend", "bucket_name", bucket.Name, "err", err.Error())
-
-=======
->>>>>>> 13b7669... Create logs
 				// If there are still backends remaining, we can continue to
 				// wait for a bucket to be successfully created.
 				if backendCount > 0 {

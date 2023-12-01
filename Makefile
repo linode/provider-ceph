@@ -118,8 +118,10 @@ run: go.build
 # Create k8s service to allows pods to communicate with
 # localstack.
 cluster: $(KIND) $(KUBECTL) cluster-clean
+	docker pull localstack/localstack:2.2
 	@$(INFO) Creating kind cluster
 	@$(KIND) create cluster --name=$(KIND_CLUSTER_NAME) --config e2e/kind/kind-config-$(LATEST_KUBE_VERSION).yaml
+	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) localstack/localstack:2.2
 	@$(OK) Creating kind cluster
 
 # Spin up a Kind cluster and localstack and install Crossplane via Helm.

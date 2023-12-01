@@ -6,6 +6,4 @@ testDirs:
 kindConfig: e2e/kind/kind-config-1.28.yaml
 startKIND: false
 kindNodeCache: true
-kindContainers:
-- localstack/localstack:2.2
 timeout: 120

@@ -69,6 +69,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
+			c.log.Info("Failed to fetch provider config", "backend name", beName, "bucket_name", originalBucket.Name, "err", err.Error())
+
 			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
 		}
 
@@ -94,7 +96,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			}
 
 			if err != nil {
-				c.log.Info("Failed to create bucket on backend", "backend name", beName, "bucket_name", originalBucket.Name)
+				c.log.Info("Failed to create bucket on backend", "backend name", beName, "bucket_name", originalBucket.Name, "err", err.Error())
 
 				errChan <- err
 
@@ -160,7 +162,7 @@ WAIT:
 			errorsLeft--
 
 			if err != nil {
-				c.log.Info("Failed to create on backend", "bucket_name", bucket.Name)
+				c.log.Info("Failed to create on backend", "bucket_name", bucket.Name, "err", err.Error())
 
 				if errorsLeft > 0 {
 					continue

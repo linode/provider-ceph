@@ -17,8 +17,15 @@ import (
 )
 
 const (
-	errListObjects  = "cannot list objects"
-	errDeleteObject = "cannot delete object"
+	errListObjects  = "failed to list objects"
+	errDeleteObject = "failed to delete object"
+
+	errGetBucket    = "failed to get bucket"
+	errListBuckets  = "failed to list buckets"
+	errCreateBucket = "failed to create bucket"
+	errUpdateBucket = "failed to update bucket"
+	errDeleteBucket = "failed to delete bucket"
+	errHeadBucket   = "failed to perform head bucket"
 
 	RequestRetries = 5
 )
@@ -100,12 +107,18 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 		}
 		traces.SetAndRecordError(span, err)
 
-		return err
+		return errors.Wrap(err, errDeleteBucket)
 	}
 
 	_, err = s3Backend.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: bucketName})
+	if resource.Ignore(IsNotFound, err) != nil {
+		traces.SetAndRecordError(span, err)
 
-	return resource.Ignore(IsNotFound, err)
+		return errors.Wrap(err, errDeleteBucket)
+
+	}
+
+	return nil
 }
 
 func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
@@ -230,7 +243,7 @@ func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *
 	if resource.Ignore(IsAlreadyExists, err) != nil {
 		traces.SetAndRecordError(span, err)
 
-		return resp, err
+		return resp, errors.Wrap(err, errCreateBucket)
 	}
 
 	cache.Set(*bucket.Bucket)
@@ -251,7 +264,7 @@ func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 		}
 		traces.SetAndRecordError(span, err)
 
-		return false, err
+		return false, errors.Wrap(err, errHeadBucket)
 	}
 
 	cache.Set(bucketName)

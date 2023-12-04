@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync/atomic"
 
+	"go.opentelemetry.io/otel"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pkg/errors"
@@ -16,14 +17,21 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/consts"
+	"github.com/linode/provider-ceph/internal/otel/traces"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
 //nolint:maintidx,gocognit,gocyclo,cyclop,nolintlint // Function requires numerous checks.
 func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.Create")
+	defer span.End()
+
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
-		return managed.ExternalCreation{}, errors.New(errNotBucket)
+		err := errors.New(errNotBucket)
+		traces.SetAndRecordError(span, err)
+
+		return managed.ExternalCreation{}, err
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
@@ -36,7 +44,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	if !c.backendStore.BackendsAreStored() {
-		return managed.ExternalCreation{}, errors.New(errNoS3BackendsStored)
+		err := errors.New(errNoS3BackendsStored)
+		traces.SetAndRecordError(span, err)
+
+		return managed.ExternalCreation{}, err
 	}
 
 	if len(bucket.Spec.Providers) == 0 {
@@ -46,9 +57,15 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	// Create the bucket on each backend in a separate go routine
 	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
 	if len(activeBackends) == 0 {
-		return managed.ExternalCreation{}, errors.New(errNoS3BackendsRegistered)
+		err := errors.New(errNoS3BackendsRegistered)
+		traces.SetAndRecordError(span, err)
+
+		return managed.ExternalCreation{}, err
 	} else if len(activeBackends) != len(bucket.Spec.Providers) {
-		return managed.ExternalCreation{}, errors.New(errMissingS3Backend)
+		err := errors.New(errMissingS3Backend)
+		traces.SetAndRecordError(span, err)
+
+		return managed.ExternalCreation{}, err
 	}
 
 	atomicBool := atomic.Bool{}
@@ -71,8 +88,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
 			c.log.Info("Failed to fetch provider config", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName, "err", err.Error())
+			err := errors.Wrap(err, errGetPC)
+			traces.SetAndRecordError(span, err)
 
-			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
+			return managed.ExternalCreation{}, err
 		}
 
 		// Increment the backend counter. We need this later to know when the operation should finish.
@@ -92,6 +111,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			}
 			if err != nil {
 				c.log.Info("Failed to create bucket on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName, "err", err.Error())
+				traces.SetAndRecordError(span, err)
 
 				errChan <- err
 
@@ -129,6 +149,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, readyChan <-chan string, errChan <-chan error, backendCount int) (managed.ExternalCreation, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "waitForCreationAndUpdateBucketCR")
+	defer span.End()
+
 	var err error
 
 	for i := 0; i < backendCount; i++ {
@@ -163,10 +186,15 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 			})
 			if err != nil {
 				c.log.Info("Failed to update Bucket CR with backend info", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName, "err", err.Error())
+
+				err := errors.Wrap(err, errUpdateBucketCR)
+				traces.SetAndRecordError(span, err)
 			}
 
 			return managed.ExternalCreation{}, err
 		case <-errChan:
+			traces.SetAndRecordError(span, err)
+
 			continue
 		}
 	}

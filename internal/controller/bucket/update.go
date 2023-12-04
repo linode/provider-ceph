@@ -3,6 +3,7 @@ package bucket
 import (
 	"context"
 
+	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -17,13 +18,20 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/consts"
+	"github.com/linode/provider-ceph/internal/otel/traces"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.Update")
+	defer span.End()
+
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
-		return managed.ExternalUpdate{}, errors.New(errNotBucket)
+		err := errors.New(errNotBucket)
+		traces.SetAndRecordError(span, err)
+
+		return managed.ExternalUpdate{}, err
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
@@ -40,6 +48,8 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	if err := c.updateOnAllBackends(ctx, bucket); err != nil {
+		traces.SetAndRecordError(span, err)
+
 		return managed.ExternalUpdate{}, err
 	}
 
@@ -68,13 +78,18 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			return NeedsObjectUpdate
 		})
 	if err != nil {
-		c.log.Info("Failed to update Bucket CR", consts.KeyBucketName, bucket.Name)
+		traces.SetAndRecordError(span, err)
+
+		c.log.Info("Failed to update Bucket CR", consts.KeyBucketName, bucket.Name, "error", err.Error())
 	}
 
 	return managed.ExternalUpdate{}, err
 }
 
 func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Bucket) error {
+	ctx, span := otel.Tracer("").Start(ctx, "updateOnAllBackends")
+	defer span.End()
+
 	bucketBackends := newBucketBackends()
 	defer setBucketStatus(bucket, bucketBackends)
 
@@ -82,9 +97,15 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 
 	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
 	if len(activeBackends) == 0 {
-		return errors.New(errNoS3BackendsRegistered)
+		err := errors.New(errNoS3BackendsRegistered)
+		traces.SetAndRecordError(span, err)
+
+		return err
 	} else if len(activeBackends) != len(bucket.Spec.Providers) {
-		return errors.New(errMissingS3Backend)
+		err := errors.New(errMissingS3Backend)
+		traces.SetAndRecordError(span, err)
+
+		return err
 	}
 
 	for backendName := range activeBackends {
@@ -144,7 +165,9 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 	}
 
 	if err := g.Wait(); err != nil {
-		return errors.Wrap(err, errUpdateBucket)
+		traces.SetAndRecordError(span, err)
+
+		return err
 	}
 
 	return nil
@@ -166,7 +189,7 @@ func (c *external) updateOnBackend(ctx context.Context, b *v1alpha1.Bucket, back
 	for _, subResourceClient := range c.subresourceClients {
 		err := subResourceClient.Handle(ctx, b, backendName, bb)
 		if err != nil {
-			return err
+			return errors.Wrap(err, errHandleSubresource)
 		}
 	}
 

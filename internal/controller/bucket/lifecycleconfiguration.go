@@ -4,19 +4,18 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/aws/smithy-go"
 	"github.com/aws/smithy-go/document"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
+	"github.com/linode/provider-ceph/internal/otel/traces"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
 )
 
 // LifecycleConfigurationClient is the client for API methods and reconciling the LifecycleConfiguration
@@ -31,6 +30,9 @@ func NewLifecycleConfigurationClient(backendStore *backendstore.BackendStore, lo
 }
 
 func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "bucket.LifecycleConfigurationClient.Observe")
+	defer span.End()
+
 	observationChan := make(chan ResourceStatus)
 	errChan := make(chan error)
 
@@ -51,13 +53,18 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 		select {
 		case <-ctx.Done():
 			l.log.Info("Context timeout during bucket lifecycle configuration observation", consts.KeyBucketName, bucket.Name)
+			err := errors.Wrap(ctx.Err(), errObserveLifecycleConfig)
+			traces.SetAndRecordError(span, err)
 
-			return NeedsUpdate, ctx.Err()
+			return NeedsUpdate, err
 		case observation := <-observationChan:
 			if observation != Updated {
 				return observation, nil
 			}
 		case err := <-errChan:
+			err = errors.Wrap(err, errObserveLifecycleConfig)
+			traces.SetAndRecordError(span, err)
+
 			return NeedsUpdate, err
 		}
 	}
@@ -70,9 +77,9 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 
 	s3Client := l.backendStore.GetBackendClient(backendName)
 
-	response, err := s3Client.GetBucketLifecycleConfiguration(ctx, &s3.GetBucketLifecycleConfigurationInput{Bucket: aws.String(bucket.Name)})
-	if resource.IgnoreAny(err, LifecycleConfigurationNotFound, IsBucketNotFound) != nil {
-		return NeedsUpdate, errors.Wrap(err, errGetLifecycleConfig)
+	response, err := s3internal.GetBucketLifecycleConfiguration(ctx, s3Client, aws.String(bucket.Name))
+	if err != nil {
+		return NeedsUpdate, err
 	}
 
 	if bucket.Spec.ForProvider.LifecycleConfiguration == nil || bucket.Spec.LifecycleConfigurationDisabled {
@@ -120,8 +127,14 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 }
 
 func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+	ctx, span := otel.Tracer("").Start(ctx, "bucket.LifecycleConfigurationClient.Handle")
+	defer span.End()
+
 	observation, err := l.observeBackend(ctx, b, backendName)
 	if err != nil {
+		err = errors.Wrap(err, errHandleLifecycleConfig)
+		traces.SetAndRecordError(span, err)
+
 		return err
 	}
 
@@ -130,8 +143,10 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 		return nil
 	case NeedsDeletion:
 		bb.setLifecycleConfigStatus(b.Name, backendName, v1alpha1.DeletingStatus)
-		err = l.delete(ctx, b.Name, backendName)
-		if err != nil {
+		if err := l.delete(ctx, b.Name, backendName); err != nil {
+			err = errors.Wrap(err, errHandleLifecycleConfig)
+			traces.SetAndRecordError(span, err)
+
 			return err
 		}
 		bb.setLifecycleConfigStatus(b.Name, backendName, v1alpha1.NoStatus)
@@ -139,6 +154,9 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 	case NeedsUpdate:
 		bb.setLifecycleConfigStatus(b.Name, backendName, v1alpha1.NotReadyStatus)
 		if err := l.createOrUpdate(ctx, b, backendName); err != nil {
+			err = errors.Wrap(err, errHandleLifecycleConfig)
+			traces.SetAndRecordError(span, err)
+
 			return err
 		}
 		bb.setLifecycleConfigStatus(b.Name, backendName, v1alpha1.ReadyStatus)
@@ -151,9 +169,9 @@ func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1
 	l.log.Info("Updating lifecycle configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
 	s3Client := l.backendStore.GetBackendClient(backendName)
 
-	_, err := s3Client.PutBucketLifecycleConfiguration(ctx, s3internal.GenerateLifecycleConfigurationInput(b.Name, b.Spec.ForProvider.LifecycleConfiguration))
+	_, err := s3internal.PutBucketLifecycleConfiguration(ctx, s3Client, b)
 	if err != nil {
-		return errors.Wrap(err, errPutLifecycleConfig)
+		return err
 	}
 
 	return nil
@@ -163,34 +181,9 @@ func (l *LifecycleConfigurationClient) delete(ctx context.Context, bucketName, b
 	l.log.Info("Deleting lifecycle configuration", consts.KeyBucketName, bucketName, consts.KeyBackendName, backendName)
 	s3Client := l.backendStore.GetBackendClient(backendName)
 
-	_, err := s3Client.DeleteBucketLifecycle(ctx,
-		&s3.DeleteBucketLifecycleInput{
-			Bucket: aws.String(bucketName),
-		},
-	)
-	if err != nil {
-		return errors.Wrap(err, errDeleteLifecycle)
+	if err := s3internal.DeleteBucketLifecycle(ctx, s3Client, aws.String(bucketName)); err != nil {
+		return err
 	}
 
 	return nil
-}
-
-// LifecycleNotFoundErrCode is the error code sent by Ceph when the lifecycle config does not exist
-var LifecycleNotFoundErrCode = "NoSuchLifecycleConfiguration"
-
-// LifecycleConfigurationNotFound is parses the error and validates if the lifecycle configuration does not exist
-func LifecycleConfigurationNotFound(err error) bool {
-	var awsErr smithy.APIError
-
-	return errors.As(err, &awsErr) && awsErr.ErrorCode() == LifecycleNotFoundErrCode
-}
-
-// NoSuchBucketErrCode is the error code sent by Ceph when the bucket does not exist
-var NoSuchBucketErrCode = "NoSuchBucket"
-
-// BucketNotFound parses the error and validates if the bucket does not exist
-func IsBucketNotFound(err error) bool {
-	var awsErr smithy.APIError
-
-	return errors.As(err, &awsErr) && awsErr.ErrorCode() == NoSuchBucketErrCode
 }

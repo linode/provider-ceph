@@ -84,11 +84,13 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				_, err = s3internal.CreateBucket(ctx, cl, s3internal.BucketToCreateBucketInput(originalBucket))
 				if resource.Ignore(s3internal.IsAlreadyExists, err) == nil {
+					c.log.Info("Bucket created on backend", "bucket_name", bucket.Name, "backend_name", beName)
+
 					break
 				}
 			}
 			if err != nil {
-				c.log.Info("Failed to create bucket on backend", "backend name", beName, "bucket_name", originalBucket.Name, "err", err.Error())
+				c.log.Info("Failed to create bucket on backend", "bucket_name", originalBucket.Name, "backend_name", beName, "err", err.Error())
 
 				errChan <- err
 
@@ -135,8 +137,6 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 
 			return managed.ExternalCreation{}, ctx.Err()
 		case beName := <-readyChan:
-			c.log.Info("Bucket created on backend", "bucket_name", bucket.Name, "backend_name", beName)
-
 			err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
 				// Remove the annotation, because Crossplane is not always able to do it.
 				// This workaround doesn't eliminates the problem, if this update fails,
@@ -165,7 +165,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 			}
 
 			return managed.ExternalCreation{}, err
-		case err = <-errChan:
+		case <-errChan:
 			continue
 		}
 	}

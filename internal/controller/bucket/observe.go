@@ -3,6 +3,7 @@ package bucket
 import (
 	"context"
 
+	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -11,18 +12,29 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	"github.com/linode/provider-ceph/internal/consts"
+	"github.com/linode/provider-ceph/internal/otel/traces"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
 //nolint:gocyclo,cyclop // Function requires numerous checks.
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.Observe")
+	defer span.End()
+
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
-		return managed.ExternalObservation{}, errors.New(errNotBucket)
+		err := errors.New(errNotBucket)
+		traces.SetAndRecordError(span, err)
+
+		return managed.ExternalObservation{}, err
 	}
 
 	if !c.backendStore.BackendsAreStored() {
-		return managed.ExternalObservation{}, errors.New(errNoS3BackendsStored)
+		err := errors.New(errNoS3BackendsStored)
+		traces.SetAndRecordError(span, err)
+
+		return managed.ExternalObservation{}, err
 	}
 
 	if len(bucket.Status.AtProvider.Backends) == 0 {
@@ -71,6 +83,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	for _, subResourceClient := range c.subresourceClients {
 		obs, err := subResourceClient.Observe(ctx, bucket, bucket.Spec.Providers)
 		if err != nil {
+			err := errors.Wrap(err, errObserveSubresource)
+			traces.SetAndRecordError(span, err)
+
 			return managed.ExternalObservation{}, err
 		}
 		if obs != Updated {
@@ -89,17 +104,24 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	g := new(errgroup.Group)
 
 	// Check for the bucket on each backend in a separate go routine
-	for _, backendClient := range backendClients {
+	for beName, backendClient := range backendClients {
+		beName := beName
 		backendClient := backendClient
 		g.Go(func() error {
 			bucketExists, err := s3internal.BucketExists(ctxC, backendClient, bucket.Name)
 			if err != nil {
-				c.log.Info(errors.Wrap(err, errGetBucket).Error())
+				traces.SetAndRecordError(span, err)
+
+				c.log.Info("Error observing bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName, "error", err.Error())
 
 				// If we have a connectivity issue it doesn't make sense to reconcile the bucket immediately.
 				return nil
 			} else if !bucketExists {
-				return errors.New("missing bucket")
+				err := errors.New("bucket does not exist")
+				c.log.Info("Bucket not found on backend during observation", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+				traces.SetAndRecordError(span, err)
+
+				return err
 			}
 
 			return nil

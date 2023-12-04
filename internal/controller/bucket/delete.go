@@ -3,6 +3,7 @@ package bucket
 import (
 	"context"
 
+	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -13,13 +14,20 @@ import (
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/consts"
+	"github.com/linode/provider-ceph/internal/otel/traces"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
+	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.Delete")
+	defer span.End()
+
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
-		return errors.New(errNotBucket)
+		err := errors.New(errNotBucket)
+		traces.SetAndRecordError(span, err)
+
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
@@ -28,7 +36,10 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	bucketBackends := newBucketBackends()
 
 	if !c.backendStore.BackendsAreStored() {
-		return errors.New(errNoS3BackendsStored)
+		err := errors.New(errNoS3BackendsStored)
+		traces.SetAndRecordError(span, err)
+
+		return err
 	}
 
 	g := new(errgroup.Group)
@@ -79,13 +90,16 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return NeedsStatusUpdate
 	}); err != nil {
 		c.log.Info("Failed to update Bucket Status after attempting to delete bucket from backends", consts.KeyBucketName, bucket.Name)
+		err := errors.Wrap(err, errUpdateBucketCR)
+		traces.SetAndRecordError(span, err)
 	}
 
 	// If an error occurred during deletion, we must return for requeue.
 	if deleteErr != nil {
 		c.log.Info("Failed to delete bucket on one or more backends", "error", deleteErr.Error())
+		traces.SetAndRecordError(span, deleteErr)
 
-		return errors.Wrap(deleteErr, errDeleteBucket)
+		return deleteErr
 	}
 
 	c.log.Info("All buckets successfully deleted from backends for Bucket CR", consts.KeyBucketName, bucket.Name)
@@ -100,8 +114,10 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return NeedsObjectUpdate
 	}); err != nil {
 		c.log.Info("Failed to remove 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name)
+		err := errors.Wrap(err, errUpdateBucketCR)
+		traces.SetAndRecordError(span, err)
 
-		return errors.Wrap(err, errUpdateBucket)
+		return err
 	}
 
 	return nil

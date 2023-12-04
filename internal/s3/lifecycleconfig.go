@@ -5,7 +5,6 @@ import (
 	"sort"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
@@ -155,7 +154,7 @@ func SortFilterTags(rules []types.LifecycleRule) {
 	}
 }
 
-func PutBucketLifecycleConfiguration(ctx context.Context, s3Backend backendstore.S3Client, b *v1alpha1.Bucket) (*s3.PutBucketLifecycleConfigurationOutput, error) {
+func PutBucketLifecycleConfiguration(ctx context.Context, s3Backend backendstore.S3Client, b *v1alpha1.Bucket) (*awss3.PutBucketLifecycleConfigurationOutput, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "PutBucketLifecycleConfiguration")
 	defer span.End()
 
@@ -175,7 +174,7 @@ func DeleteBucketLifecycle(ctx context.Context, s3Backend backendstore.S3Client,
 	defer span.End()
 
 	_, err := s3Backend.DeleteBucketLifecycle(ctx,
-		&s3.DeleteBucketLifecycleInput{
+		&awss3.DeleteBucketLifecycleInput{
 			Bucket: bucketName,
 		},
 	)
@@ -189,17 +188,16 @@ func DeleteBucketLifecycle(ctx context.Context, s3Backend backendstore.S3Client,
 	return nil
 }
 
-func GetBucketLifecycleConfiguration(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) (*s3.GetBucketLifecycleConfigurationOutput, error) {
+func GetBucketLifecycleConfiguration(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) (*awss3.GetBucketLifecycleConfigurationOutput, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "GetBucketLifecycleConfiguration")
 	defer span.End()
 
-	resp, err := s3Backend.GetBucketLifecycleConfiguration(ctx, &s3.GetBucketLifecycleConfigurationInput{Bucket: bucketName})
+	resp, err := s3Backend.GetBucketLifecycleConfiguration(ctx, &awss3.GetBucketLifecycleConfigurationInput{Bucket: bucketName})
 	if resource.IgnoreAny(err, LifecycleConfigurationNotFound, IsBucketNotFound) != nil {
 		err := errors.Wrap(err, errGetLifecycleConfig)
 		traces.SetAndRecordError(span, err)
 
 		return resp, err
-
 	}
 
 	return resp, err

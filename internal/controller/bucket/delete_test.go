@@ -23,6 +23,8 @@ import (
 
 //nolint:maintidx,paralleltest // Function requires numerous checks. Running in parallel causes issues with client.
 func TestDelete(t *testing.T) {
+	errDeleteBucket := "failed to delete bucket"
+
 	type fields struct {
 		backendStore *backendstore.BackendStore
 	}

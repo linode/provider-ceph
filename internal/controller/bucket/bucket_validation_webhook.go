@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
@@ -104,11 +103,11 @@ func (b *BucketValidator) validateLifecycleConfiguration(ctx context.Context, bu
 	var err error
 	for i := 0; i < s3internal.RequestRetries; i++ {
 		_, err := s3internal.CreateBucket(ctx, s3Client, s3internal.BucketToCreateBucketInput(dummyBucket))
-		if resource.Ignore(s3internal.IsAlreadyExists, err) == nil {
+		if err == nil {
 			break
 		}
 	}
-	if resource.Ignore(s3internal.IsAlreadyExists, err) != nil {
+	if err != nil {
 		return err
 	}
 

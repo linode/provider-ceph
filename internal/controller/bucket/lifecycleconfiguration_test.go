@@ -32,6 +32,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	s3internal "github.com/linode/provider-ceph/internal/s3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -52,6 +53,8 @@ var (
 //nolint:maintidx // Function requires numerous checks.
 func TestObserveBackend(t *testing.T) {
 	t.Parallel()
+
+	errGetLifecycleConfig := "failed to get bucket lifecycle configuration"
 
 	type fields struct {
 		backendStore *backendstore.BackendStore
@@ -150,7 +153,7 @@ func TestObserveBackend(t *testing.T) {
 						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{},
-							}, &smithy.GenericAPIError{Code: LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
 						},
 					}
 
@@ -233,7 +236,7 @@ func TestObserveBackend(t *testing.T) {
 						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{},
-							}, &smithy.GenericAPIError{Code: LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
 						},
 					}
 
@@ -284,7 +287,7 @@ func TestObserveBackend(t *testing.T) {
 										},
 									},
 								},
-							}, &smithy.GenericAPIError{Code: LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
 						},
 					}
 
@@ -331,7 +334,7 @@ func TestObserveBackend(t *testing.T) {
 										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
 									},
 								},
-							}, &smithy.GenericAPIError{Code: LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
 						},
 					}
 
@@ -384,7 +387,7 @@ func TestObserveBackend(t *testing.T) {
 										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
 									},
 								},
-							}, &smithy.GenericAPIError{Code: LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
 						},
 					}
 

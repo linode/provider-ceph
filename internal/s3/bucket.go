@@ -115,7 +115,6 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 		traces.SetAndRecordError(span, err)
 
 		return errors.Wrap(err, errDeleteBucket)
-
 	}
 
 	return nil

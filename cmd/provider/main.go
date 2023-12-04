@@ -53,8 +53,11 @@ import (
 	providercephv1alpha1 "github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
-	ceph "github.com/linode/provider-ceph/internal/controller"
 	"github.com/linode/provider-ceph/internal/controller/bucket"
+	"github.com/linode/provider-ceph/internal/controller/providerconfig"
+	"github.com/linode/provider-ceph/internal/controller/providerconfig/backendmonitor"
+	"github.com/linode/provider-ceph/internal/controller/providerconfig/healthcheck"
+
 	"github.com/linode/provider-ceph/internal/features"
 	"github.com/linode/provider-ceph/internal/s3/cache"
 	kcache "sigs.k8s.io/controller-runtime/pkg/cache"
@@ -66,6 +69,7 @@ var defaultZapConfig = map[string]string{
 	"zap-time-encoding":    "rfc3339nano",
 }
 
+//nolint:maintidx // Function requires a lot of setup operations.
 func main() {
 	var (
 		app            = kingpin.New(filepath.Base(os.Args[0]), "Ceph support for Crossplane.").DefaultEnvars()
@@ -266,6 +270,29 @@ func main() {
 		WithValidator(bucket.NewBucketValidator(backendStore)).
 		Complete(), "Cannot setup bucket validating webhook")
 
-	kingpin.FatalIfError(ceph.Setup(mgr, o, backendStore, *autoPauseBucket, *pollInterval, *reconcileTimeout, *creationGracePeriod), "Cannot setup Ceph controllers")
+	kingpin.FatalIfError(providerconfig.Setup(mgr, o,
+		backendmonitor.NewController(
+			backendmonitor.WithKubeClient(mgr.GetClient()),
+			backendmonitor.WithBackendStore(backendStore),
+			backendmonitor.WithLogger(o.Logger)),
+		healthcheck.NewController(
+			healthcheck.WithAutoPause(autoPauseBucket),
+			healthcheck.WithBackendStore(backendStore),
+			healthcheck.WithKubeClient(mgr.GetClient()),
+			healthcheck.WithLogger(o.Logger))),
+		"Cannot setup ProviderConfig controllers")
+
+	kingpin.FatalIfError(bucket.Setup(mgr, o, bucket.NewConnector(
+		bucket.WithAutoPause(autoPauseBucket),
+		bucket.WithBackendStore(backendStore),
+		bucket.WithKubeClient(mgr.GetClient()),
+		bucket.WithOperationTimeout(*reconcileTimeout),
+		bucket.WithCreationGracePeriod(*creationGracePeriod),
+		bucket.WithPollInterval(*pollInterval),
+		bucket.WithLog(o.Logger),
+		bucket.WithSubresourceClients(bucket.NewSubresourceClients(backendStore, o.Logger)),
+		bucket.WithUsage(resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{})),
+		bucket.WithNewServiceFn(bucket.NewNoOpService))), "Cannot setup Bucket controller")
+
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }

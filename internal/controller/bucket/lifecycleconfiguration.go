@@ -29,26 +29,6 @@ func NewLifecycleConfigurationClient(backendStore *backendstore.BackendStore, lo
 	return &LifecycleConfigurationClient{backendStore: backendStore, log: log}
 }
 
-// LifecycleNotFoundErrCode is the error code sent by Ceph when the lifecycle config does not exist
-var LifecycleNotFoundErrCode = "NoSuchLifecycleConfiguration"
-
-// LifecycleConfigurationNotFound is parses the error and validates if the lifecycle configuration does not exist
-func LifecycleConfigurationNotFound(err error) bool {
-	var awsErr smithy.APIError
-
-	return errors.As(err, &awsErr) && awsErr.ErrorCode() == LifecycleNotFoundErrCode
-}
-
-// NoSuchBucketErrCode is the error code sent by Ceph when the bucket does not exist
-var NoSuchBucketErrCode = "NoSuchBucket"
-
-// BucketNotFound parses the error and validates if the bucket does not exist
-func IsBucketNotFound(err error) bool {
-	var awsErr smithy.APIError
-
-	return errors.As(err, &awsErr) && awsErr.ErrorCode() == NoSuchBucketErrCode
-}
-
 func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	observationChan := make(chan ResourceStatus)
 	errChan := make(chan error)
@@ -69,7 +49,7 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 	for i := 0; i < len(backendNames); i++ {
 		select {
 		case <-ctx.Done():
-			l.log.Info("Context timeout", "bucket_name", bucket.Name)
+			l.log.Info("Context timeout during bucket lifecycle configuration observation", "bucket_name", bucket.Name)
 
 			return NeedsUpdate, ctx.Err()
 		case observation := <-observationChan:
@@ -85,7 +65,7 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 }
 
 func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
-	l.log.Info("Observing subresource lifecycle configuration", "bucket_name", bucket.Name, "backend_name", backendName)
+	l.log.Info("Observing subresource lifecycle configuration on backend", "bucket_name", bucket.Name, "backend_name", backendName)
 
 	s3Client := l.backendStore.GetBackendClient(backendName)
 
@@ -130,7 +110,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	// is almost never expected.
 	if !cmp.Equal(external, s3internal.GenerateLifecycleRules(local),
 		cmpopts.IgnoreFields(s3types.LifecycleRule{}, "ID"), cmpopts.IgnoreTypes(document.NoSerde{})) {
-		l.log.Info("lifecycle configuration requires update", "bucket_name", bucket.Name)
+		l.log.Info("lifecycle configuration requires update on backend", "bucket_name", bucket.Name, "backend_name", backendName)
 
 		return NeedsUpdate, nil
 	}
@@ -192,4 +172,24 @@ func (l *LifecycleConfigurationClient) delete(ctx context.Context, bucketName, b
 	}
 
 	return nil
+}
+
+// LifecycleNotFoundErrCode is the error code sent by Ceph when the lifecycle config does not exist
+var LifecycleNotFoundErrCode = "NoSuchLifecycleConfiguration"
+
+// LifecycleConfigurationNotFound is parses the error and validates if the lifecycle configuration does not exist
+func LifecycleConfigurationNotFound(err error) bool {
+	var awsErr smithy.APIError
+
+	return errors.As(err, &awsErr) && awsErr.ErrorCode() == LifecycleNotFoundErrCode
+}
+
+// NoSuchBucketErrCode is the error code sent by Ceph when the bucket does not exist
+var NoSuchBucketErrCode = "NoSuchBucket"
+
+// BucketNotFound parses the error and validates if the bucket does not exist
+func IsBucketNotFound(err error) bool {
+	var awsErr smithy.APIError
+
+	return errors.As(err, &awsErr) && awsErr.ErrorCode() == NoSuchBucketErrCode
 }

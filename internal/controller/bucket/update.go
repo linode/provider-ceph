@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
@@ -20,7 +19,6 @@ import (
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
-//nolint:gocognit,gocyclo,cyclop // Function requires numerous checks.
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
@@ -40,7 +38,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
 	}
 
-	if err := c.updateAll(ctx, bucket); err != nil {
+	if err := c.updateOnAllBackends(ctx, bucket); err != nil {
 		return managed.ExternalUpdate{}, err
 	}
 
@@ -54,41 +52,15 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
 			bucketLatest.Spec.Providers = bucketDeepCopy.Spec.Providers
 
-			allBucketsReady := true
-			for _, p := range bucketLatest.Spec.Providers {
-				if _, ok := bucketLatest.Status.AtProvider.Backends[p]; !ok || bucketLatest.Status.AtProvider.Backends[p].BucketStatus != v1alpha1.ReadyStatus {
-					allBucketsReady = false
-
-					break
-				}
-				if bucketLatest.Status.AtProvider.Backends[p].BucketStatus != v1alpha1.ReadyStatus {
-					allBucketsReady = false
-
-					break
-				}
-			}
-
-			if allBucketsReady &&
-				(bucketLatest.Spec.AutoPause || c.autoPauseBucket) &&
-				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] == "" {
+			// Auto pause the Bucket CR if required.
+			cls := c.backendStore.GetBackendClients(bucketLatest.Spec.Providers)
+			if isPauseRequired(bucketLatest, isBucketReadyOnBackends(bucket, cls), c.autoPauseBucket) {
 				c.log.Info("Auto pausing bucket", "bucket_name", bucket.Name)
-
-				if bucketLatest.ObjectMeta.Labels == nil {
-					bucketLatest.ObjectMeta.Labels = map[string]string{}
-				}
-				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = "true"
+				pauseBucket(bucketLatest)
 			}
 
-			// Add labels for backends if they don't exist
-			for _, beName := range bucket.Spec.Providers {
-				beLabel := v1alpha1.BackendLabelPrefix + beName
-				if _, ok := bucketLatest.ObjectMeta.Labels[beLabel]; !ok {
-					if bucketLatest.ObjectMeta.Labels == nil {
-						bucketLatest.ObjectMeta.Labels = map[string]string{}
-					}
-					bucketLatest.ObjectMeta.Labels[beLabel] = ""
-				}
-			}
+			// Add labels for backends if they don't exist.
+			setBackendLabels(bucket)
 
 			controllerutil.AddFinalizer(bucketLatest, inUseFinalizer)
 
@@ -101,7 +73,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalUpdate{}, err
 }
 
-func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error {
+func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Bucket) error {
 	bucketBackends := newBucketBackends()
 	defer setBucketStatus(bucket, bucketBackends)
 
@@ -116,14 +88,14 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 
 	for backendName := range activeBackends {
 		if !c.backendStore.IsBackendActive(backendName) {
-			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", "bucket name", bucket.Name, "backend name", backendName)
+			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", "bucket_ name", bucket.Name, "backend_name", backendName)
 
 			continue
 		}
 
 		cl := c.backendStore.GetBackendClient(backendName)
 		if cl == nil {
-			c.log.Info("Backend client not found for backend - bucket cannot be updated on backend", "bucket name", bucket.Name, "backend name", backendName)
+			c.log.Info("Backend client not found for backend - bucket cannot be updated on backend", "bucket_name", bucket.Name, "backend_name", backendName)
 
 			continue
 		}
@@ -147,9 +119,9 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 					return nil
 				}
 
-				err = c.update(ctx, bucket, beName, bucketBackends)
+				err = c.updateOnBackend(ctx, bucket, beName, bucketBackends)
 				if err != nil {
-					c.log.Info("Error occurred attempting to update bucket", "err", err.Error(), "bucket_name", bucket.Name, "backend_ name", beName)
+					c.log.Info("Error occurred attempting to update bucket", "err", err.Error(), "bucket_name", bucket.Name, "backend_name", beName)
 
 					continue
 				}
@@ -177,7 +149,7 @@ func (c *external) updateAll(ctx context.Context, bucket *v1alpha1.Bucket) error
 	return nil
 }
 
-func (c *external) update(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+func (c *external) updateOnBackend(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	cl := c.backendStore.GetBackendClient(backendName)
 	if s3types.ObjectOwnership(aws.ToString(b.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
 		_, err := cl.PutBucketAcl(ctx, s3internal.BucketToPutBucketACLInput(b))

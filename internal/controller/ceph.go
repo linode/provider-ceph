@@ -15,28 +15,3 @@ limitations under the License.
 */
 
 package controller
-
-import (
-	"time"
-
-	"github.com/crossplane/crossplane-runtime/pkg/controller"
-	ctrl "sigs.k8s.io/controller-runtime"
-
-	"github.com/linode/provider-ceph/internal/backendstore"
-	"github.com/linode/provider-ceph/internal/controller/bucket"
-	"github.com/linode/provider-ceph/internal/controller/providerconfig"
-)
-
-// Setup creates all Ceph controllers with the supplied logger and adds them to
-// the supplied manager.
-func Setup(mgr ctrl.Manager, o controller.Options, s *backendstore.BackendStore, a bool, p, t, cgp time.Duration) error {
-	if err := providerconfig.Setup(mgr, o, s, a); err != nil {
-		return err
-	}
-
-	if err := bucket.Setup(mgr, o, s, a, p, t, cgp); err != nil {
-		return err
-	}
-
-	return nil
-}

@@ -39,6 +39,28 @@ func isBucketPaused(bucket *v1alpha1.Bucket) bool {
 	return false
 }
 
+// pauseBucket sets the bucket's pause label to true.
+func pauseBucket(bucket *v1alpha1.Bucket) {
+	if bucket.ObjectMeta.Labels == nil {
+		bucket.ObjectMeta.Labels = map[string]string{}
+	}
+	bucket.Labels[meta.AnnotationKeyReconciliationPaused] = "true"
+}
+
+// isPauseRequired determines if the Bucket should be paused.
+func isPauseRequired(bucket *v1alpha1.Bucket, bucketIsReady, autopauseEnabled bool) bool {
+	if !bucketIsReady {
+		return false
+	}
+
+	return (bucket.Spec.AutoPause || autopauseEnabled) &&
+		// Only return true if this label value is "".
+		// This is to allow the user to delete a paused bucket with autopause enabled.
+		// By setting this value to "false" or some other no-empty-string value, the
+		// Update loop can bypass autopause, subsequently enabling deletion to take place.
+		bucket.Labels[meta.AnnotationKeyReconciliationPaused] == ""
+}
+
 // isBucketReadyOnBackends checks the backends listed in Spec.Providers against the
 // backends in Status to ensure buckets are considered Ready on all desired backends.
 func isBucketReadyOnBackends(bucket *v1alpha1.Bucket, backendClients map[string]backendstore.S3Client) bool {
@@ -61,6 +83,21 @@ func isBucketReadyOnBackends(bucket *v1alpha1.Bucket, backendClients map[string]
 	}
 
 	return true
+}
+
+// setBackendLabels adds label "provider-ceph.backends.<backend-name>" to the Bucket for each backend.
+func setBackendLabels(bucket *v1alpha1.Bucket) {
+	for _, beName := range bucket.Spec.Providers {
+		beLabel := v1alpha1.BackendLabelPrefix + beName
+		if _, ok := bucket.ObjectMeta.Labels[beLabel]; ok {
+			continue
+		}
+
+		if bucket.ObjectMeta.Labels == nil {
+			bucket.ObjectMeta.Labels = map[string]string{}
+		}
+		bucket.ObjectMeta.Labels[beLabel] = ""
+	}
 }
 
 func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends) {

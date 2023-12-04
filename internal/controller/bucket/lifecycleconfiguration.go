@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/consts"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 	"github.com/pkg/errors"
 )
@@ -49,7 +50,7 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 	for i := 0; i < len(backendNames); i++ {
 		select {
 		case <-ctx.Done():
-			l.log.Info("Context timeout during bucket lifecycle configuration observation", "bucket_name", bucket.Name)
+			l.log.Info("Context timeout during bucket lifecycle configuration observation", consts.KeyBucketName, bucket.Name)
 
 			return NeedsUpdate, ctx.Err()
 		case observation := <-observationChan:
@@ -65,7 +66,7 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 }
 
 func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
-	l.log.Info("Observing subresource lifecycle configuration on backend", "bucket_name", bucket.Name, "backend_name", backendName)
+	l.log.Info("Observing subresource lifecycle configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	s3Client := l.backendStore.GetBackendClient(backendName)
 
@@ -79,11 +80,11 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 		// Either way, it should not exist on any backend.
 		if response == nil || len(response.Rules) == 0 {
 			// No lifecycle config found on this backend.
-			l.log.Info("no lifecycle configuration found on backend - no action required", "bucket_name", bucket.Name, "backend_name", backendName)
+			l.log.Info("no lifecycle configuration found on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return Updated, nil
 		} else {
-			l.log.Info("lifecycle configuration found on backend - requires deletion", "bucket_name", bucket.Name, "backend_name", backendName)
+			l.log.Info("lifecycle configuration found on backend - requires deletion", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return NeedsDeletion, nil
 		}
@@ -110,7 +111,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	// is almost never expected.
 	if !cmp.Equal(external, s3internal.GenerateLifecycleRules(local),
 		cmpopts.IgnoreFields(s3types.LifecycleRule{}, "ID"), cmpopts.IgnoreTypes(document.NoSerde{})) {
-		l.log.Info("lifecycle configuration requires update on backend", "bucket_name", bucket.Name, "backend_name", backendName)
+		l.log.Info("lifecycle configuration requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return NeedsUpdate, nil
 	}
@@ -147,7 +148,7 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 }
 
 func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
-	l.log.Info("Updating lifecycle configuration", "bucket_name", b.Name, "backend_name", backendName)
+	l.log.Info("Updating lifecycle configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
 	s3Client := l.backendStore.GetBackendClient(backendName)
 
 	_, err := s3Client.PutBucketLifecycleConfiguration(ctx, s3internal.GenerateLifecycleConfigurationInput(b.Name, b.Spec.ForProvider.LifecycleConfiguration))
@@ -159,7 +160,7 @@ func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1
 }
 
 func (l *LifecycleConfigurationClient) delete(ctx context.Context, bucketName, backendName string) error {
-	l.log.Info("Deleting lifecycle configuration", "bucket_name", bucketName, "backend_name", backendName)
+	l.log.Info("Deleting lifecycle configuration", consts.KeyBucketName, bucketName, consts.KeyBackendName, backendName)
 	s3Client := l.backendStore.GetBackendClient(backendName)
 
 	_, err := s3Client.DeleteBucketLifecycle(ctx,

@@ -15,6 +15,7 @@ import (
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/consts"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
@@ -29,7 +30,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	defer cancel()
 
 	if bucket.Spec.Disabled {
-		c.log.Info("Bucket is disabled - no buckets to be created on backends", "bucket_name", bucket.Name)
+		c.log.Info("Bucket is disabled - no buckets to be created on backends", consts.KeyBucketName, bucket.Name)
 
 		return managed.ExternalCreation{}, nil
 	}
@@ -60,16 +61,16 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 		cl := c.backendStore.GetBackendClient(beName)
 		if cl == nil {
-			c.log.Info("Backend client not found for backend - bucket cannot be created on backend", "bucket_name", originalBucket.Name, "backend_name", beName)
+			c.log.Info("Backend client not found for backend - bucket cannot be created on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName)
 
 			continue
 		}
 
-		c.log.Info("Creating bucket on backend", "bucket_name", originalBucket.Name, "backend_name", beName)
+		c.log.Info("Creating bucket on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName)
 
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
-			c.log.Info("Failed to fetch provider config", "bucket_name", originalBucket.Name, "backend_name", beName, "err", err.Error())
+			c.log.Info("Failed to fetch provider config", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName, "err", err.Error())
 
 			return managed.ExternalCreation{}, errors.Wrap(err, errGetPC)
 		}
@@ -84,13 +85,13 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				_, err = s3internal.CreateBucket(ctx, cl, s3internal.BucketToCreateBucketInput(originalBucket))
 				if resource.Ignore(s3internal.IsAlreadyExists, err) == nil {
-					c.log.Info("Bucket created on backend", "bucket_name", bucket.Name, "backend_name", beName)
+					c.log.Info("Bucket created on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 
 					break
 				}
 			}
 			if err != nil {
-				c.log.Info("Failed to create bucket on backend", "bucket_name", originalBucket.Name, "backend_name", beName, "err", err.Error())
+				c.log.Info("Failed to create bucket on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName, "err", err.Error())
 
 				errChan <- err
 
@@ -104,7 +105,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			//	}
 			//	return false
 			if !atomicBool.CompareAndSwap(false, true) {
-				c.log.Info("Bucket already created on backend - terminate thread without error", "bucket_name", originalBucket.Name, "backend_name", beName)
+				c.log.Info("Bucket already created on backend - terminate thread without error", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName)
 
 				errChan <- nil
 
@@ -119,7 +120,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	if backendCount == 0 {
-		c.log.Info("Failed to find any backend for bucket", "bucket_name", bucket.Name)
+		c.log.Info("Failed to find any backend for bucket", consts.KeyBucketName, bucket.Name)
 
 		return managed.ExternalCreation{}, nil
 	}
@@ -133,7 +134,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 	for i := 0; i < backendCount; i++ {
 		select {
 		case <-ctx.Done():
-			c.log.Info("Context timeout waiting for bucket creation", "bucket_name", bucket.Name)
+			c.log.Info("Context timeout waiting for bucket creation", consts.KeyBucketName, bucket.Name)
 
 			return managed.ExternalCreation{}, ctx.Err()
 		case beName := <-readyChan:
@@ -161,7 +162,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 				return NeedsStatusUpdate
 			})
 			if err != nil {
-				c.log.Info("Failed to update Bucket CR with backend info", "bucket_name", bucket.Name, "backend_name", beName, "err", err.Error())
+				c.log.Info("Failed to update Bucket CR with backend info", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName, "err", err.Error())
 			}
 
 			return managed.ExternalCreation{}, err
@@ -170,7 +171,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 		}
 	}
 
-	c.log.Info("Failed to create bucket on any backend", "bucket_name", bucket.Name)
+	c.log.Info("Failed to create bucket on any backend", consts.KeyBucketName, bucket.Name)
 
 	err = c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
 		bucketLatest.Status.SetConditions(xpv1.Unavailable())
@@ -178,7 +179,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 		return NeedsStatusUpdate
 	})
 	if err != nil {
-		c.log.Info("Failed to update backend unavailable status on Bucket CR", "bucket_name", bucket.Name)
+		c.log.Info("Failed to update backend unavailable status on Bucket CR", consts.KeyBucketName, bucket.Name)
 	}
 
 	return managed.ExternalCreation{}, err

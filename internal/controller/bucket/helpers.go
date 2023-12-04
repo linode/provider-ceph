@@ -8,6 +8,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -207,7 +208,7 @@ func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, 
 
 		if err != nil {
 			if kerrors.IsNotFound(err) {
-				c.log.Info("Bucket doesn't exists", "bucket_name", bucket.Name)
+				c.log.Info("Bucket doesn't exists", consts.KeyBucketName, bucket.Name)
 
 				break
 			}

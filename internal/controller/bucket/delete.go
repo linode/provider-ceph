@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	"github.com/linode/provider-ceph/internal/consts"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
@@ -51,7 +52,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	for _, backendName := range activeBackends {
 		bucketBackends.setBucketStatus(bucket.Name, backendName, v1alpha1.DeletingStatus)
 
-		c.log.Info("Deleting bucket on backend", "bucket_name", bucket.Name, "backend_name", backendName)
+		c.log.Info("Deleting bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 		cl := c.backendStore.GetBackendClient(backendName)
 		beName := backendName
 		g.Go(func() error {
@@ -88,7 +89,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 		return NeedsStatusUpdate
 	}); err != nil {
-		c.log.Info("Failed to update Bucket Status after attempting to delete bucket from backends", "bucket_name", bucket.Name)
+		c.log.Info("Failed to update Bucket Status after attempting to delete bucket from backends", consts.KeyBucketName, bucket.Name)
 	}
 
 	// If an error occurred during deletion, we must return for requeue.
@@ -98,18 +99,18 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.Wrap(deleteErr, errDeleteBucket)
 	}
 
-	c.log.Info("All buckets successfully deleted from backends for Bucket CR", "bucket_name", bucket.Name)
+	c.log.Info("All buckets successfully deleted from backends for Bucket CR", consts.KeyBucketName, bucket.Name)
 
 	// No errors occurred - the bucket has successfully been deleted from all backends.
 	// We do not need to update the Bucket CR Status, we simply remove the "in-use" finalizer.
 	if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-		c.log.Info("Removing 'in-use' finalizer from Bucket CR", "bucket_name", bucket.Name)
+		c.log.Info("Removing 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name)
 
 		controllerutil.RemoveFinalizer(bucketLatest, inUseFinalizer)
 
 		return NeedsObjectUpdate
 	}); err != nil {
-		c.log.Info("Failed to remove 'in-use' finalizer from Bucket CR", "bucket_name", bucket.Name)
+		c.log.Info("Failed to remove 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name)
 
 		return errors.Wrap(err, errUpdateBucket)
 	}

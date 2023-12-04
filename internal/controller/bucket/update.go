@@ -16,6 +16,7 @@ import (
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/consts"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
@@ -55,7 +56,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			// Auto pause the Bucket CR if required.
 			cls := c.backendStore.GetBackendClients(bucketLatest.Spec.Providers)
 			if isPauseRequired(bucketLatest, isBucketReadyOnBackends(bucket, cls), c.autoPauseBucket) {
-				c.log.Info("Auto pausing bucket", "bucket_name", bucket.Name)
+				c.log.Info("Auto pausing bucket", consts.KeyBucketName, bucket.Name)
 				pauseBucket(bucketLatest)
 			}
 
@@ -67,7 +68,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			return NeedsObjectUpdate
 		})
 	if err != nil {
-		c.log.Info("Failed to update Bucket CR", "bucket_name", bucket.Name)
+		c.log.Info("Failed to update Bucket CR", consts.KeyBucketName, bucket.Name)
 	}
 
 	return managed.ExternalUpdate{}, err
@@ -88,14 +89,14 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 
 	for backendName := range activeBackends {
 		if !c.backendStore.IsBackendActive(backendName) {
-			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", "bucket_ name", bucket.Name, "backend_name", backendName)
+			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", "bucket_ name", bucket.Name, consts.KeyBackendName, backendName)
 
 			continue
 		}
 
 		cl := c.backendStore.GetBackendClient(backendName)
 		if cl == nil {
-			c.log.Info("Backend client not found for backend - bucket cannot be updated on backend", "bucket_name", bucket.Name, "backend_name", backendName)
+			c.log.Info("Backend client not found for backend - bucket cannot be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			continue
 		}
@@ -106,10 +107,10 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 			bucketBackends.setBucketStatus(bucket.Name, beName, v1alpha1.NotReadyStatus)
 
 			for i := 0; i < s3internal.RequestRetries; i++ {
-				c.log.Info("Updating bucket on backend", "bucket_name", bucket.Name, "backend_name", beName)
+				c.log.Info("Updating bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 				bucketExists, err := s3internal.BucketExists(ctx, cl, bucket.Name)
 				if err != nil {
-					c.log.Info("Error occurred attempting HeadBucket", "err", err.Error(), "bucket_name", bucket.Name, "backend_ name", beName)
+					c.log.Info("Error occurred attempting HeadBucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 
 					return err
 				}
@@ -121,7 +122,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 
 				err = c.updateOnBackend(ctx, bucket, beName, bucketBackends)
 				if err != nil {
-					c.log.Info("Error occurred attempting to update bucket", "err", err.Error(), "bucket_name", bucket.Name, "backend_name", beName)
+					c.log.Info("Error occurred attempting to update bucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 
 					continue
 				}

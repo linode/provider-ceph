@@ -89,12 +89,14 @@ func isBucketReadyOnBackends(bucket *v1alpha1.Bucket, backendClients map[string]
 func setBackendLabels(bucket *v1alpha1.Bucket) {
 	for _, beName := range bucket.Spec.Providers {
 		beLabel := v1alpha1.BackendLabelPrefix + beName
-		if _, ok := bucket.ObjectMeta.Labels[beLabel]; !ok {
-			if bucket.ObjectMeta.Labels == nil {
-				bucket.ObjectMeta.Labels = map[string]string{}
-			}
-			bucket.ObjectMeta.Labels[beLabel] = ""
+		if _, ok := bucket.ObjectMeta.Labels[beLabel]; ok {
+			continue
 		}
+
+		if bucket.ObjectMeta.Labels == nil {
+			bucket.ObjectMeta.Labels = map[string]string{}
+		}
+		bucket.ObjectMeta.Labels[beLabel] = ""
 	}
 }
 

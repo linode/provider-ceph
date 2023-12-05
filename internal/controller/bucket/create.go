@@ -50,7 +50,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errMissingS3Backend)
 	}
 
-	atomicBool := atomic.Bool{}
+	// This value shows a bucket on one backend is already created.
+	// It is used to prevent goroutines from sending duplicated messages to `readyChan`.
+	bucketAlreadyCreated := atomic.Bool{}
 	backendCount := 0
 	errChan := make(chan error, len(activeBackends))
 	readyChan := make(chan string)
@@ -98,12 +100,12 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			}
 
 			// This compare-and-swap operation is the atomic equivalent of:
-			//	if *atomicBool == false {
-			//		*atomicBool = true
+			//	if *bucketAlreadyCreated == false {
+			//		*bucketAlreadyCreated = true
 			//		return true
 			//	}
 			//	return false
-			if !atomicBool.CompareAndSwap(false, true) {
+			if !bucketAlreadyCreated.CompareAndSwap(false, true) {
 				c.log.Info("Bucket already created on backend - terminate thread without error", "bucket_name", originalBucket.Name, "backend_name", beName)
 
 				errChan <- nil

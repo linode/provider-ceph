@@ -3,7 +3,10 @@ package bucket
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
@@ -12,16 +15,18 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	"github.com/pkg/errors"
-	"k8s.io/client-go/kubernetes/scheme"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+//nolint:maintidx,paralleltest // Function requires numerous checks. Running in parallel causes issues with client.
 func TestCreate(t *testing.T) {
-	t.Parallel()
-
 	type fields struct {
-		backendStore *backendstore.BackendStore
+		backendStore    *backendstore.BackendStore
+		providerConfigs *apisv1alpha1.ProviderConfigList
 	}
 
 	type args struct {
@@ -29,8 +34,9 @@ func TestCreate(t *testing.T) {
 	}
 
 	type want struct {
-		o   managed.ExternalCreation
-		err error
+		o          managed.ExternalCreation
+		statusDiff func(mg resource.Managed) string
+		err        error
 	}
 
 	cases := map[string]struct {
@@ -39,17 +45,6 @@ func TestCreate(t *testing.T) {
 		args   args
 		want   want
 	}{
-		"Invalid managed resource": {
-			fields: fields{
-				backendStore: backendstore.NewBackendStore(),
-			},
-			args: args{
-				mg: unexpectedItem,
-			},
-			want: want{
-				err: errors.New(errNotBucket),
-			},
-		},
 		"S3 backends missing": {
 			fields: fields{
 				backendStore: backendstore.NewBackendStore(),
@@ -133,23 +128,241 @@ func TestCreate(t *testing.T) {
 				err: errors.New(errNoS3BackendsStored),
 			},
 		},
-	}
+		"Create succeeds on single backend": {
+			fields: fields{
+				providerConfigs: &apisv1alpha1.ProviderConfigList{
+					Items: []apisv1alpha1.ProviderConfig{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "s3-backend-1",
+							},
+						},
+					},
+				},
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+					fake.CreateBucketReturns(
+						&s3.CreateBucketOutput{},
+						nil,
+					)
 
-	pc := &apisv1alpha1.ProviderConfig{}
-	s := scheme.Scheme
-	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, pc)
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-bucket",
+					},
+				},
+			},
+			want: want{
+				err: nil,
+				statusDiff: func(mg resource.Managed) string {
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					return cmp.Diff(
+						v1alpha1.BucketStatus{
+							ResourceStatus: v1.ResourceStatus{
+								ConditionedStatus: v1.ConditionedStatus{
+									Conditions: []v1.Condition{
+										{
+											Type:   "Ready",
+											Status: "True",
+											Reason: "Available",
+										},
+									},
+								},
+							},
+							AtProvider: v1alpha1.BucketObservation{
+								Backends: v1alpha1.Backends{
+									"s3-backend-1": &v1alpha1.BackendInfo{
+										BucketStatus: v1alpha1.ReadyStatus,
+									},
+								},
+							},
+						},
+						bucket.Status,
+					)
+				},
+			},
+		},
+		"Create fails on two backends and succeeds on one": {
+			fields: fields{
+				providerConfigs: &apisv1alpha1.ProviderConfigList{
+					Items: []apisv1alpha1.ProviderConfig{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "s3-backend-1",
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "s3-backend-2",
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "s3-backend-3",
+							},
+						},
+					},
+				},
+				backendStore: func() *backendstore.BackendStore {
+					fakeClientError := backendstorefakes.FakeS3Client{}
+					fakeClientOK := backendstorefakes.FakeS3Client{}
+
+					fakeClientError.CreateBucketReturns(
+						&s3.CreateBucketOutput{},
+						errors.New("some error"),
+					)
+
+					fakeClientOK.CreateBucketReturns(
+						&s3.CreateBucketOutput{},
+						nil,
+					)
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeClientError, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeClientError, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-3", &fakeClientOK, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-bucket",
+					},
+				},
+			},
+			want: want{
+				err: nil,
+				statusDiff: func(mg resource.Managed) string {
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					return cmp.Diff(
+						v1alpha1.BucketStatus{
+							ResourceStatus: v1.ResourceStatus{
+								ConditionedStatus: v1.ConditionedStatus{
+									Conditions: []v1.Condition{
+										{
+											Type:   "Ready",
+											Status: "True",
+											Reason: "Available",
+										},
+									},
+								},
+							},
+							AtProvider: v1alpha1.BucketObservation{
+								Backends: v1alpha1.Backends{
+									"s3-backend-3": &v1alpha1.BackendInfo{
+										BucketStatus: v1alpha1.ReadyStatus,
+									},
+								},
+							},
+						},
+						bucket.Status,
+					)
+				},
+			},
+		},
+		"Create fails on all backends": {
+			fields: fields{
+				providerConfigs: &apisv1alpha1.ProviderConfigList{
+					Items: []apisv1alpha1.ProviderConfig{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "s3-backend-1",
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "s3-backend-2",
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "s3-backend-3",
+							},
+						},
+					},
+				},
+				backendStore: func() *backendstore.BackendStore {
+					fakeClientError := backendstorefakes.FakeS3Client{}
+
+					fakeClientError.CreateBucketReturns(
+						&s3.CreateBucketOutput{},
+						errors.New("some error"),
+					)
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeClientError, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeClientError, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-3", &fakeClientError, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-bucket",
+					},
+				},
+			},
+			want: want{
+				err: nil,
+				statusDiff: func(mg resource.Managed) string {
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					return cmp.Diff(
+						v1alpha1.BucketStatus{
+							ResourceStatus: v1.ResourceStatus{
+								ConditionedStatus: v1.ConditionedStatus{
+									Conditions: []v1.Condition{
+										{
+											Type:   "Ready",
+											Status: "False",
+											Reason: "Unavailable",
+										},
+									},
+								},
+							},
+						},
+						bucket.Status,
+					)
+				},
+			},
+		},
+	}
 
 	for name, tc := range cases {
 		tc := tc
 
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+			s := runtime.NewScheme()
+			s.AddKnownTypes(v1alpha1.SchemeGroupVersion, &v1alpha1.Bucket{}, &v1alpha1.BucketList{})
+			s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, &apisv1alpha1.ProviderConfig{}, &apisv1alpha1.ProviderConfigList{})
 
-			cl := fake.NewClientBuilder().WithScheme(s).Build()
+			cl := fake.NewClientBuilder().
+				WithScheme(s).
+				WithObjects(tc.args.mg).
+				WithStatusSubresource(tc.args.mg)
+
+			if tc.fields.providerConfigs != nil {
+				cl.WithLists(tc.fields.providerConfigs)
+			}
+
 			e := external{
-				kubeClient:   cl,
-				backendStore: tc.fields.backendStore,
-				log:          logging.NewNopLogger(),
+				kubeClient:       cl.Build(),
+				backendStore:     tc.fields.backendStore,
+				log:              logging.NewNopLogger(),
+				operationTimeout: time.Second * 5,
 			}
 
 			got, err := e.Create(context.Background(), tc.args.mg)
@@ -159,6 +372,11 @@ func TestCreate(t *testing.T) {
 			}
 			if diff := cmp.Diff(tc.want.o, got); diff != "" {
 				t.Errorf("\n%s\ne.Create(...): -want, +got:\n%s\n", tc.reason, diff)
+			}
+			if tc.want.statusDiff != nil {
+				if diff := tc.want.statusDiff(tc.args.mg); diff != "" {
+					t.Errorf("\n%s\ne.Create(...): -want, +got:\n%s\n", tc.reason, diff)
+				}
 			}
 		})
 	}

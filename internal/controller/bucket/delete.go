@@ -24,17 +24,6 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
-	// There are two scenarios where the bucket status needs to be updated during a
-	// Delete invocation:
-	// 1. The caller attempts to delete the CR and an error occurs during the call to
-	// the bucket's backends. In this case the bucket may be successfully deleted
-	// from some backends, but not from others. As such, we must update the bucket CR
-	// status accordingly as Delete has ultimately failed and the 'in-use' finalizer
-	// will not be removed.
-	// 2. The caller attempts to delete the bucket from it's backends without deleting
-	// the bucket CR. This is done by setting the Disabled flag on the bucket
-	// CR spec. If the deletion is successful or unsuccessful, the bucket CR status must be
-	// updated.
 	bucketBackends := newBucketBackends()
 
 	if !c.backendStore.BackendsAreStored() {

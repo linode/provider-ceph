@@ -193,7 +193,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 			}
 
 			return managed.ExternalCreation{}, err
-		case <-errChan:
+		case err := <-errChan:
 			traces.SetAndRecordError(span, err)
 
 			continue

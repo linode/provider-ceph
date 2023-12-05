@@ -103,7 +103,7 @@ func (b *BucketValidator) validateLifecycleConfiguration(ctx context.Context, bu
 	// Cleanup of this bucket is performed by the health-check controller on deletion of the ProviderConfig.
 	var err error
 	for i := 0; i < s3internal.RequestRetries; i++ {
-		_, err := s3internal.CreateBucket(ctx, s3Client, s3internal.BucketToCreateBucketInput(dummyBucket))
+		_, err = s3internal.CreateBucket(ctx, s3Client, s3internal.BucketToCreateBucketInput(dummyBucket))
 		if resource.Ignore(s3internal.IsAlreadyExists, err) == nil {
 			break
 		}

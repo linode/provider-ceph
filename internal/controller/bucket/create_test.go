@@ -70,7 +70,7 @@ func TestCreateBasicErrors(t *testing.T) {
 				},
 			},
 			want: want{
-				err: errors.New(errNoS3BackendsRegistered),
+				err: errors.New(errNoActiveS3Backends),
 			},
 		},
 		"S3 backend reference inactive": {

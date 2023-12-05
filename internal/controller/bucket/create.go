@@ -56,7 +56,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	// Create the bucket on each backend in a separate go routine
 	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
 	if len(activeBackends) == 0 {
-		err := errors.New(errNoS3BackendsRegistered)
+		err := errors.New(errNoActiveS3Backends)
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalCreation{}, err

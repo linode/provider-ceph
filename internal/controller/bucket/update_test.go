@@ -85,7 +85,7 @@ func TestUpdateBasicErrors(t *testing.T) {
 			},
 			want: want{
 				o:   managed.ExternalUpdate{},
-				err: errors.New(errNoS3BackendsRegistered),
+				err: errors.New(errNoActiveS3Backends),
 			},
 		},
 		"Missing backend": {

@@ -206,7 +206,7 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						ResourceSpec: v1.ResourceSpec{
@@ -252,7 +252,7 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
@@ -306,7 +306,7 @@ func TestObserve(t *testing.T) {
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "bucket-check-external-error",
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
@@ -361,7 +361,7 @@ func TestObserve(t *testing.T) {
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "bucket-check-external-not-exists",
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
@@ -416,7 +416,7 @@ func TestObserve(t *testing.T) {
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "bucket-check-external-ok",
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
@@ -471,7 +471,7 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},

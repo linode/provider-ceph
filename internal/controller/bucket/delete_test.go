@@ -216,7 +216,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
@@ -262,7 +262,7 @@ func TestDelete(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.Equal(t,
-						[]string{inUseFinalizer},
+						[]string{v1alpha1.InUseFinalizer},
 						bucket.Finalizers,
 						"unexpected finalizers",
 					)
@@ -291,7 +291,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{},
@@ -334,7 +334,7 @@ func TestDelete(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.Equal(t,
-						[]string{inUseFinalizer},
+						[]string{v1alpha1.InUseFinalizer},
 						bucket.Finalizers,
 						"unexpected finalizers",
 					)
@@ -373,7 +373,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
@@ -418,7 +418,7 @@ func TestDelete(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.Equal(t,
-						[]string{inUseFinalizer},
+						[]string{v1alpha1.InUseFinalizer},
 						bucket.Finalizers,
 						"unexpeceted finalizers",
 					)

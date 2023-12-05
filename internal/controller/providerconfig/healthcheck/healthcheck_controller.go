@@ -53,7 +53,7 @@ const (
 	errDeleteHealthCheckBucket  = "failed to delete health check bucket"
 	errDeleteLCValidationBucket = "failed to delete lifecycle configuration validation bucket"
 	errUpdateHealthStatus       = "failed to update health status of provider config"
-	errBackendNotStored         = "backend is not stored"
+	errBackendNotStored         = "backend is not stored in backendstore"
 	healthCheckSuffix           = "-health-check"
 	healthCheckFile             = "health-check-file"
 )

@@ -72,7 +72,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			// Add labels for backends if they don't exist.
 			setBackendLabels(bucket)
 
-			controllerutil.AddFinalizer(bucketLatest, inUseFinalizer)
+			controllerutil.AddFinalizer(bucketLatest, v1alpha1.InUseFinalizer)
 
 			return NeedsObjectUpdate
 		})
@@ -96,7 +96,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 
 	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
 	if len(activeBackends) == 0 {
-		err := errors.New(errNoS3BackendsRegistered)
+		err := errors.New(errNoActiveS3Backends)
 		traces.SetAndRecordError(span, err)
 
 		return err

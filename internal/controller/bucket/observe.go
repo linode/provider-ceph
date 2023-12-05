@@ -51,7 +51,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		}, nil
 	}
 
-	if !controllerutil.ContainsFinalizer(bucket, inUseFinalizer) {
+	if !controllerutil.ContainsFinalizer(bucket, v1alpha1.InUseFinalizer) {
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,

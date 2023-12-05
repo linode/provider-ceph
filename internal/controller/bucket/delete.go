@@ -109,7 +109,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
 		c.log.Info("Removing 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name)
 
-		controllerutil.RemoveFinalizer(bucketLatest, inUseFinalizer)
+		controllerutil.RemoveFinalizer(bucketLatest, v1alpha1.InUseFinalizer)
 
 		return NeedsObjectUpdate
 	}); err != nil {

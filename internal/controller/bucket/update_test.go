@@ -10,25 +10,22 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	"github.com/crossplane/crossplane-runtime/pkg/test"
-	"github.com/google/go-cmp/cmp"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestUpdate(t *testing.T) {
+func TestUpdateBasicErrors(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		backendStore    *backendstore.BackendStore
-		autoPauseBucket bool
-		initObjects     []client.Object
+		backendStore *backendstore.BackendStore
 	}
 
 	type args struct {
@@ -36,9 +33,8 @@ func TestUpdate(t *testing.T) {
 	}
 
 	type want struct {
-		o            managed.ExternalUpdate
-		err          error
-		specificDiff func(mg resource.Managed) string
+		o   managed.ExternalUpdate
+		err error
 	}
 
 	cases := map[string]struct {
@@ -122,6 +118,48 @@ func TestUpdate(t *testing.T) {
 				err: errors.New(errMissingS3Backend),
 			},
 		},
+	}
+	for name, tc := range cases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			e := external{
+				backendStore: tc.fields.backendStore,
+				log:          logging.NewNopLogger(),
+			}
+
+			_, err := e.Update(context.Background(), tc.args.mg)
+			assert.EqualError(t, err, tc.want.err.Error(), "unexpected err")
+		})
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	t.Parallel()
+
+	type fields struct {
+		backendStore    *backendstore.BackendStore
+		autoPauseBucket bool
+		initObjects     []client.Object
+	}
+
+	type args struct {
+		mg resource.Managed
+	}
+
+	type want struct {
+		o            managed.ExternalUpdate
+		err          error
+		specificDiff func(t *testing.T, mg resource.Managed)
+	}
+
+	cases := map[string]struct {
+		reason string
+		fields fields
+		args   args
+		want   want
+	}{
 		"OK - Two backends are ready": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
@@ -150,10 +188,11 @@ func TestUpdate(t *testing.T) {
 			},
 			want: want{
 				o: managed.ExternalUpdate{},
-				specificDiff: func(mg resource.Managed) string {
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					return cmp.Diff(
+					assert.Equal(t,
 						v1alpha1.Backends{
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketStatus: v1alpha1.ReadyStatus,
@@ -163,6 +202,7 @@ func TestUpdate(t *testing.T) {
 							},
 						},
 						bucket.Status.AtProvider.Backends,
+						"unexpected bucket backends",
 					)
 				},
 			},
@@ -210,15 +250,17 @@ func TestUpdate(t *testing.T) {
 			},
 			want: want{
 				o: managed.ExternalUpdate{},
-				specificDiff: func(mg resource.Managed) string {
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					return cmp.Diff(
+					assert.Equal(t,
 						map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "true",
 							"provider-ceph.backends.s3-backend-1":  "",
 						},
 						bucket.Labels,
+						"unexpected bucket labels",
 					)
 				},
 			},
@@ -248,19 +290,10 @@ func TestUpdate(t *testing.T) {
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)
-
-			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
-				t.Errorf("\n%s\ne.Update(...): -want error, +got error:\n%s\n", tc.reason, diff)
-			}
-
-			if diff := cmp.Diff(tc.want.o, got); diff != "" {
-				t.Errorf("\n%s\ne.Update(...): -want, +got:\n%s\n", tc.reason, diff)
-			}
-
+			assert.ErrorIs(t, err, tc.want.err, "unexpected err")
+			assert.Equal(t, got, tc.want.o, "unexpected result")
 			if tc.want.specificDiff != nil {
-				if diff := tc.want.specificDiff(tc.args.mg); diff != "" {
-					t.Errorf("\n%s\ne.Update(...): -want, +got:\n%s\n", tc.reason, diff)
-				}
+				tc.want.specificDiff(t, tc.args.mg)
 			}
 		})
 	}

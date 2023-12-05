@@ -10,19 +10,19 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	"github.com/crossplane/crossplane-runtime/pkg/test"
-	"github.com/google/go-cmp/cmp"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-//nolint:maintidx,paralleltest // Function requires numerous checks. Running in parallel causes issues with client.
-func TestDelete(t *testing.T) {
+func TestDeleteBasicErrors(t *testing.T) {
+	t.Parallel()
+
 	type fields struct {
 		backendStore *backendstore.BackendStore
 	}
@@ -32,9 +32,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	type want struct {
-		err           error
-		statusDiff    func(mg resource.Managed) string
-		finalizerDiff func(mg resource.Managed) string
+		err error
 	}
 
 	cases := map[string]struct {
@@ -43,6 +41,17 @@ func TestDelete(t *testing.T) {
 		args   args
 		want   want
 	}{
+		"Managed resource is not a Bucket": {
+			fields: fields{
+				backendStore: backendstore.NewBackendStore(),
+			},
+			args: args{
+				mg: unexpectedItem,
+			},
+			want: want{
+				err: errors.New(errNotBucket),
+			},
+		},
 		"S3 backend reference does not exist": {
 			fields: fields{
 				backendStore: backendstore.NewBackendStore(),
@@ -73,6 +82,49 @@ func TestDelete(t *testing.T) {
 				err: errors.New(errNoS3BackendsStored),
 			},
 		},
+	}
+
+	for name, tc := range cases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			e := external{
+				backendStore: tc.fields.backendStore,
+				log:          logging.NewNopLogger(),
+			}
+
+			err := e.Delete(context.Background(), tc.args.mg)
+			assert.EqualError(t, err, tc.want.err.Error(), "unexpected error")
+		})
+	}
+}
+
+//nolint:maintidx,paralleltest // Function requires numerous checks. Running in parallel causes issues with client.
+func TestDelete(t *testing.T) {
+	errRandomStr := "some err"
+	errRandom := errors.New(errRandomStr)
+
+	type fields struct {
+		backendStore *backendstore.BackendStore
+	}
+
+	type args struct {
+		mg resource.Managed
+	}
+
+	type want struct {
+		err           error
+		statusDiff    func(t *testing.T, mg resource.Managed)
+		finalizerDiff func(t *testing.T, mg resource.Managed)
+	}
+
+	cases := map[string]struct {
+		reason string
+		fields fields
+		args   args
+		want   want
+	}{
 		"Delete buckets on specified backends": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
@@ -151,7 +203,7 @@ func TestDelete(t *testing.T) {
 					fakeClient := &backendstorefakes.FakeS3Client{}
 					fakeClient.HeadBucketReturns(
 						&s3.HeadBucketOutput{},
-						errors.New("some error"),
+						errRandom,
 					)
 
 					bs := backendstore.NewBackendStore()
@@ -187,11 +239,12 @@ func TestDelete(t *testing.T) {
 				},
 			},
 			want: want{
-				err: errors.Wrap(errors.New("some error"), errDeleteBucket),
-				statusDiff: func(mg resource.Managed) string {
+				err: errRandom,
+				statusDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					return cmp.Diff(
+					assert.Equal(t,
 						v1alpha1.Backends{
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketStatus: v1alpha1.DeletingStatus,
@@ -201,14 +254,17 @@ func TestDelete(t *testing.T) {
 							},
 						},
 						bucket.Status.AtProvider.Backends,
+						"unexpected bucket status",
 					)
 				},
-				finalizerDiff: func(mg resource.Managed) string {
+				finalizerDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					return cmp.Diff(
+					assert.Equal(t,
 						[]string{inUseFinalizer},
 						bucket.Finalizers,
+						"unexpected finalizers",
 					)
 				},
 			},
@@ -222,7 +278,7 @@ func TestDelete(t *testing.T) {
 					fakeClient := &backendstorefakes.FakeS3Client{}
 					fakeClient.HeadBucketReturns(
 						&s3.HeadBucketOutput{},
-						errors.New("some error"),
+						errRandom,
 					)
 
 					bs := backendstore.NewBackendStore()
@@ -255,11 +311,12 @@ func TestDelete(t *testing.T) {
 				},
 			},
 			want: want{
-				err: errors.Wrap(errors.New("some error"), errDeleteBucket),
-				statusDiff: func(mg resource.Managed) string {
+				err: errRandom,
+				statusDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					return cmp.Diff(
+					assert.Equal(t,
 						v1alpha1.Backends{
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketStatus: v1alpha1.DeletingStatus,
@@ -269,14 +326,17 @@ func TestDelete(t *testing.T) {
 							},
 						},
 						bucket.Status.AtProvider.Backends,
+						"unexpected bucket status",
 					)
 				},
-				finalizerDiff: func(mg resource.Managed) string {
+				finalizerDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					return cmp.Diff(
+					assert.Equal(t,
 						[]string{inUseFinalizer},
 						bucket.Finalizers,
+						"unexpected finalizers",
 					)
 				},
 			},
@@ -290,7 +350,7 @@ func TestDelete(t *testing.T) {
 					fakeClient := &backendstorefakes.FakeS3Client{}
 					fakeClient.HeadBucketReturns(
 						&s3.HeadBucketOutput{},
-						errors.New("some error"),
+						errRandom,
 					)
 
 					// DeleteBucket first calls HeadBucket to establish
@@ -336,11 +396,12 @@ func TestDelete(t *testing.T) {
 				},
 			},
 			want: want{
-				err: errors.Wrap(errors.New("some error"), errDeleteBucket),
-				statusDiff: func(mg resource.Managed) string {
+				err: errRandom,
+				statusDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					return cmp.Diff(
+					assert.Equal(t,
 						v1alpha1.Backends{
 							// s3-backend-1 failed so is stuck in Deleting status.
 							// s3-backend-2 was successful so was removed from status.
@@ -349,14 +410,17 @@ func TestDelete(t *testing.T) {
 							},
 						},
 						bucket.Status.AtProvider.Backends,
+						"unexpected bucket status",
 					)
 				},
-				finalizerDiff: func(mg resource.Managed) string {
+				finalizerDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					return cmp.Diff(
+					assert.Equal(t,
 						[]string{inUseFinalizer},
 						bucket.Finalizers,
+						"unexpeceted finalizers",
 					)
 				},
 			},
@@ -382,19 +446,12 @@ func TestDelete(t *testing.T) {
 			}
 
 			err := e.Delete(context.Background(), tc.args.mg)
-			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
-				t.Errorf("\n%s\ne.Delete(...): -want error, +got error:\n%s\n", tc.reason, diff)
-			}
-
+			assert.ErrorIs(t, err, tc.want.err, "unexpected err")
 			if tc.want.statusDiff != nil {
-				if diff := tc.want.statusDiff(tc.args.mg); diff != "" {
-					t.Errorf("\n%s\ne.Delete(...): -want, +got:\n%s\n", tc.reason, diff)
-				}
+				tc.want.statusDiff(t, tc.args.mg)
 			}
 			if tc.want.finalizerDiff != nil {
-				if diff := tc.want.finalizerDiff(tc.args.mg); diff != "" {
-					t.Errorf("\n%s\ne.Delete(...): -want, +got:\n%s\n", tc.reason, diff)
-				}
+				tc.want.finalizerDiff(t, tc.args.mg)
 			}
 		})
 	}

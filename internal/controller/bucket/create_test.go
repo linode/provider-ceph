@@ -11,22 +11,21 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	"github.com/crossplane/crossplane-runtime/pkg/test"
-	"github.com/google/go-cmp/cmp"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-//nolint:maintidx,paralleltest // Function requires numerous checks. Running in parallel causes issues with client.
-func TestCreate(t *testing.T) {
+func TestCreateBasicErrors(t *testing.T) {
+	t.Parallel()
+
 	type fields struct {
-		backendStore    *backendstore.BackendStore
-		providerConfigs *apisv1alpha1.ProviderConfigList
+		backendStore *backendstore.BackendStore
 	}
 
 	type args struct {
@@ -34,9 +33,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	type want struct {
-		o          managed.ExternalCreation
-		statusDiff func(mg resource.Managed) string
-		err        error
+		err error
 	}
 
 	cases := map[string]struct {
@@ -128,6 +125,47 @@ func TestCreate(t *testing.T) {
 				err: errors.New(errNoS3BackendsStored),
 			},
 		},
+	}
+	for name, tc := range cases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			e := external{
+				backendStore: tc.fields.backendStore,
+				log:          logging.NewNopLogger(),
+			}
+
+			_, err := e.Create(context.Background(), tc.args.mg)
+			assert.EqualError(t, err, tc.want.err.Error(), "unexpected error")
+		})
+	}
+}
+
+//nolint:paralleltest // Running in parallel causes issues with client.
+func TestCreate(t *testing.T) {
+	type fields struct {
+		backendStore    *backendstore.BackendStore
+		providerConfigs *apisv1alpha1.ProviderConfigList
+	}
+
+	type args struct {
+		mg resource.Managed
+	}
+
+	type want struct {
+		o          managed.ExternalCreation
+		statusDiff func(t *testing.T, mg resource.Managed)
+		err        error
+	}
+
+	cases := map[string]struct {
+		reason string
+		fields fields
+		args   args
+		want   want
+	}{
 		"Create succeeds on single backend": {
 			fields: fields{
 				providerConfigs: &apisv1alpha1.ProviderConfigList{
@@ -161,31 +199,21 @@ func TestCreate(t *testing.T) {
 			},
 			want: want{
 				err: nil,
-				statusDiff: func(mg resource.Managed) string {
+				statusDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					return cmp.Diff(
-						v1alpha1.BucketStatus{
-							ResourceStatus: v1.ResourceStatus{
-								ConditionedStatus: v1.ConditionedStatus{
-									Conditions: []v1.Condition{
-										{
-											Type:   "Ready",
-											Status: "True",
-											Reason: "Available",
-										},
-									},
-								},
-							},
-							AtProvider: v1alpha1.BucketObservation{
-								Backends: v1alpha1.Backends{
-									"s3-backend-1": &v1alpha1.BackendInfo{
-										BucketStatus: v1alpha1.ReadyStatus,
-									},
-								},
+					assert.True(t,
+						bucket.Status.Conditions[0].Equal(v1.Available()),
+						"condition is not available")
+					assert.Equal(t,
+						v1alpha1.Backends{
+							"s3-backend-1": &v1alpha1.BackendInfo{
+								BucketStatus: v1alpha1.ReadyStatus,
 							},
 						},
-						bucket.Status,
+						bucket.Status.AtProvider.Backends,
+						"unexpected bucket backends",
 					)
 				},
 			},
@@ -242,31 +270,21 @@ func TestCreate(t *testing.T) {
 			},
 			want: want{
 				err: nil,
-				statusDiff: func(mg resource.Managed) string {
+				statusDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					return cmp.Diff(
-						v1alpha1.BucketStatus{
-							ResourceStatus: v1.ResourceStatus{
-								ConditionedStatus: v1.ConditionedStatus{
-									Conditions: []v1.Condition{
-										{
-											Type:   "Ready",
-											Status: "True",
-											Reason: "Available",
-										},
-									},
-								},
-							},
-							AtProvider: v1alpha1.BucketObservation{
-								Backends: v1alpha1.Backends{
-									"s3-backend-3": &v1alpha1.BackendInfo{
-										BucketStatus: v1alpha1.ReadyStatus,
-									},
-								},
+					assert.True(t,
+						bucket.Status.Conditions[0].Equal(v1.Available()),
+						"condition is not available")
+					assert.Equal(t,
+						v1alpha1.Backends{
+							"s3-backend-3": &v1alpha1.BackendInfo{
+								BucketStatus: v1alpha1.ReadyStatus,
 							},
 						},
-						bucket.Status,
+						bucket.Status.AtProvider.Backends,
+						"unexpected bucket backends",
 					)
 				},
 			},
@@ -317,25 +335,13 @@ func TestCreate(t *testing.T) {
 			},
 			want: want{
 				err: nil,
-				statusDiff: func(mg resource.Managed) string {
+				statusDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					return cmp.Diff(
-						v1alpha1.BucketStatus{
-							ResourceStatus: v1.ResourceStatus{
-								ConditionedStatus: v1.ConditionedStatus{
-									Conditions: []v1.Condition{
-										{
-											Type:   "Ready",
-											Status: "False",
-											Reason: "Unavailable",
-										},
-									},
-								},
-							},
-						},
-						bucket.Status,
-					)
+					assert.True(t,
+						bucket.Status.Conditions[0].Equal(v1.Unavailable()),
+						"condition is not unavailable")
 				},
 			},
 		},
@@ -366,17 +372,10 @@ func TestCreate(t *testing.T) {
 			}
 
 			got, err := e.Create(context.Background(), tc.args.mg)
-
-			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
-				t.Errorf("\n%s\ne.Create(...): -want error, +got error:\n%s\n", tc.reason, diff)
-			}
-			if diff := cmp.Diff(tc.want.o, got); diff != "" {
-				t.Errorf("\n%s\ne.Create(...): -want, +got:\n%s\n", tc.reason, diff)
-			}
+			assert.ErrorIs(t, err, tc.want.err, "unexpected err")
+			assert.Equal(t, got, tc.want.o, "unexpected result")
 			if tc.want.statusDiff != nil {
-				if diff := tc.want.statusDiff(tc.args.mg); diff != "" {
-					t.Errorf("\n%s\ne.Create(...): -want, +got:\n%s\n", tc.reason, diff)
-				}
+				tc.want.statusDiff(t, tc.args.mg)
 			}
 		})
 	}

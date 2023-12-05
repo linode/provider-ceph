@@ -11,12 +11,11 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	"github.com/crossplane/crossplane-runtime/pkg/test"
-	"github.com/google/go-cmp/cmp"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,13 +23,11 @@ var (
 	unexpectedItem resource.Managed
 )
 
-//nolint:maintidx // Function requires numerous checks.
-func TestObserve(t *testing.T) {
+func TestObserveBasicErrors(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		backendStore    *backendstore.BackendStore
-		autoPauseBucket bool
+		backendStore *backendstore.BackendStore
 	}
 
 	type args struct {
@@ -38,7 +35,6 @@ func TestObserve(t *testing.T) {
 	}
 
 	type want struct {
-		o   managed.ExternalObservation
 		err error
 	}
 
@@ -89,6 +85,43 @@ func TestObserve(t *testing.T) {
 				err: errors.New(errNoS3BackendsStored),
 			},
 		},
+	}
+	for name, tc := range cases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			e := external{backendStore: tc.fields.backendStore, log: logging.NewNopLogger()}
+			_, err := e.Observe(context.Background(), tc.args.mg)
+			assert.EqualError(t, err, tc.want.err.Error(), "unexpected error")
+		})
+	}
+}
+
+//nolint:maintidx // Function requires numerous checks.
+func TestObserve(t *testing.T) {
+	t.Parallel()
+
+	type fields struct {
+		backendStore    *backendstore.BackendStore
+		autoPauseBucket bool
+	}
+
+	type args struct {
+		mg resource.Managed
+	}
+
+	type want struct {
+		o   managed.ExternalObservation
+		err error
+	}
+
+	cases := map[string]struct {
+		reason string
+		fields fields
+		args   args
+		want   want
+	}{
 		"Bucket doesn't have any living backend": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
@@ -481,12 +514,8 @@ func TestObserve(t *testing.T) {
 
 			e := external{backendStore: tc.fields.backendStore, autoPauseBucket: tc.fields.autoPauseBucket, log: logging.NewNopLogger()}
 			got, err := e.Observe(context.Background(), tc.args.mg)
-			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
-				t.Errorf("\n%s\ne.Observe(...): -want error, +got error:\n%s\n", tc.reason, diff)
-			}
-			if diff := cmp.Diff(tc.want.o, got); diff != "" {
-				t.Errorf("\n%s\ne.Observe(...): -want, +got:\n%s\n", tc.reason, diff)
-			}
+			assert.ErrorIs(t, err, tc.want.err, "unexpected error")
+			assert.Equal(t, got, tc.want.o, "unexpected result")
 		})
 	}
 }

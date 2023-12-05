@@ -2,6 +2,7 @@ package providerconfig
 
 import (
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
@@ -9,7 +10,6 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/controller/providerconfig/backendmonitor"
 	"github.com/linode/provider-ceph/internal/controller/providerconfig/healthcheck"
-	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 

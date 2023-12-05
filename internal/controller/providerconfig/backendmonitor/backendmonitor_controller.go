@@ -19,7 +19,7 @@ package backendmonitor
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"

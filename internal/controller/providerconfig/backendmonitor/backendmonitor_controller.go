@@ -19,6 +19,7 @@ package backendmonitor
 import (
 	"context"
 
+	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"go.opentelemetry.io/otel"
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +31,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
+	"github.com/linode/provider-ceph/internal/utils"
 )
 
 const (
@@ -79,13 +81,8 @@ func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 		return errors.Wrap(err, errCreateClient)
 	}
 
-	var health apisv1alpha1.HealthStatus
-	health = apisv1alpha1.HealthStatusUnknown
-	if pc.Status.Health != "" {
-		health = pc.Status.Health
-	}
-
-	c.backendStore.AddOrUpdateBackend(pc.Name, s3client, true, health)
+	readyCondition := pc.Status.GetCondition(v1.TypeReady)
+	c.backendStore.AddOrUpdateBackend(pc.Name, s3client, true, utils.MapConditionToHealthStatus(readyCondition))
 
 	return nil
 }

@@ -7,16 +7,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	"github.com/crossplane/crossplane-runtime/pkg/test"
-	"github.com/google/go-cmp/cmp"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
-	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,13 +23,11 @@ var (
 	unexpectedItem resource.Managed
 )
 
-//nolint:maintidx // Function requires numerous checks.
-func TestObserve(t *testing.T) {
+func TestObserveBasicErrors(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		backendStore    *backendstore.BackendStore
-		autoPauseBucket bool
+		backendStore *backendstore.BackendStore
 	}
 
 	type args struct {
@@ -38,7 +35,6 @@ func TestObserve(t *testing.T) {
 	}
 
 	type want struct {
-		o   managed.ExternalObservation
 		err error
 	}
 
@@ -89,6 +85,43 @@ func TestObserve(t *testing.T) {
 				err: errors.New(errNoS3BackendsStored),
 			},
 		},
+	}
+	for name, tc := range cases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			e := external{backendStore: tc.fields.backendStore, log: logging.NewNopLogger()}
+			_, err := e.Observe(context.Background(), tc.args.mg)
+			assert.EqualError(t, err, tc.want.err.Error(), "unexpected error")
+		})
+	}
+}
+
+//nolint:maintidx // Function requires numerous checks.
+func TestObserve(t *testing.T) {
+	t.Parallel()
+
+	type fields struct {
+		backendStore    *backendstore.BackendStore
+		autoPauseBucket bool
+	}
+
+	type args struct {
+		mg resource.Managed
+	}
+
+	type want struct {
+		o   managed.ExternalObservation
+		err error
+	}
+
+	cases := map[string]struct {
+		reason string
+		fields fields
+		args   args
+		want   want
+	}{
 		"Bucket doesn't have any living backend": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
@@ -173,7 +206,7 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						ResourceSpec: v1.ResourceSpec{
@@ -219,7 +252,7 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
@@ -273,7 +306,7 @@ func TestObserve(t *testing.T) {
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "bucket-check-external-error",
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
@@ -328,7 +361,7 @@ func TestObserve(t *testing.T) {
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "bucket-check-external-not-exists",
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
@@ -383,7 +416,7 @@ func TestObserve(t *testing.T) {
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "bucket-check-external-ok",
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
@@ -438,7 +471,7 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{inUseFinalizer},
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
@@ -481,12 +514,8 @@ func TestObserve(t *testing.T) {
 
 			e := external{backendStore: tc.fields.backendStore, autoPauseBucket: tc.fields.autoPauseBucket, log: logging.NewNopLogger()}
 			got, err := e.Observe(context.Background(), tc.args.mg)
-			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
-				t.Errorf("\n%s\ne.Observe(...): -want error, +got error:\n%s\n", tc.reason, diff)
-			}
-			if diff := cmp.Diff(tc.want.o, got); diff != "" {
-				t.Errorf("\n%s\ne.Observe(...): -want, +got:\n%s\n", tc.reason, diff)
-			}
+			assert.ErrorIs(t, err, tc.want.err, "unexpected error")
+			assert.Equal(t, got, tc.want.o, "unexpected result")
 		})
 	}
 }

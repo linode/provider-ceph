@@ -19,7 +19,8 @@ package backendmonitor
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	"go.opentelemetry.io/otel"
 	corev1 "k8s.io/api/core/v1"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -27,14 +28,20 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/otel/traces"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
 const (
-	errCreateClient = "cannot create s3 client"
+	errCreateClient      = "failed create s3 client"
+	errGetProviderConfig = "failed to get ProviderConfig"
+	errGetSecret         = "failed to get Secret"
 )
 
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "backendmonitor.Controller.Reconcile")
+	defer span.End()
+
 	c.log.Info("Reconciling backend store", "name", req.Name)
 	providerConfig := &apisv1alpha1.ProviderConfig{}
 	if err := c.kubeClient.Get(ctx, req.NamespacedName, providerConfig); err != nil {
@@ -45,12 +52,20 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 			return ctrl.Result{}, nil
 		}
+		err = errors.Wrap(err, errGetProviderConfig)
+		traces.SetAndRecordError(span, err)
 
 		return ctrl.Result{}, err
 	}
 	// ProviderConfig has been created or updated, add or
 	// update its backend in the backend store.
-	return ctrl.Result{}, c.addOrUpdateBackend(ctx, providerConfig)
+	if err := c.addOrUpdateBackend(ctx, providerConfig); err != nil {
+		traces.SetAndRecordError(span, err)
+
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
 }
 
 func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.ProviderConfig) error {
@@ -79,7 +94,7 @@ func (c *Controller) getProviderConfigSecret(ctx context.Context, secretNamespac
 	secret := &corev1.Secret{}
 	ns := types.NamespacedName{Namespace: secretNamespace, Name: secretName}
 	if err := c.kubeClient.Get(ctx, ns, secret); err != nil {
-		return nil, errors.Wrap(err, "cannot get provider secret")
+		return nil, errors.Wrap(err, errGetSecret)
 	}
 
 	return secret, nil

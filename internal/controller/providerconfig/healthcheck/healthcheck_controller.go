@@ -24,7 +24,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"go.opentelemetry.io/otel"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,51 +39,65 @@ import (
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
 const (
-	errPutHealthCheckFile = "failed to upload health check file"
-	errGetHealthCheckFile = "failed to get health check file"
-	errDoHealthCheck      = "failed to perform health check"
-	errUpdateHealth       = "failed to update health status of provider config"
-	errBackendNotStored   = "backend is not stored"
-	healthCheckSuffix     = "-health-check"
-	healthCheckFile       = "health-check-file"
+	errPutHealthCheckFile       = "failed to upload health check file"
+	errGetHealthCheckFile       = "failed to get health check file"
+	errCreateHealthCheckBucket  = "failed to create health check bucket"
+	errDoHealthCheck            = "failed to perform health check"
+	errHealthCheckCleanup       = "failed to perform health check cleanup"
+	errDeleteHealthCheckBucket  = "failed to delete health check bucket"
+	errDeleteLCValidationBucket = "failed to delete lifecycle configuration validation bucket"
+	errUpdateHealthStatus       = "failed to update health status of provider config"
+	errBackendNotStored         = "backend is not stored in backendstore"
+	healthCheckSuffix           = "-health-check"
+	healthCheckFile             = "health-check-file"
 )
 
-func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
-	ctx, span := otel.Tracer("").Start(ctx, "healthcheck.Controllec.Reconcile")
+func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "healthcheck.Controller.Reconcile")
 	defer span.End()
 
-	c.log.Info("Reconciling health of s3 backend", "backend_name", req.Name)
+	c.log.Info("Reconciling health of s3 backend", consts.KeyBackendName, req.Name)
 
 	bucketName := req.Name + healthCheckSuffix
 
 	providerConfig := &apisv1alpha1.ProviderConfig{}
-	if err = c.kubeClient.Get(ctx, req.NamespacedName, providerConfig); err != nil {
+	if err := c.kubeClient.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
 			// ProviderConfig has been deleted, perform cleanup.
-			return ctrl.Result{}, c.cleanup(ctx, req, bucketName)
+			if err := c.cleanup(ctx, req, bucketName); err != nil {
+				err = errors.Wrap(err, errHealthCheckCleanup)
+				traces.SetAndRecordError(span, err)
+
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, nil
 		}
 
-		return
+		return ctrl.Result{}, err
 	}
 
 	if providerConfig.Spec.DisableHealthCheck {
-		c.log.Info("Health check is disabled for s3 backend", "backend_name", providerConfig.Name)
+		c.log.Info("Health check is disabled for s3 backend", consts.KeyBackendName, providerConfig.Name)
 
 		c.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
 
-		if updateErr := UpdateProviderConfigStatus(ctx, c.kubeClient, providerConfig, func(_, pcLatest *apisv1alpha1.ProviderConfig) {
+		if err := UpdateProviderConfigStatus(ctx, c.kubeClient, providerConfig, func(_, pcLatest *apisv1alpha1.ProviderConfig) {
 			pcLatest.Status.Health = apisv1alpha1.HealthStatusUnknown
-		}); updateErr != nil {
-			err = errors.Wrap(updateErr, errUpdateHealth)
+		}); err != nil {
+			err = errors.Wrap(err, errUpdateHealthStatus)
 			traces.SetAndRecordError(span, err)
+
+			return ctrl.Result{}, err
 		}
 
-		return
+		return ctrl.Result{}, nil
 	}
 
 	// Store the health status before the check so that we can compare
@@ -96,34 +110,38 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.
 	defer func() {
 		c.backendStore.SetBackendHealthStatus(req.Name, providerConfig.Status.Health)
 
-		if updateErr := UpdateProviderConfigStatus(ctx, c.kubeClient, providerConfig, func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
+		if err := UpdateProviderConfigStatus(ctx, c.kubeClient, providerConfig, func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
 			pcLatest.Status.Health = pcDeepCopy.Status.Health
 			pcLatest.Status.Reason = pcDeepCopy.Status.Reason
-		}); updateErr != nil {
-			err = errors.Wrap(updateErr, err.Error())
+		}); err != nil {
+			err = errors.Wrap(err, errUpdateHealthStatus)
+			traces.SetAndRecordError(span, err)
 		}
 	}()
 
 	// Create a health check bucket on the backend if one does not already exist.
-	if err = c.bucketExists(ctx, req.Name, bucketName); err != nil {
-		if err = c.createBucket(ctx, req.Name, bucketName); err != nil {
-			c.log.Info("Failed to create bucket for health check on s3 backend", "bucket_name", bucketName, "backend_name", providerConfig.Name)
+	if err := c.bucketExists(ctx, req.Name, bucketName); err != nil {
+		if err := c.createBucket(ctx, req.Name, bucketName); err != nil {
+			c.log.Info("Failed to create bucket for health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
 			providerConfig.Status.Reason = fmt.Sprintf("failed to create health check bucket: %v", err.Error())
+			err = errors.Wrap(err, errCreateHealthCheckBucket)
+			traces.SetAndRecordError(span, err)
 
-			return
+			return ctrl.Result{}, err
 		}
 	}
 
 	// Perform the health check. By calling this function, we are implicitly updating
 	// the health status of the ProviderConfig with whatever the health check reports.
-	if err = c.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
-		traces.SetAndRecordError(span, err)
-		c.log.Info("Failed to do health check on s3 backend", "bucket_name", bucketName, "backend_name", providerConfig.Name)
+	if err := c.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
+		c.log.Info("Failed to do health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
 		providerConfig.Status.Reason = errDoHealthCheck + ": " + err.Error()
+		err = errors.Wrap(err, errDoHealthCheck)
+		traces.SetAndRecordError(span, err)
 
-		return
+		return ctrl.Result{}, err
 	}
 
 	// Check if the backend is healthy, where prior to the check it was unhealthy.
@@ -131,18 +149,16 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.
 	// on this backend. We do this to allow these Bucket CRs be reconciled again.
 	healthAfterCheck := providerConfig.Status.Health
 	if healthAfterCheck == apisv1alpha1.HealthStatusHealthy && healthBeforeCheck != healthAfterCheck {
-		c.log.Info("Backend is healthy where previously it was unhealthy - unpausing all Buckets on backend to allow Observation", "backend_name", providerConfig.Name)
+		c.log.Info("Backend is healthy where previously it was unhealthy - unpausing all Buckets on backend to allow Observation", consts.KeyBackendName, providerConfig.Name)
 		go c.unpauseBuckets(ctx, providerConfig.Name)
 	}
 
 	// Health check interval is 30s by default.
 	// It is safe to requeue after the same object multiple times,
 	// because controller runtime reconcilies only once.
-	res = ctrl.Result{
+	return ctrl.Result{
 		RequeueAfter: time.Duration(providerConfig.Spec.HealthCheckIntervalSeconds) * time.Second,
-	}
-
-	return
+	}, nil
 }
 
 // cleanup deletes the health check bucket and the lifecycle configuration validation bucket
@@ -150,20 +166,24 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.
 func (c *Controller) cleanup(ctx context.Context, req ctrl.Request, bucketName string) error {
 	backendClient := c.backendStore.GetBackendClient(req.Name)
 	if backendClient == nil {
-		c.log.Info("Backend client not found during health check bucket cleanup - aborting cleanup", "backend_name", req.Name)
+		c.log.Info("Backend client not found during health check bucket cleanup - aborting cleanup", consts.KeyBackendName, req.Name)
 
 		return nil
 	}
 
-	c.log.Info("Deleting health check bucket", "bucket_name", bucketName, "backend_name", req.Name)
+	c.log.Info("Deleting health check bucket", consts.KeyBucketName, bucketName, consts.KeyBackendName, req.Name)
 
 	if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(bucketName)); err != nil {
-		return err
+		return errors.Wrap(err, errDeleteHealthCheckBucket)
 	}
 
-	c.log.Info("Deleting lifecycle configuration validation bucket", "bucket_name", v1alpha1.LifecycleConfigValidationBucketName, "backend_name", req.Name)
+	c.log.Info("Deleting lifecycle configuration validation bucket", consts.KeyBucketName, v1alpha1.LifecycleConfigValidationBucketName, consts.KeyBackendName, req.Name)
 
-	return s3internal.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName))
+	if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName)); err != nil {
+		return errors.Wrap(err, errDeleteLCValidationBucket)
+	}
+
+	return nil
 }
 
 // doHealthCheck performs a PutObject and GetObject on the health check bucket on the backend.
@@ -173,10 +193,7 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 
 	s3BackendClient := c.backendStore.GetBackendClient(providerConfig.Name)
 	if s3BackendClient == nil {
-		err := errors.New(errBackendNotStored)
-		traces.SetAndRecordError(span, err)
-
-		return err
+		return errors.New(errBackendNotStored)
 	}
 
 	_, putErr := s3BackendClient.PutObject(ctx, &s3.PutObjectInput{
@@ -254,14 +271,14 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 		return c.kubeClient.List(ctx, buckets, &client.ListOptions{LabelSelector: listLabels})
 	})
 	if err != nil {
-		c.log.Info("Error attempting to list Buckets on backend", "error", err.Error(), "backend_name", s3BackendName)
+		c.log.Info("Error attempting to list Buckets on backend", "error", err.Error(), consts.KeyBackendName, s3BackendName)
 
 		return
 	}
 
 	for i := range buckets.Items {
 		i := i
-		c.log.Debug("Attempting to unpause bucket", "bucket_name", buckets.Items[i].Name)
+		c.log.Debug("Attempting to unpause bucket", consts.KeyBucketName, buckets.Items[i].Name)
 		err := retry.OnError(wait.Backoff{
 			Steps:    steps,
 			Duration: duration,

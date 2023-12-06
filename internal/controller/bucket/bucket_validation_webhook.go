@@ -20,12 +20,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
 	"github.com/linode/provider-ceph/internal/utils"
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -103,24 +103,25 @@ func (b *BucketValidator) validateLifecycleConfiguration(ctx context.Context, bu
 	// Cleanup of this bucket is performed by the health-check controller on deletion of the ProviderConfig.
 	var err error
 	for i := 0; i < s3internal.RequestRetries; i++ {
-		_, err = s3Client.CreateBucket(ctx, s3internal.BucketToCreateBucketInput(dummyBucket))
+		_, err = s3internal.CreateBucket(ctx, s3Client, s3internal.BucketToCreateBucketInput(dummyBucket))
 		if resource.Ignore(s3internal.IsAlreadyExists, err) == nil {
 			break
 		}
 	}
 	if resource.Ignore(s3internal.IsAlreadyExists, err) != nil {
-		return errors.Wrap(err, errCreateBucket)
+		return err
 	}
 
 	// Attempt to Put the lifecycle config.
+	dummyBucket.Spec.ForProvider.LifecycleConfiguration = bucket.Spec.ForProvider.LifecycleConfiguration
 	for i := 0; i < s3internal.RequestRetries; i++ {
-		_, err = s3Client.PutBucketLifecycleConfiguration(ctx, s3internal.GenerateLifecycleConfigurationInput(validationBucketName, bucket.Spec.ForProvider.LifecycleConfiguration))
+		_, err = s3internal.PutBucketLifecycleConfiguration(ctx, s3Client, dummyBucket)
 		if err == nil {
 			break
 		}
 	}
 	if err != nil {
-		return errors.Wrap(err, errPutLifecycleConfig)
+		return err
 	}
 
 	return nil

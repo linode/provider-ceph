@@ -1,30 +1,22 @@
 package bucket
 
 const (
-	errNotBucket                = "managed resource is not a Bucket custom resource"
-	errTrackPCUsage             = "cannot track ProviderConfig usage"
-	errCacheInit                = "cannot init Bucket cache"
-	errGetPC                    = "cannot get ProviderConfig"
-	errListPC                   = "cannot list ProviderConfigs"
-	errGetBucket                = "cannot get Bucket"
-	errListBuckets              = "cannot list Buckets"
-	errCreateBucket             = "cannot create Bucket"
-	errDeleteBucket             = "cannot delete Bucket"
-	errUpdateBucket             = "cannot update Bucket"
-	errListObjects              = "cannot list objects"
-	errDeleteObject             = "cannot delete object"
-	errGetCreds                 = "cannot get credentials"
-	errBackendNotStored         = "s3 backend is not stored"
-	errBackendInactive          = "s3 backend is inactive"
-	errNoS3BackendsStored       = "no s3 backends stored"
-	errNoS3BackendsRegistered   = "no s3 backends registered"
-	errMissingS3Backend         = "missing s3 backends"
-	errCodeBucketNotFound       = "NotFound"
-	errFailedToCreateClient     = "failed to create s3 client"
-	errBucketCreationInProgress = "bucket creation in progress"
-	errPutLifecycleConfig       = "cannot put Bucket lifecycle configuration"
-	errDeleteLifecycle          = "cannot delete Bucket lifecycle"
-	errGetLifecycleConfig       = "cannot get Bucket lifecycle configuration"
+	// k8s error messages.
+	errNotBucket      = "managed resource is not a Bucket custom resource"
+	errTrackPCUsage   = "failed to track ProviderConfig usage"
+	errGetPC          = "failed to get ProviderConfig"
+	errUpdateBucketCR = "failed to update Bucket CR"
 
-	inUseFinalizer = "bucket-in-use.provider-ceph.crossplane.io"
+	// Backend store error messages.
+	errNoS3BackendsStored = "no s3 backends stored in backendstore"
+	errNoActiveS3Backends = "no active s3 backends in backendstore"
+	errMissingS3Backend   = "one or more desired providers are inactive or unhealthy"
+
+	// Subresource error messages.
+	errObserveSubresource = "failed to observe bucket subresource"
+	errHandleSubresource  = "failed to handle bucket subresource"
+
+	// Lifecycle configuration error messages.
+	errObserveLifecycleConfig = "failed to observe bucket lifecycle configuration"
+	errHandleLifecycleConfig  = "failed to handle bucket lifecycle configuration"
 )

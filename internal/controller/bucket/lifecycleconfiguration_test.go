@@ -23,31 +23,23 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
-	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/pkg/test"
-	"github.com/google/go-cmp/cmp"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	s3internal "github.com/linode/provider-ceph/internal/s3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
-	errExternal = "external error"
+	errExternal = errors.New("external error")
 	days1       = int32(1)
 	days3       = int32(3)
 )
-
-// Unlike many Kubernetes projects Crossplane does not use third party testing
-// libraries, per the common Go test review comments. Crossplane encourages the
-// use of table driven unit tests. The tests of the crossplane-runtime project
-// are representative of the testing style Crossplane encourages.
-//
-// https://github.com/golang/go/wiki/TestComments
-// https://github.com/crossplane/crossplane/blob/master/CONTRIBUTING.md#contributing-code
 
 //nolint:maintidx // Function requires numerous checks.
 func TestObserveBackend(t *testing.T) {
@@ -81,7 +73,7 @@ func TestObserveBackend(t *testing.T) {
 						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{},
-							}, errors.New(errExternal)
+							}, errExternal
 						},
 					}
 
@@ -101,7 +93,7 @@ func TestObserveBackend(t *testing.T) {
 			},
 			want: want{
 				status: NeedsUpdate,
-				err:    errors.Wrap(errors.New(errExternal), errGetLifecycleConfig),
+				err:    errExternal,
 			},
 		},
 		"Lifecycle config not specified in CR but exists on backend so NeedsDeletion": {
@@ -150,7 +142,7 @@ func TestObserveBackend(t *testing.T) {
 						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{},
-							}, &smithy.GenericAPIError{Code: LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
 						},
 					}
 
@@ -233,7 +225,7 @@ func TestObserveBackend(t *testing.T) {
 						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{},
-							}, &smithy.GenericAPIError{Code: LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
 						},
 					}
 
@@ -284,7 +276,7 @@ func TestObserveBackend(t *testing.T) {
 										},
 									},
 								},
-							}, &smithy.GenericAPIError{Code: LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
 						},
 					}
 
@@ -331,7 +323,7 @@ func TestObserveBackend(t *testing.T) {
 										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
 									},
 								},
-							}, &smithy.GenericAPIError{Code: LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
 						},
 					}
 
@@ -384,7 +376,7 @@ func TestObserveBackend(t *testing.T) {
 										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
 									},
 								},
-							}, &smithy.GenericAPIError{Code: LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
 						},
 					}
 
@@ -429,12 +421,8 @@ func TestObserveBackend(t *testing.T) {
 
 			c := NewLifecycleConfigurationClient(tc.fields.backendStore, logging.NewNopLogger())
 			got, err := c.observeBackend(context.Background(), tc.args.bucket, tc.args.backendName)
-			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
-				t.Errorf("\n%s\ne.observeBackend(...): -want error, +got error:\n%s\n", tc.reason, diff)
-			}
-			if diff := cmp.Diff(tc.want.status, got); diff != "" {
-				t.Errorf("\n%s\ne.observeBackend(...): -want, +got:\n%s\n", tc.reason, diff)
-			}
+			assert.ErrorIs(t, err, tc.want.err, "unexpected error")
+			assert.Equal(t, tc.want.status, got, "unexpected status")
 		})
 	}
 }

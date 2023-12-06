@@ -6,18 +6,26 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/s3/cache"
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 )
 
 const (
-	errListObjects  = "cannot list objects"
-	errDeleteObject = "cannot delete object"
+	errListObjects  = "failed to list objects"
+	errDeleteObject = "failed to delete object"
+
+	errGetBucket    = "failed to get bucket"
+	errListBuckets  = "failed to list buckets"
+	errCreateBucket = "failed to create bucket"
+	errUpdateBucket = "failed to update bucket"
+	errDeleteBucket = "failed to delete bucket"
+	errHeadBucket   = "failed to perform head bucket"
 
 	RequestRetries = 5
 )
@@ -70,6 +78,9 @@ func BucketToPutBucketOwnershipControlsInput(bucket *v1alpha1.Bucket) *s3.PutBuc
 }
 
 func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
+	ctx, span := otel.Tracer("").Start(ctx, "DeleteBucket")
+	defer span.End()
+
 	bucketExists, err := BucketExists(ctx, s3Backend, *bucketName)
 	if err != nil {
 		return err
@@ -94,13 +105,19 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 		if NoSuchBucket(err) {
 			return nil
 		}
+		traces.SetAndRecordError(span, err)
 
-		return err
+		return errors.Wrap(err, errDeleteBucket)
 	}
 
 	_, err = s3Backend.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: bucketName})
+	if resource.Ignore(IsNotFound, err) != nil {
+		traces.SetAndRecordError(span, err)
 
-	return resource.Ignore(IsNotFound, err)
+		return errors.Wrap(err, errDeleteBucket)
+	}
+
+	return nil
 }
 
 func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
@@ -111,7 +128,10 @@ func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, b
 	for {
 		objects, err := s3Backend.ListObjectsV2(ctx, objectsInput)
 		if err != nil {
-			return errors.Wrap(err, errListObjects)
+			err = errors.Wrap(err, errListObjects)
+			traces.SetAndRecordError(span, err)
+
+			return err
 		}
 
 		g := new(errgroup.Group)
@@ -123,7 +143,10 @@ func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, b
 		}
 
 		if err := g.Wait(); err != nil {
-			return errors.Wrap(err, errDeleteObject)
+			err = errors.Wrap(err, errDeleteObject)
+			traces.SetAndRecordError(span, err)
+
+			return err
 		}
 
 		// If the bucket contains many objects, the ListObjectsV2() call
@@ -148,7 +171,10 @@ func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Cl
 	for {
 		objectVersions, err := s3Backend.ListObjectVersions(ctx, objVersionsInput)
 		if err != nil {
-			return errors.Wrap(err, errListObjects)
+			err = errors.Wrap(err, errListObjects)
+			traces.SetAndRecordError(span, err)
+
+			return err
 		}
 
 		g := new(errgroup.Group)
@@ -167,7 +193,10 @@ func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Cl
 		}
 
 		if err := g.Wait(); err != nil {
-			return errors.Wrap(err, errDeleteObject)
+			err = errors.Wrap(err, errDeleteObject)
+			traces.SetAndRecordError(span, err)
+
+			return err
 		}
 
 		// If the bucket contains many objects, the ListObjectVersionsV2() call
@@ -200,15 +229,23 @@ func deleteObject(ctx context.Context, s3Backend backendstore.S3Client, bucket, 
 			return nil
 		}
 	}
+	traces.SetAndRecordError(span, err)
 
 	return err
 }
 
 func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *s3.CreateBucketInput) (*s3.CreateBucketOutput, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "CreateBucket")
+	defer span.End()
+
 	resp, err := s3Backend.CreateBucket(ctx, bucket)
-	if err == nil || resource.Ignore(IsAlreadyExists, err) == nil {
-		cache.Set(*bucket.Bucket)
+	if resource.Ignore(IsAlreadyExists, err) != nil {
+		traces.SetAndRecordError(span, err)
+
+		return resp, errors.Wrap(err, errCreateBucket)
 	}
+
+	cache.Set(*bucket.Bucket)
 
 	return resp, err
 }
@@ -219,7 +256,14 @@ func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 
 	_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
 	if err != nil {
-		return false, resource.IgnoreAny(err, NoSuchBucket, IsNotFound)
+		// An IsNotFound error means the call was successful
+		// and the bucket does not exist so we return no error.
+		if resource.Ignore(IsNotFound, err) == nil {
+			return false, nil
+		}
+		traces.SetAndRecordError(span, err)
+
+		return false, errors.Wrap(err, errHeadBucket)
 	}
 
 	cache.Set(bucketName)

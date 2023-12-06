@@ -4,11 +4,9 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/s3/cache"
@@ -17,9 +15,6 @@ import (
 )
 
 const (
-	errListObjects  = "failed to list objects"
-	errDeleteObject = "failed to delete object"
-
 	errGetBucket    = "failed to get bucket"
 	errListBuckets  = "failed to list buckets"
 	errCreateBucket = "failed to create bucket"
@@ -30,51 +25,42 @@ const (
 	RequestRetries = 5
 )
 
-func BucketToCreateBucketInput(bucket *v1alpha1.Bucket) *s3.CreateBucketInput {
-	createBucketInput := &s3.CreateBucketInput{
-		ACL:                        s3types.BucketCannedACL(aws.ToString(bucket.Spec.ForProvider.ACL)),
-		Bucket:                     aws.String(bucket.Name),
-		GrantFullControl:           bucket.Spec.ForProvider.GrantFullControl,
-		GrantRead:                  bucket.Spec.ForProvider.GrantRead,
-		GrantReadACP:               bucket.Spec.ForProvider.GrantReadACP,
-		GrantWrite:                 bucket.Spec.ForProvider.GrantWrite,
-		GrantWriteACP:              bucket.Spec.ForProvider.GrantWriteACP,
-		ObjectLockEnabledForBucket: aws.ToBool(bucket.Spec.ForProvider.ObjectLockEnabledForBucket),
-		ObjectOwnership:            s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)),
+func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *awss3.CreateBucketInput) (*awss3.CreateBucketOutput, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "CreateBucket")
+	defer span.End()
+
+	resp, err := s3Backend.CreateBucket(ctx, bucket)
+	if resource.Ignore(IsAlreadyExists, err) != nil {
+		traces.SetAndRecordError(span, err)
+
+		return resp, errors.Wrap(err, errCreateBucket)
 	}
 
-	if bucket.Spec.ForProvider.LocationConstraint != "" {
-		createBucketInput.CreateBucketConfiguration = &s3types.CreateBucketConfiguration{
-			LocationConstraint: s3types.BucketLocationConstraint(bucket.Spec.ForProvider.LocationConstraint),
+	cache.Set(*bucket.Bucket)
+
+	return resp, err
+}
+
+func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketName string) (bool, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "BucketExists")
+	defer span.End()
+
+	_, err := s3Backend.HeadBucket(ctx, &awss3.HeadBucketInput{Bucket: aws.String(bucketName)})
+	if err != nil {
+		// An IsNotFound error means the call was successful
+		// and the bucket does not exist so we return no error.
+		if resource.Ignore(IsNotFound, err) == nil {
+			return false, nil
 		}
+		traces.SetAndRecordError(span, err)
+
+		return false, errors.Wrap(err, errHeadBucket)
 	}
 
-	return createBucketInput
-}
+	cache.Set(bucketName)
 
-func BucketToPutBucketACLInput(bucket *v1alpha1.Bucket) *s3.PutBucketAclInput {
-	return &s3.PutBucketAclInput{
-		ACL:              s3types.BucketCannedACL(aws.ToString(bucket.Spec.ForProvider.ACL)),
-		Bucket:           aws.String(bucket.Name),
-		GrantFullControl: bucket.Spec.ForProvider.GrantFullControl,
-		GrantRead:        bucket.Spec.ForProvider.GrantRead,
-		GrantReadACP:     bucket.Spec.ForProvider.GrantReadACP,
-		GrantWrite:       bucket.Spec.ForProvider.GrantWrite,
-		GrantWriteACP:    bucket.Spec.ForProvider.GrantWriteACP,
-	}
-}
-
-func BucketToPutBucketOwnershipControlsInput(bucket *v1alpha1.Bucket) *s3.PutBucketOwnershipControlsInput {
-	return &s3.PutBucketOwnershipControlsInput{
-		Bucket: aws.String(bucket.Name),
-		OwnershipControls: &s3types.OwnershipControls{
-			Rules: []s3types.OwnershipControlsRule{
-				{
-					ObjectOwnership: s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)),
-				},
-			},
-		},
-	}
+	// Bucket exists, return true with no error.
+	return true, nil
 }
 
 func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
@@ -110,7 +96,7 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 		return errors.Wrap(err, errDeleteBucket)
 	}
 
-	_, err = s3Backend.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: bucketName})
+	_, err = s3Backend.DeleteBucket(ctx, &awss3.DeleteBucketInput{Bucket: bucketName})
 	if resource.Ignore(IsNotFound, err) != nil {
 		traces.SetAndRecordError(span, err)
 
@@ -124,9 +110,9 @@ func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, b
 	ctx, span := otel.Tracer("").Start(ctx, "deleteBucketObjects")
 	defer span.End()
 
-	objectsInput := &s3.ListObjectsV2Input{Bucket: bucketName}
+	objectsInput := &awss3.ListObjectsV2Input{Bucket: bucketName}
 	for {
-		objects, err := s3Backend.ListObjectsV2(ctx, objectsInput)
+		objects, err := ListObjectsV2(ctx, s3Backend, objectsInput)
 		if err != nil {
 			err = errors.Wrap(err, errListObjects)
 			traces.SetAndRecordError(span, err)
@@ -138,7 +124,7 @@ func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, b
 		for _, object := range objects.Contents {
 			obj := object
 			g.Go(func() error {
-				return deleteObject(ctx, s3Backend, bucketName, obj.Key, nil)
+				return DeleteObject(ctx, s3Backend, &awss3.DeleteObjectInput{Bucket: bucketName, Key: obj.Key})
 			})
 		}
 
@@ -167,9 +153,9 @@ func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Cl
 	ctx, span := otel.Tracer("").Start(ctx, "deleteBucketObjectVersions")
 	defer span.End()
 
-	objVersionsInput := &s3.ListObjectVersionsInput{Bucket: bucketName}
+	objVersionsInput := &awss3.ListObjectVersionsInput{Bucket: bucketName}
 	for {
-		objectVersions, err := s3Backend.ListObjectVersions(ctx, objVersionsInput)
+		objectVersions, err := ListObjectVersions(ctx, s3Backend, objVersionsInput)
 		if err != nil {
 			err = errors.Wrap(err, errListObjects)
 			traces.SetAndRecordError(span, err)
@@ -181,14 +167,14 @@ func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Cl
 		for _, deleteMarkerEntry := range objectVersions.DeleteMarkers {
 			delMark := deleteMarkerEntry
 			g.Go(func() error {
-				return deleteObject(ctx, s3Backend, bucketName, delMark.Key, delMark.VersionId)
+				return DeleteObject(ctx, s3Backend, &awss3.DeleteObjectInput{Bucket: bucketName, Key: delMark.Key, VersionId: delMark.VersionId})
 			})
 		}
 
 		for _, objectVersion := range objectVersions.Versions {
 			objVer := objectVersion
 			g.Go(func() error {
-				return deleteObject(ctx, s3Backend, bucketName, objVer.Key, objVer.VersionId)
+				return DeleteObject(ctx, s3Backend, &awss3.DeleteObjectInput{Bucket: bucketName, Key: objVer.Key, VersionId: objVer.VersionId})
 			})
 		}
 
@@ -212,83 +198,4 @@ func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Cl
 	}
 
 	return nil
-}
-
-func deleteObject(ctx context.Context, s3Backend backendstore.S3Client, bucket, key, versionId *string) error {
-	ctx, span := otel.Tracer("").Start(ctx, "deleteObject")
-	defer span.End()
-
-	var err error
-	for i := 0; i < RequestRetries; i++ {
-		_, err = s3Backend.DeleteObject(ctx, &s3.DeleteObjectInput{
-			Bucket:    bucket,
-			Key:       key,
-			VersionId: versionId,
-		})
-		if resource.Ignore(IsNotFound, err) == nil {
-			return nil
-		}
-	}
-	traces.SetAndRecordError(span, err)
-
-	return err
-}
-
-func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *s3.CreateBucketInput) (*s3.CreateBucketOutput, error) {
-	ctx, span := otel.Tracer("").Start(ctx, "CreateBucket")
-	defer span.End()
-
-	resp, err := s3Backend.CreateBucket(ctx, bucket)
-	if resource.Ignore(IsAlreadyExists, err) != nil {
-		traces.SetAndRecordError(span, err)
-
-		return resp, errors.Wrap(err, errCreateBucket)
-	}
-
-	cache.Set(*bucket.Bucket)
-
-	return resp, err
-}
-
-func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketName string) (bool, error) {
-	ctx, span := otel.Tracer("").Start(ctx, "BucketExists")
-	defer span.End()
-
-	_, err := s3Backend.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
-	if err != nil {
-		// An IsNotFound error means the call was successful
-		// and the bucket does not exist so we return no error.
-		if resource.Ignore(IsNotFound, err) == nil {
-			return false, nil
-		}
-		traces.SetAndRecordError(span, err)
-
-		return false, errors.Wrap(err, errHeadBucket)
-	}
-
-	cache.Set(bucketName)
-
-	// Bucket exists, return true with no error.
-	return true, nil
-}
-
-// IsAlreadyExists helper function to test for ErrCodeBucketAlreadyOwnedByYou error
-func IsAlreadyExists(err error) bool {
-	var alreadyOwnedByYou *s3types.BucketAlreadyOwnedByYou
-
-	return errors.As(err, &alreadyOwnedByYou)
-}
-
-// IsNotFound helper function to test for NotFound error
-func IsNotFound(err error) bool {
-	var notFoundError *s3types.NotFound
-
-	return errors.As(err, &notFoundError)
-}
-
-// NoSuchBucket helper function to test for NoSuchBucket error
-func NoSuchBucket(err error) bool {
-	var noSuchBucketError *s3types.NoSuchBucket
-
-	return errors.As(err, &noSuchBucketError)
 }

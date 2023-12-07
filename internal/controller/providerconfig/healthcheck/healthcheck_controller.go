@@ -26,6 +26,7 @@ import (
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"go.opentelemetry.io/otel"
+	"golang.org/x/sync/errgroup"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -170,19 +171,26 @@ func (c *Controller) cleanup(ctx context.Context, req ctrl.Request, bucketName s
 		return nil
 	}
 
-	c.log.Info("Deleting health check bucket", consts.KeyBucketName, bucketName, consts.KeyBackendName, req.Name)
+	g := new(errgroup.Group)
+	g.Go(func() error {
+		c.log.Info("Deleting health check bucket", consts.KeyBucketName, bucketName, consts.KeyBackendName, req.Name)
+		if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(bucketName)); err != nil {
+			return errors.Wrap(err, errDeleteHealthCheckBucket)
+		}
 
-	if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(bucketName)); err != nil {
-		return errors.Wrap(err, errDeleteHealthCheckBucket)
-	}
+		return nil
+	})
 
-	c.log.Info("Deleting lifecycle configuration validation bucket", consts.KeyBucketName, v1alpha1.LifecycleConfigValidationBucketName, consts.KeyBackendName, req.Name)
+	g.Go(func() error {
+		c.log.Info("Deleting lifecycle configuration validation bucket", consts.KeyBucketName, v1alpha1.LifecycleConfigValidationBucketName, consts.KeyBackendName, req.Name)
+		if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName)); err != nil {
+			return errors.Wrap(err, errDeleteLCValidationBucket)
+		}
 
-	if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName)); err != nil {
-		return errors.Wrap(err, errDeleteLCValidationBucket)
-	}
+		return nil
+	})
 
-	return nil
+	return g.Wait()
 }
 
 // doHealthCheck performs a PutObject and GetObject on the health check bucket on the backend.

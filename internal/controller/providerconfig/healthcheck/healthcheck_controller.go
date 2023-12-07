@@ -18,7 +18,6 @@ package healthcheck
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -27,6 +26,7 @@ import (
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"go.opentelemetry.io/otel"
+	"golang.org/x/sync/errgroup"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -50,7 +50,6 @@ const (
 	errPutHealthCheckFile       = "failed to upload health check file"
 	errGetHealthCheckFile       = "failed to get health check file"
 	errCreateHealthCheckBucket  = "failed to create health check bucket"
-	errDoHealthCheck            = "failed to perform health check"
 	errHealthCheckCleanup       = "failed to perform health check cleanup"
 	errDeleteHealthCheckBucket  = "failed to delete health check bucket"
 	errDeleteLCValidationBucket = "failed to delete lifecycle configuration validation bucket"
@@ -60,6 +59,7 @@ const (
 	healthCheckFile             = "health-check-file"
 )
 
+//nolint:gocyclo,cyclop // Function requires multiple checks.
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "healthcheck.Controller.Reconcile")
 	defer span.End()
@@ -120,15 +120,31 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}()
 
+	s3BackendClient := c.backendStore.GetBackendClient(providerConfig.Name)
+	if s3BackendClient == nil {
+		err := errors.New(errBackendNotStored)
+		traces.SetAndRecordError(span, err)
+
+		return ctrl.Result{}, err
+	}
+
+	// Check the backend for the existence of the health check bucket.
+	bucketExists, err := s3internal.BucketExists(ctx, s3BackendClient, bucketName)
+	if err != nil {
+		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(err.Error()))
+		traces.SetAndRecordError(span, err)
+
+		return ctrl.Result{}, err
+	}
+
 	// Create a health check bucket on the backend if one does not already exist.
-	if err := c.bucketExists(ctx, req.Name, bucketName); err != nil {
-		if err := c.createBucket(ctx, req.Name, bucketName); err != nil {
+	if !bucketExists {
+		_, err := s3internal.CreateBucket(ctx, s3BackendClient, &s3.CreateBucketInput{Bucket: aws.String(bucketName)})
+		if resource.Ignore(s3internal.IsAlreadyExists, err) != nil {
 			c.log.Info("Failed to create bucket for health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
-			msg := fmt.Sprintf("failed to create health check bucket: %v", err.Error())
-			providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(msg))
-
 			err = errors.Wrap(err, errCreateHealthCheckBucket)
+			providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(err.Error()))
 			traces.SetAndRecordError(span, err)
 
 			return ctrl.Result{}, err
@@ -140,10 +156,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if err := c.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
 		c.log.Info("Failed to do health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
-		msg := errDoHealthCheck + ": " + err.Error()
-		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(msg))
-
-		err = errors.Wrap(err, errDoHealthCheck)
+		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(err.Error()))
 		traces.SetAndRecordError(span, err)
 
 		return ctrl.Result{}, err
@@ -177,19 +190,26 @@ func (c *Controller) cleanup(ctx context.Context, req ctrl.Request, bucketName s
 		return nil
 	}
 
-	c.log.Info("Deleting health check bucket", consts.KeyBucketName, bucketName, consts.KeyBackendName, req.Name)
+	g := new(errgroup.Group)
+	g.Go(func() error {
+		c.log.Info("Deleting health check bucket", consts.KeyBucketName, bucketName, consts.KeyBackendName, req.Name)
+		if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(bucketName)); err != nil {
+			return errors.Wrap(err, errDeleteHealthCheckBucket)
+		}
 
-	if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(bucketName)); err != nil {
-		return errors.Wrap(err, errDeleteHealthCheckBucket)
-	}
+		return nil
+	})
 
-	c.log.Info("Deleting lifecycle configuration validation bucket", consts.KeyBucketName, v1alpha1.LifecycleConfigValidationBucketName, consts.KeyBackendName, req.Name)
+	g.Go(func() error {
+		c.log.Info("Deleting lifecycle configuration validation bucket", consts.KeyBucketName, v1alpha1.LifecycleConfigValidationBucketName, consts.KeyBackendName, req.Name)
+		if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName)); err != nil {
+			return errors.Wrap(err, errDeleteLCValidationBucket)
+		}
 
-	if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName)); err != nil {
-		return errors.Wrap(err, errDeleteLCValidationBucket)
-	}
+		return nil
+	})
 
-	return nil
+	return g.Wait()
 }
 
 // doHealthCheck performs a PutObject and GetObject on the health check bucket on the backend.
@@ -202,51 +222,32 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 		return errors.New(errBackendNotStored)
 	}
 
-	_, putErr := s3BackendClient.PutObject(ctx, &s3.PutObjectInput{
+	if putErr := s3internal.PutObject(ctx, s3BackendClient, &s3.PutObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(healthCheckFile),
 		Body:   strings.NewReader(time.Now().Format(time.RFC850)),
-	})
-	if putErr != nil {
-		return errors.Wrap(putErr, errPutHealthCheckFile)
+	}); putErr != nil {
+		putErr = errors.Wrap(putErr, errPutHealthCheckFile)
+		traces.SetAndRecordError(span, putErr)
+
+		return putErr
 	}
 
-	_, getErr := s3BackendClient.GetObject(ctx, &s3.GetObjectInput{
+	_, getErr := s3internal.GetObject(ctx, s3BackendClient, &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(healthCheckFile),
 	})
 	if getErr != nil {
-		return errors.Wrap(getErr, errGetHealthCheckFile)
+		getErr = errors.Wrap(getErr, errGetHealthCheckFile)
+		traces.SetAndRecordError(span, getErr)
+
+		return getErr
 	}
 
 	// Health check completed successfully, update status.
 	providerConfig.Status.SetConditions(v1alpha1.HealthCheckSuccess())
 
 	return nil
-}
-
-func (c *Controller) bucketExists(ctx context.Context, s3BackendName, bucketName string) error {
-	s3BackendClient := c.backendStore.GetBackendClient(s3BackendName)
-	if s3BackendClient == nil {
-		return errors.New(errBackendNotStored)
-	}
-
-	_, err := s3BackendClient.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
-
-	return err
-}
-
-func (c *Controller) createBucket(ctx context.Context, s3BackendName, bucketName string) error {
-	s3BackendClient := c.backendStore.GetBackendClient(s3BackendName)
-	if s3BackendClient == nil {
-		return errors.New(errBackendNotStored)
-	}
-
-	_, err := s3BackendClient.CreateBucket(ctx, &s3.CreateBucketInput{
-		Bucket: aws.String(bucketName),
-	})
-
-	return resource.Ignore(s3internal.IsAlreadyExists, err)
 }
 
 // unpauseBuckets lists all buckets that exist on the given backend by using the custom

@@ -25,6 +25,8 @@ import (
 	"path/filepath"
 	"time"
 
+	_ "go.uber.org/automaxprocs"
+
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/alecthomas/kingpin.v2"

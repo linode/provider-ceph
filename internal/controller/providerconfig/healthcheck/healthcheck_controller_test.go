@@ -43,8 +43,10 @@ import (
 func TestReconcile(t *testing.T) {
 	t.Parallel()
 	backendName := "test-backend"
+	lowerPutObjErr := errors.New("some put err")
 	putObjErr := errors.New("failed to put object")
 	getObjErr := errors.New("failed to get object")
+	lowerGetObjErr := errors.New("some get err")
 
 	type fields struct {
 		fakeS3Client   func(*backendstorefakes.FakeS3Client)
@@ -145,7 +147,7 @@ func TestReconcile(t *testing.T) {
 					// fail the health check with a PutObject error
 					fake.PutObjectReturns(
 						&s3.PutObjectOutput{},
-						putObjErr,
+						lowerPutObjErr,
 					)
 				},
 				providerConfig: &apisv1alpha1.ProviderConfig{
@@ -175,7 +177,7 @@ func TestReconcile(t *testing.T) {
 			},
 			want: want{
 				res: ctrl.Result{},
-				err: putObjErr,
+				err: lowerPutObjErr,
 				pc: &apisv1alpha1.ProviderConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: backendName,
@@ -188,7 +190,7 @@ func TestReconcile(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									v1alpha1.HealthCheckFail().
-										WithMessage(errDoHealthCheck + ": " + errors.Wrap(putObjErr, errPutHealthCheckFile).Error()),
+										WithMessage(errors.Wrap(errors.Wrap(lowerPutObjErr, putObjErr.Error()), errPutHealthCheckFile).Error()),
 								},
 							},
 						},
@@ -202,7 +204,7 @@ func TestReconcile(t *testing.T) {
 					// fail the health check with a GetObject error
 					fake.GetObjectReturns(
 						&s3.GetObjectOutput{},
-						getObjErr,
+						lowerGetObjErr,
 					)
 				},
 				providerConfig: &apisv1alpha1.ProviderConfig{
@@ -232,7 +234,7 @@ func TestReconcile(t *testing.T) {
 			},
 			want: want{
 				res: ctrl.Result{},
-				err: getObjErr,
+				err: lowerGetObjErr,
 				pc: &apisv1alpha1.ProviderConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: backendName,
@@ -245,7 +247,7 @@ func TestReconcile(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									v1alpha1.HealthCheckFail().
-										WithMessage(errDoHealthCheck + ": " + errors.Wrap(getObjErr, errGetHealthCheckFile).Error()),
+										WithMessage(errors.Wrap(errors.Wrap(lowerGetObjErr, getObjErr.Error()), errGetHealthCheckFile).Error()),
 								},
 							},
 						},

@@ -18,7 +18,6 @@ package healthcheck
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -50,7 +49,6 @@ const (
 	errPutHealthCheckFile       = "failed to upload health check file"
 	errGetHealthCheckFile       = "failed to get health check file"
 	errCreateHealthCheckBucket  = "failed to create health check bucket"
-	errDoHealthCheck            = "failed to perform health check"
 	errHealthCheckCleanup       = "failed to perform health check cleanup"
 	errDeleteHealthCheckBucket  = "failed to delete health check bucket"
 	errDeleteLCValidationBucket = "failed to delete lifecycle configuration validation bucket"
@@ -125,10 +123,8 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		if err := c.createBucket(ctx, req.Name, bucketName); err != nil {
 			c.log.Info("Failed to create bucket for health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
-			msg := fmt.Sprintf("failed to create health check bucket: %v", err.Error())
-			providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(msg))
-
 			err = errors.Wrap(err, errCreateHealthCheckBucket)
+			providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(err.Error()))
 			traces.SetAndRecordError(span, err)
 
 			return ctrl.Result{}, err
@@ -140,10 +136,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if err := c.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
 		c.log.Info("Failed to do health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
-		msg := errDoHealthCheck + ": " + err.Error()
-		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(msg))
-
-		err = errors.Wrap(err, errDoHealthCheck)
+		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(err.Error()))
 		traces.SetAndRecordError(span, err)
 
 		return ctrl.Result{}, err
@@ -202,21 +195,26 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 		return errors.New(errBackendNotStored)
 	}
 
-	_, putErr := s3BackendClient.PutObject(ctx, &s3.PutObjectInput{
+	if putErr := s3internal.PutObject(ctx, s3BackendClient, &s3.PutObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(healthCheckFile),
 		Body:   strings.NewReader(time.Now().Format(time.RFC850)),
-	})
-	if putErr != nil {
-		return errors.Wrap(putErr, errPutHealthCheckFile)
+	}); putErr != nil {
+		putErr = errors.Wrap(putErr, errPutHealthCheckFile)
+		traces.SetAndRecordError(span, putErr)
+
+		return putErr
 	}
 
-	_, getErr := s3BackendClient.GetObject(ctx, &s3.GetObjectInput{
+	_, getErr := s3internal.GetObject(ctx, s3BackendClient, &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(healthCheckFile),
 	})
 	if getErr != nil {
-		return errors.Wrap(getErr, errGetHealthCheckFile)
+		getErr = errors.Wrap(getErr, errGetHealthCheckFile)
+		traces.SetAndRecordError(span, getErr)
+
+		return getErr
 	}
 
 	// Health check completed successfully, update status.

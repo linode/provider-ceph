@@ -131,6 +131,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// Check the backend for the existence of the health check bucket.
 	bucketExists, err := s3internal.BucketExists(ctx, s3BackendClient, bucketName)
 	if err != nil {
+		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(err.Error()))
 		traces.SetAndRecordError(span, err)
 
 		return ctrl.Result{}, err

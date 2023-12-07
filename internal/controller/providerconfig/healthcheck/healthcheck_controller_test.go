@@ -45,8 +45,12 @@ func TestReconcile(t *testing.T) {
 	backendName := "test-backend"
 	lowerPutObjErr := errors.New("some put err")
 	putObjErr := errors.New("failed to put object")
-	getObjErr := errors.New("failed to get object")
 	lowerGetObjErr := errors.New("some get err")
+	getObjErr := errors.New("failed to get object")
+	lowerHeadBucketErr := errors.New("some head bucket err")
+	headBucketErr := errors.New("failed to perform head bucket")
+	lowerCreateBucketErr := errors.New("some create bucket err")
+	createBucketErr := errors.New("failed to create bucket")
 
 	type fields struct {
 		fakeS3Client   func(*backendstorefakes.FakeS3Client)
@@ -134,6 +138,127 @@ func TestReconcile(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									v1alpha1.HealthCheckDisabled(),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"ProviderConfig goes from healthy to unhealthy due to failed head bucket": {
+			fields: fields{
+				fakeS3Client: func(fake *backendstorefakes.FakeS3Client) {
+					// fail the health check with a HeadBucket error
+					fake.HeadBucketReturns(
+						&s3.HeadBucketOutput{},
+						lowerHeadBucketErr,
+					)
+				},
+				providerConfig: &apisv1alpha1.ProviderConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: backendName,
+					},
+					Spec: apisv1alpha1.ProviderConfigSpec{
+						DisableHealthCheck: false,
+					},
+					Status: apisv1alpha1.ProviderConfigStatus{
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckSuccess(),
+								},
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				req: ctrl.Request{
+					NamespacedName: types.NamespacedName{
+						Name: backendName,
+					},
+				},
+			},
+			want: want{
+				res: ctrl.Result{},
+				err: lowerHeadBucketErr,
+				pc: &apisv1alpha1.ProviderConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: backendName,
+					},
+					Spec: apisv1alpha1.ProviderConfigSpec{
+						DisableHealthCheck: false,
+					},
+					Status: apisv1alpha1.ProviderConfigStatus{
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckFail().
+										WithMessage(errors.Wrap(lowerHeadBucketErr, headBucketErr.Error()).Error()),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"ProviderConfig goes from healthy to unhealthy due to failed create bucket": {
+			fields: fields{
+				fakeS3Client: func(fake *backendstorefakes.FakeS3Client) {
+					// HeadBucket returns not found so the bucket
+					// does not exist and must be created.
+					var notFoundError *s3types.NotFound
+					fake.HeadBucketReturns(
+						&s3.HeadBucketOutput{},
+						notFoundError,
+					)
+					// fail the health check with a CreateBucket error
+					fake.CreateBucketReturns(
+						&s3.CreateBucketOutput{},
+						lowerCreateBucketErr,
+					)
+				},
+				providerConfig: &apisv1alpha1.ProviderConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: backendName,
+					},
+					Spec: apisv1alpha1.ProviderConfigSpec{
+						DisableHealthCheck: false,
+					},
+					Status: apisv1alpha1.ProviderConfigStatus{
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckSuccess(),
+								},
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				req: ctrl.Request{
+					NamespacedName: types.NamespacedName{
+						Name: backendName,
+					},
+				},
+			},
+			want: want{
+				res: ctrl.Result{},
+				err: lowerCreateBucketErr,
+				pc: &apisv1alpha1.ProviderConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: backendName,
+					},
+					Spec: apisv1alpha1.ProviderConfigSpec{
+						DisableHealthCheck: false,
+					},
+					Status: apisv1alpha1.ProviderConfigStatus{
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckFail().
+										WithMessage(errors.Wrap(errors.Wrap(lowerCreateBucketErr, createBucketErr.Error()), errCreateHealthCheckBucket).Error()),
 								},
 							},
 						},

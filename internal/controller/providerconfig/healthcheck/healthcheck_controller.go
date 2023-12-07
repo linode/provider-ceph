@@ -24,6 +24,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"go.opentelemetry.io/otel"
 
@@ -42,6 +43,7 @@ import (
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
+	"github.com/linode/provider-ceph/internal/utils"
 )
 
 const (
@@ -89,7 +91,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		c.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
 
 		if err := UpdateProviderConfigStatus(ctx, c.kubeClient, providerConfig, func(_, pcLatest *apisv1alpha1.ProviderConfig) {
-			pcLatest.Status.Health = apisv1alpha1.HealthStatusUnknown
+			pcLatest.Status.SetConditions(v1alpha1.HealthCheckDisabled())
 		}); err != nil {
 			err = errors.Wrap(err, errUpdateHealthStatus)
 			traces.SetAndRecordError(span, err)
@@ -100,19 +102,18 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
-	// Store the health status before the check so that we can compare
-	// with the health status after the check.
-	healthBeforeCheck := providerConfig.Status.Health
+	// Store the condition before the check so that we can compare
+	// with the condition after the check.
+	conditionBeforeCheck := providerConfig.Status.GetCondition(v1.TypeReady)
 
-	// Assume the status is Unhealthy until we can verify otherwise.
-	providerConfig.Status.Health = apisv1alpha1.HealthStatusUnhealthy
-	providerConfig.Status.Reason = ""
+	// Assume the backend is unhealthy and set a HealthCheckFail  condition until we can verify otherwise.
+	providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail())
 	defer func() {
-		c.backendStore.SetBackendHealthStatus(req.Name, providerConfig.Status.Health)
+		health := utils.MapConditionToHealthStatus(providerConfig.Status.GetCondition(v1.TypeReady))
+		c.backendStore.SetBackendHealthStatus(req.Name, health)
 
 		if err := UpdateProviderConfigStatus(ctx, c.kubeClient, providerConfig, func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
-			pcLatest.Status.Health = pcDeepCopy.Status.Health
-			pcLatest.Status.Reason = pcDeepCopy.Status.Reason
+			pcLatest.Status.SetConditions(pcDeepCopy.Status.Conditions...)
 		}); err != nil {
 			err = errors.Wrap(err, errUpdateHealthStatus)
 			traces.SetAndRecordError(span, err)
@@ -124,7 +125,9 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		if err := c.createBucket(ctx, req.Name, bucketName); err != nil {
 			c.log.Info("Failed to create bucket for health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
-			providerConfig.Status.Reason = fmt.Sprintf("failed to create health check bucket: %v", err.Error())
+			msg := fmt.Sprintf("failed to create health check bucket: %v", err.Error())
+			providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(msg))
+
 			err = errors.Wrap(err, errCreateHealthCheckBucket)
 			traces.SetAndRecordError(span, err)
 
@@ -137,7 +140,9 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if err := c.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
 		c.log.Info("Failed to do health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
-		providerConfig.Status.Reason = errDoHealthCheck + ": " + err.Error()
+		msg := errDoHealthCheck + ": " + err.Error()
+		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(msg))
+
 		err = errors.Wrap(err, errDoHealthCheck)
 		traces.SetAndRecordError(span, err)
 
@@ -147,8 +152,9 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// Check if the backend is healthy, where prior to the check it was unhealthy.
 	// In which case, we need to unpause all Bucket CRs that have buckets stored
 	// on this backend. We do this to allow these Bucket CRs be reconciled again.
-	healthAfterCheck := providerConfig.Status.Health
-	if healthAfterCheck == apisv1alpha1.HealthStatusHealthy && healthBeforeCheck != healthAfterCheck {
+	conditionAfterCheck := providerConfig.Status.GetCondition(v1.TypeReady)
+
+	if conditionAfterCheck.Equal(v1alpha1.HealthCheckSuccess()) && !conditionBeforeCheck.Equal(conditionAfterCheck) {
 		c.log.Info("Backend is healthy where previously it was unhealthy - unpausing all Buckets on backend to allow Observation", consts.KeyBackendName, providerConfig.Name)
 		go c.unpauseBuckets(ctx, providerConfig.Name)
 	}
@@ -214,7 +220,7 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 	}
 
 	// Health check completed successfully, update status.
-	providerConfig.Status.Health = apisv1alpha1.HealthStatusHealthy
+	providerConfig.Status.SetConditions(v1alpha1.HealthCheckSuccess())
 
 	return nil
 }

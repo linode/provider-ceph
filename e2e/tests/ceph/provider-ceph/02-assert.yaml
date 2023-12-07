@@ -3,4 +3,7 @@ kind: ProviderConfig
 metadata:
   name: ceph-cluster
 status:
-  health: Healthy
+  conditions:
+  - reason: HealthCheckSuccess
+    status: "True"
+    type: Ready

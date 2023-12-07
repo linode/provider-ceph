@@ -3,21 +3,30 @@ kind: ProviderConfig
 metadata:
   name: localstack-a
 status:
-  health: Healthy
+  conditions:
+  - reason: HealthCheckSuccess
+    status: "True"
+    type: Ready
 ---
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
   name: localstack-b
 status:
-  health: Healthy
+  conditions:
+  - reason: HealthCheckSuccess
+    status: "True"
+    type: Ready
 ---
 apiVersion: ceph.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
   name: localstack-c
 status:
-  health: Healthy
+  conditions:
+  - reason: HealthCheckSuccess
+    status: "True"
+    type: Ready
 ---
 apiVersion: apps/v1
 kind: Deployment

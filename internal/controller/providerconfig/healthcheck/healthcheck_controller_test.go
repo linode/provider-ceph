@@ -23,6 +23,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
@@ -107,9 +108,6 @@ func TestReconcile(t *testing.T) {
 					Spec: apisv1alpha1.ProviderConfigSpec{
 						DisableHealthCheck: true,
 					},
-					Status: apisv1alpha1.ProviderConfigStatus{
-						Health: apisv1alpha1.HealthStatusHealthy,
-					},
 				},
 			},
 			args: args{
@@ -130,7 +128,13 @@ func TestReconcile(t *testing.T) {
 						DisableHealthCheck: true,
 					},
 					Status: apisv1alpha1.ProviderConfigStatus{
-						Health: apisv1alpha1.HealthStatusUnknown,
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckDisabled(),
+								},
+							},
+						},
 					},
 				},
 			},
@@ -152,7 +156,13 @@ func TestReconcile(t *testing.T) {
 						DisableHealthCheck: false,
 					},
 					Status: apisv1alpha1.ProviderConfigStatus{
-						Health: apisv1alpha1.HealthStatusHealthy,
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckSuccess(),
+								},
+							},
+						},
 					},
 				},
 			},
@@ -174,8 +184,14 @@ func TestReconcile(t *testing.T) {
 						DisableHealthCheck: false,
 					},
 					Status: apisv1alpha1.ProviderConfigStatus{
-						Health: apisv1alpha1.HealthStatusUnhealthy,
-						Reason: errDoHealthCheck + ": " + errors.Wrap(putObjErr, errPutHealthCheckFile).Error(),
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckFail().
+										WithMessage(errDoHealthCheck + ": " + errors.Wrap(putObjErr, errPutHealthCheckFile).Error()),
+								},
+							},
+						},
 					},
 				},
 			},
@@ -197,7 +213,13 @@ func TestReconcile(t *testing.T) {
 						DisableHealthCheck: false,
 					},
 					Status: apisv1alpha1.ProviderConfigStatus{
-						Health: apisv1alpha1.HealthStatusHealthy,
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckSuccess(),
+								},
+							},
+						},
 					},
 				},
 			},
@@ -219,8 +241,14 @@ func TestReconcile(t *testing.T) {
 						DisableHealthCheck: false,
 					},
 					Status: apisv1alpha1.ProviderConfigStatus{
-						Health: apisv1alpha1.HealthStatusUnhealthy,
-						Reason: errDoHealthCheck + ": " + errors.Wrap(getObjErr, errGetHealthCheckFile).Error(),
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckFail().
+										WithMessage(errDoHealthCheck + ": " + errors.Wrap(getObjErr, errGetHealthCheckFile).Error()),
+								},
+							},
+						},
 					},
 				},
 			},
@@ -235,7 +263,13 @@ func TestReconcile(t *testing.T) {
 						DisableHealthCheck: false,
 					},
 					Status: apisv1alpha1.ProviderConfigStatus{
-						Health: apisv1alpha1.HealthStatusUnknown,
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckFail(),
+								},
+							},
+						},
 					},
 				},
 				autopause: true,
@@ -297,7 +331,141 @@ func TestReconcile(t *testing.T) {
 						DisableHealthCheck: false,
 					},
 					Status: apisv1alpha1.ProviderConfigStatus{
-						Health: apisv1alpha1.HealthStatusHealthy,
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckSuccess(),
+								},
+							},
+						},
+					},
+				},
+				bucketList: &v1alpha1.BucketList{
+					Items: []v1alpha1.Bucket{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "bucket-1",
+								Labels: map[string]string{
+									v1alpha1.BackendLabelPrefix + backendName: "true",
+									meta.AnnotationKeyReconciliationPaused:    "",
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "bucket-2",
+								Labels: map[string]string{
+									v1alpha1.BackendLabelPrefix + backendName: "true",
+									meta.AnnotationKeyReconciliationPaused:    "",
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "bucket-3",
+								Labels: map[string]string{
+									v1alpha1.BackendLabelPrefix + backendName: "true",
+									meta.AnnotationKeyReconciliationPaused:    "",
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "bucket-4",
+								Labels: map[string]string{
+									meta.AnnotationKeyReconciliationPaused: "true",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"ProviderConfig goes from health check disabled to healthy so its buckets should be unpaused": {
+			fields: fields{
+				providerConfig: &apisv1alpha1.ProviderConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: backendName,
+					},
+					Spec: apisv1alpha1.ProviderConfigSpec{
+						DisableHealthCheck: false,
+					},
+					Status: apisv1alpha1.ProviderConfigStatus{
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckDisabled(),
+								},
+							},
+						},
+					},
+				},
+				autopause: true,
+				bucketList: &v1alpha1.BucketList{
+					Items: []v1alpha1.Bucket{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "bucket-1",
+								Labels: map[string]string{
+									v1alpha1.BackendLabelPrefix + backendName: "true",
+									meta.AnnotationKeyReconciliationPaused:    "true",
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "bucket-2",
+								Labels: map[string]string{
+									v1alpha1.BackendLabelPrefix + backendName: "true",
+									meta.AnnotationKeyReconciliationPaused:    "true",
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "bucket-3",
+								Labels: map[string]string{
+									v1alpha1.BackendLabelPrefix + backendName: "true",
+									meta.AnnotationKeyReconciliationPaused:    "",
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "bucket-4",
+								Labels: map[string]string{
+									meta.AnnotationKeyReconciliationPaused: "true",
+								},
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				req: ctrl.Request{
+					NamespacedName: types.NamespacedName{
+						Name: backendName,
+					},
+				},
+			},
+			want: want{
+				res: ctrl.Result{},
+				err: nil,
+				pc: &apisv1alpha1.ProviderConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: backendName,
+					},
+					Spec: apisv1alpha1.ProviderConfigSpec{
+						DisableHealthCheck: false,
+					},
+					Status: apisv1alpha1.ProviderConfigStatus{
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckSuccess(),
+								},
+							},
+						},
 					},
 				},
 				bucketList: &v1alpha1.BucketList{
@@ -392,7 +560,7 @@ func TestReconcile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to get ProviderConfig after reconcile: %s", err.Error())
 			}
-			assert.Equal(t, tc.want.pc.Status, pc.Status, "unexpected result")
+			assert.True(t, tc.want.pc.Status.ConditionedStatus.Equal(&pc.Status.ConditionedStatus), "unexpected condition")
 
 			// Now check that the correct buckets have been unpaused.
 			if tc.want.bucketList == nil {

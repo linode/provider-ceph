@@ -3,4 +3,7 @@ kind: ProviderConfig
 metadata:
   name: localstack-a
 status:
-  health: Unhealthy
+  conditions:
+  - reason: HealthCheckFail
+    status: "False"
+    type: Ready

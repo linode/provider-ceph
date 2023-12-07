@@ -152,14 +152,17 @@ spec:
                   type: object
                 type: array
               health:
-                description: Health of the s3 backend represented by the ProviderConfig
-                  determined by periodic health check.
+                description: 'Health of the s3 backend represented by the ProviderConfig
+                  determined by periodic health check. Deprecated: Use ProviderConfogStatus.ConditionedStatus
+                  instead. This field will be removed in a future release.'
                 enum:
                 - Healthy
                 - Unhealthy
                 - Unknown
                 type: string
               reason:
+                description: 'Deprecated: Use ProviderConfogStatus.ConditionedStatus
+                  instead. This field will be removed in a future release.'
                 type: string
               users:
                 description: Users of this provider configuration.

@@ -59,6 +59,7 @@ const (
 	healthCheckFile             = "health-check-file"
 )
 
+//nolint:gocyclo,cyclop // Function requires multiple checks.
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "healthcheck.Controller.Reconcile")
 	defer span.End()
@@ -119,9 +120,26 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}()
 
+	s3BackendClient := c.backendStore.GetBackendClient(providerConfig.Name)
+	if s3BackendClient == nil {
+		err := errors.New(errBackendNotStored)
+		traces.SetAndRecordError(span, err)
+
+		return ctrl.Result{}, err
+	}
+
+	// Check the backend for the existence of the health check bucket.
+	bucketExists, err := s3internal.BucketExists(ctx, s3BackendClient, bucketName)
+	if err != nil {
+		traces.SetAndRecordError(span, err)
+
+		return ctrl.Result{}, err
+	}
+
 	// Create a health check bucket on the backend if one does not already exist.
-	if err := c.bucketExists(ctx, req.Name, bucketName); err != nil {
-		if err := c.createBucket(ctx, req.Name, bucketName); err != nil {
+	if !bucketExists {
+		_, err := s3internal.CreateBucket(ctx, s3BackendClient, &s3.CreateBucketInput{Bucket: aws.String(bucketName)})
+		if resource.Ignore(s3internal.IsAlreadyExists, err) != nil {
 			c.log.Info("Failed to create bucket for health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
 			err = errors.Wrap(err, errCreateHealthCheckBucket)
@@ -229,30 +247,6 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 	providerConfig.Status.SetConditions(v1alpha1.HealthCheckSuccess())
 
 	return nil
-}
-
-func (c *Controller) bucketExists(ctx context.Context, s3BackendName, bucketName string) error {
-	s3BackendClient := c.backendStore.GetBackendClient(s3BackendName)
-	if s3BackendClient == nil {
-		return errors.New(errBackendNotStored)
-	}
-
-	_, err := s3BackendClient.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucketName)})
-
-	return err
-}
-
-func (c *Controller) createBucket(ctx context.Context, s3BackendName, bucketName string) error {
-	s3BackendClient := c.backendStore.GetBackendClient(s3BackendName)
-	if s3BackendClient == nil {
-		return errors.New(errBackendNotStored)
-	}
-
-	_, err := s3BackendClient.CreateBucket(ctx, &s3.CreateBucketInput{
-		Bucket: aws.String(bucketName),
-	})
-
-	return resource.Ignore(s3internal.IsAlreadyExists, err)
 }
 
 // unpauseBuckets lists all buckets that exist on the given backend by using the custom

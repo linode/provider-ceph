@@ -49,11 +49,10 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 				rule.Expiration.Date = &local.Expiration.Date.Time
 			}
 		}
-		if local.NoncurrentVersionExpiration != nil {
-			if local.NoncurrentVersionExpiration.NoncurrentDays != nil {
-				rule.NoncurrentVersionExpiration = &types.NoncurrentVersionExpiration{NoncurrentDays: *local.NoncurrentVersionExpiration.NoncurrentDays}
-			}
+		if local.NoncurrentVersionExpiration != nil && local.NoncurrentVersionExpiration.NoncurrentDays != nil {
+			rule.NoncurrentVersionExpiration = &types.NoncurrentVersionExpiration{NoncurrentDays: *local.NoncurrentVersionExpiration.NoncurrentDays}
 		}
+
 		if local.NoncurrentVersionTransitions != nil {
 			rule.NoncurrentVersionTransitions = make([]types.NoncurrentVersionTransition, 0)
 			for _, transition := range local.NoncurrentVersionTransitions {

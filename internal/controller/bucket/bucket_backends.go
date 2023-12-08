@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	"github.com/linode/provider-ceph/internal/backendstore"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 )
@@ -33,6 +34,21 @@ func (b *bucketBackends) setBucketCondition(bucketName, backendName string, c xp
 	}
 
 	b.backends[bucketName][backendName].BucketCondition = c
+}
+
+func (b *bucketBackends) getBucketCondition(bucketName, backendName string) *xpv1.Condition {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if _, ok := b.backends[bucketName]; !ok {
+		return nil
+	}
+
+	if _, ok := b.backends[bucketName][backendName]; !ok {
+		return nil
+	}
+
+	return &b.backends[bucketName][backendName].BucketCondition
 }
 
 func (b *bucketBackends) setLifecycleConfigCondition(bucketName, backendName string, c *xpv1.Condition) {
@@ -83,4 +99,29 @@ func (b *bucketBackends) getBackends(bucketName string, beNames []string) v1alph
 	}
 
 	return be
+}
+
+// isBucketAvailableOnBackends checks the backends listed in Spec.Providers against
+// bucketBackends to ensure buckets are considered Available on all desired backends.
+func (b *bucketBackends) isBucketAvailableOnBackends(bucket *v1alpha1.Bucket, c map[string]backendstore.S3Client) bool {
+	for _, backendName := range bucket.Spec.Providers {
+		if _, ok := c[backendName]; !ok {
+			// This backend does not exist in the list of available backends.
+			// The backend may be offline, so it is skipped.
+			continue
+		}
+
+		bucketCondition := b.getBucketCondition(bucket.Name, backendName)
+		if bucketCondition == nil {
+			// The bucket has not been created on this backend.
+			return false
+		}
+
+		if !bucketCondition.Equal(xpv1.Available()) {
+			// The bucket is not Available on this backend.
+			return false
+		}
+	}
+
+	return true
 }

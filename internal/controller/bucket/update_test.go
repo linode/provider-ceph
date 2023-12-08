@@ -136,8 +136,10 @@ func TestUpdateBasicErrors(t *testing.T) {
 	}
 }
 
+//nolint:maintidx // Function requires numerous checks.
 func TestUpdate(t *testing.T) {
 	t.Parallel()
+	someError := errors.New("some error")
 
 	type fields struct {
 		backendStore    *backendstore.BackendStore
@@ -161,7 +163,7 @@ func TestUpdate(t *testing.T) {
 		args   args
 		want   want
 	}{
-		"OK - Two backends are ready": {
+		"Two backends update successfully": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{
@@ -194,6 +196,10 @@ func TestUpdate(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.True(t,
+						bucket.Status.Conditions[0].Equal(v1.Available()),
+						"unexpected bucket condition")
+
+					assert.True(t,
 						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
 						"bucket condition on s3-backend-1 is not available")
 
@@ -203,7 +209,108 @@ func TestUpdate(t *testing.T) {
 				},
 			},
 		},
-		"OK - Auto pause bucket is paused": {
+		"Two backends fail to update": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return &s3.HeadBucketOutput{}, someError
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+					},
+				},
+			},
+			want: want{
+				err: someError,
+				o:   managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.True(t,
+						bucket.Status.Conditions[0].Equal(v1.Unavailable()),
+						"unexpected bucket condition")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Unavailable().WithMessage(errors.Wrap(someError, "failed to perform head bucket").Error())),
+						"unexpected bucket condition for s3-backend-1")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(v1.Unavailable().WithMessage(errors.Wrap(someError, "failed to perform head bucket").Error())),
+						"unexpected bucket condition for s3-backend-2")
+				},
+			},
+		},
+		"One backend updates successfully and one fails to update": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fakeErr := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return &s3.HeadBucketOutput{}, someError
+						},
+					}
+					fakeOK := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return &s3.HeadBucketOutput{}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+					},
+				},
+			},
+			want: want{
+				err: someError,
+				o:   managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					// Bucket CR is considered Available because one or more
+					// buckets on backends are Available.
+					assert.True(t,
+						bucket.Status.Conditions[0].Equal(v1.Available()),
+						"unexpected bucket condition")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
+						"unexpected bucket condition for s3-backend-1")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(v1.Unavailable().WithMessage(errors.Wrap(someError, "failed to perform head bucket").Error())),
+						"unexpected bucket condition for s3-backend-2")
+				},
+			},
+		},
+		"Single backend updates successfully and is autopaused": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{
@@ -249,6 +356,13 @@ func TestUpdate(t *testing.T) {
 				specificDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
+					assert.True(t,
+						bucket.Status.Conditions[0].Equal(v1.Available()),
+						"unexpected bucket condition")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
+						"bucket condition on s3-backend-1 is not available")
 
 					assert.Equal(t,
 						map[string]string{

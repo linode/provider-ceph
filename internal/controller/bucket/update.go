@@ -47,25 +47,53 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
 	}
 
-	if err := c.updateOnAllBackends(ctx, bucket); err != nil {
+	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
+	if len(activeBackends) == 0 {
+		err := errors.New(errNoActiveS3Backends)
+		traces.SetAndRecordError(span, err)
+
+		return managed.ExternalUpdate{}, err
+	} else if len(activeBackends) != len(bucket.Spec.Providers) {
+		err := errors.New(errMissingS3Backend)
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalUpdate{}, err
 	}
 
-	err := c.updateBucketCR(ctx, bucket,
+	bucketBackends := newBucketBackends()
+
+	updateAllErr := c.updateOnAllBackends(ctx, bucket, bucketBackends)
+
+	// Whether buckets are updated successfully or not on backends, we need to update the
+	// Bucket CR Status in all cases to represent the conditions of each individual bucket.
+	if err := c.updateBucketCR(ctx, bucket,
 		func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-			bucketLatest.Status.Conditions = bucketDeepCopy.Status.Conditions
-			bucketLatest.Status.AtProvider.Backends = bucketDeepCopy.Status.AtProvider.Backends
+			bucketLatest.Spec.Providers = bucketDeepCopy.Spec.Providers
+			setBucketStatus(bucketLatest, bucketBackends)
 
 			return NeedsStatusUpdate
-		},
+		}); err != nil {
+		c.log.Info("Failed to update Bucket CR Status", consts.KeyBucketName, bucket.Name, "error", err.Error())
+		traces.SetAndRecordError(span, err)
+
+		return managed.ExternalUpdate{}, err
+	}
+
+	if updateAllErr != nil {
+		traces.SetAndRecordError(span, updateAllErr)
+
+		return managed.ExternalUpdate{}, updateAllErr
+	}
+
+	// The buckets have been updated successfully on all backends, so we need to update the
+	// Bucket CR Spec accordingly.
+	err := c.updateBucketCR(ctx, bucket,
 		func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
 			bucketLatest.Spec.Providers = bucketDeepCopy.Spec.Providers
 
 			// Auto pause the Bucket CR if required.
 			cls := c.backendStore.GetBackendClients(bucketLatest.Spec.Providers)
-			if isPauseRequired(bucketLatest, isBucketReadyOnBackends(bucket, cls), c.autoPauseBucket) {
+			if isPauseRequired(bucketLatest, bucketBackends.isBucketAvailableOnBackends(bucketLatest, cls), c.autoPauseBucket) {
 				c.log.Info("Auto pausing bucket", consts.KeyBucketName, bucket.Name)
 				pauseBucket(bucketLatest)
 			}
@@ -78,37 +106,24 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			return NeedsObjectUpdate
 		})
 	if err != nil {
+		c.log.Info("Failed to update Bucket CR Spec", consts.KeyBucketName, bucket.Name, "error", err.Error())
 		traces.SetAndRecordError(span, err)
 
-		c.log.Info("Failed to update Bucket CR", consts.KeyBucketName, bucket.Name, "error", err.Error())
+		return managed.ExternalUpdate{}, err
 	}
 
-	return managed.ExternalUpdate{}, err
+	return managed.ExternalUpdate{}, nil
 }
 
-func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Bucket) error {
+func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Bucket, bb *bucketBackends) error {
 	ctx, span := otel.Tracer("").Start(ctx, "updateOnAllBackends")
 	defer span.End()
 
-	bucketBackends := newBucketBackends()
-	defer setBucketStatus(bucket, bucketBackends)
+	defer setBucketStatus(bucket, bb)
 
 	g := new(errgroup.Group)
 
-	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
-	if len(activeBackends) == 0 {
-		err := errors.New(errNoActiveS3Backends)
-		traces.SetAndRecordError(span, err)
-
-		return err
-	} else if len(activeBackends) != len(bucket.Spec.Providers) {
-		err := errors.New(errMissingS3Backend)
-		traces.SetAndRecordError(span, err)
-
-		return err
-	}
-
-	for backendName := range activeBackends {
+	for backendName := range c.backendStore.GetActiveBackends(bucket.Spec.Providers) {
 		if !c.backendStore.IsBackendActive(backendName) {
 			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", "bucket_ name", bucket.Name, consts.KeyBackendName, backendName)
 
@@ -121,41 +136,41 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 
 			continue
 		}
-
 		beName := backendName
 		g.Go(func() error {
-			// Set the bucket Condition to 'Unavailable' until we have successfully performed the update.
-			bucketBackends.setBucketCondition(bucket.Name, beName, xpv1.Unavailable())
-
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				c.log.Info("Updating bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 				bucketExists, err := s3internal.BucketExists(ctx, cl, bucket.Name)
 				if err != nil {
 					c.log.Info("Error occurred attempting HeadBucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+					bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
 
 					return err
 				}
 				if !bucketExists {
-					bucketBackends.deleteBackend(bucket.Name, beName)
+					bb.deleteBackend(bucket.Name, beName)
 
 					return nil
 				}
 
-				err = c.updateOnBackend(ctx, bucket, beName, bucketBackends)
+				err = c.updateOnBackend(ctx, bucket, beName, bb)
 				if err != nil {
 					c.log.Info("Error occurred attempting to update bucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+					bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
 
 					continue
 				}
 				// Check if this backend has been marked as 'Unhealthy'. In which case the
 				// bucket condition must remain in 'Unavailable' for this backend.
 				if c.backendStore.GetBackendHealthStatus(beName) == apisv1alpha1.HealthStatusUnhealthy {
+					bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage("Backend is marked Unhealthy"))
+
 					return nil
 				}
 				// Bucket has been successfully updated and the backend is either 'Healthy' or 'Unknown'.
 				// It may be 'Unknown' due to the healthcheck being disabled, in which case we can only assume
 				// the backend is healthy. Either way, set the bucket condition as 'Available' for this backend.
-				bucketBackends.setBucketCondition(bucket.Name, beName, xpv1.Available())
+				bb.setBucketCondition(bucket.Name, beName, xpv1.Available())
 
 				return nil
 			}

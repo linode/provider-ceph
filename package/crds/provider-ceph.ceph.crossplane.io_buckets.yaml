@@ -625,6 +625,8 @@ spec:
                         lifecycleConfigurationCondition:
                           description: LifecycleConfigurationCondition is the condition
                             of the bucket lifecycle configuration on the S3 backend.
+                            Use a pointer to allow nil value when there is no lifecycle
+                            configuration.
                           properties:
                             lastTransitionTime:
                               description: LastTransitionTime is the last time this

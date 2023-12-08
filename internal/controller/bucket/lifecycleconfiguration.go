@@ -147,24 +147,28 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 	case Updated:
 		return nil
 	case NeedsDeletion:
-		bb.setLifecycleConfigCondition(b.Name, backendName, xpv1.Deleting())
+		deleting := xpv1.Deleting()
+		bb.setLifecycleConfigCondition(b.Name, backendName, &deleting)
 		if err := l.delete(ctx, b.Name, backendName); err != nil {
 			err = errors.Wrap(err, errHandleLifecycleConfig)
 			traces.SetAndRecordError(span, err)
 
 			return err
 		}
-		bb.setLifecycleConfigCondition(b.Name, backendName, xpv1.Condition{})
+		bb.setLifecycleConfigCondition(b.Name, backendName, nil)
 
 	case NeedsUpdate:
-		bb.setLifecycleConfigCondition(b.Name, backendName, xpv1.Unavailable())
 		if err := l.createOrUpdate(ctx, b, backendName); err != nil {
 			err = errors.Wrap(err, errHandleLifecycleConfig)
+			unavailable := xpv1.Unavailable().WithMessage(err.Error())
+			bb.setLifecycleConfigCondition(b.Name, backendName, &unavailable)
+
 			traces.SetAndRecordError(span, err)
 
 			return err
 		}
-		bb.setLifecycleConfigCondition(b.Name, backendName, xpv1.Available())
+		available := xpv1.Available()
+		bb.setLifecycleConfigCondition(b.Name, backendName, &available)
 	}
 
 	return nil

@@ -35,7 +35,7 @@ func (b *bucketBackends) setBucketCondition(bucketName, backendName string, c xp
 	b.backends[bucketName][backendName].BucketCondition = c
 }
 
-func (b *bucketBackends) setLifecycleConfigCondition(bucketName, backendName string, c xpv1.Condition) {
+func (b *bucketBackends) setLifecycleConfigCondition(bucketName, backendName string, c *xpv1.Condition) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 

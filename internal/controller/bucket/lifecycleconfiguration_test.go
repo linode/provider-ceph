@@ -25,6 +25,7 @@ import (
 	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/assert"
 
+	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
@@ -423,6 +424,314 @@ func TestObserveBackend(t *testing.T) {
 			got, err := c.observeBackend(context.Background(), tc.args.bucket, tc.args.backendName)
 			assert.ErrorIs(t, err, tc.want.err, "unexpected error")
 			assert.Equal(t, tc.want.status, got, "unexpected status")
+		})
+	}
+}
+
+//nolint:maintidx // Function requires numerous checks.
+func TestHandle(t *testing.T) {
+	t.Parallel()
+	bucketName := "bucket"
+	beName := "s3-backend-1"
+	creating := v1.Creating()
+	errRandom := errors.New("some error")
+	type fields struct {
+		backendStore *backendstore.BackendStore
+	}
+
+	type args struct {
+		bucket      *v1alpha1.Bucket
+		backendName string
+	}
+
+	type want struct {
+		err          error
+		specificDiff func(t *testing.T, bb *bucketBackends)
+	}
+
+	cases := map[string]struct {
+		reason string
+		fields fields
+		args   args
+		want   want
+	}{
+		"Lifecycle config deletes successfully": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+
+						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
+							return &s3.GetBucketLifecycleConfigurationOutput{
+								Rules: []s3types.LifecycleRule{
+									{
+										Status: "Enabled",
+									},
+								},
+							}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: bucketName,
+					},
+					Spec: v1alpha1.BucketSpec{
+						LifecycleConfigurationDisabled: false,
+					},
+				},
+				backendName: beName,
+			},
+			want: want{
+				err: nil,
+				specificDiff: func(t *testing.T, bb *bucketBackends) {
+					t.Helper()
+					backends := bb.getBackends(bucketName, []string{beName})
+					// s3-backend-1 lc config was successfully deleted so was removed from bucketbackends.
+					assert.True(t,
+						func(bb v1alpha1.Backends) bool {
+							return bb[beName].LifecycleConfigurationCondition == nil
+						}(backends),
+						"s3-backend-1 should not have a lc config condition")
+				},
+			},
+		},
+		"Lifecycle config delete fails": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
+							return &s3.GetBucketLifecycleConfigurationOutput{
+								Rules: []s3types.LifecycleRule{
+									{
+										Status: "Enabled",
+									},
+								},
+							}, nil
+						},
+
+						DeleteBucketLifecycleStub: func(ctx context.Context, lci *s3.DeleteBucketLifecycleInput, f ...func(*s3.Options)) (*s3.DeleteBucketLifecycleOutput, error) {
+							return &s3.DeleteBucketLifecycleOutput{}, errRandom
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend(beName, &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Spec: v1alpha1.BucketSpec{
+						LifecycleConfigurationDisabled: false,
+					},
+				},
+				backendName: "s3-backend-1",
+			},
+			want: want{
+				err: errRandom,
+				specificDiff: func(t *testing.T, bb *bucketBackends) {
+					t.Helper()
+					backends := bb.getBackends(bucketName, []string{beName})
+					assert.True(t,
+						backends[beName].LifecycleConfigurationCondition.Equal(v1.Deleting().
+							WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to delete bucket lifecycle"), errHandleLifecycleConfig).Error())),
+						"unexpected lifecycle config condition on s3-backend-1")
+				},
+			},
+		},
+		"Lifecycle config is up to date so no action required": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+
+						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
+							return &s3.GetBucketLifecycleConfigurationOutput{
+								Rules: []s3types.LifecycleRule{},
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Spec: v1alpha1.BucketSpec{
+						LifecycleConfigurationDisabled: true,
+						ForProvider: v1alpha1.BucketParameters{
+							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
+								Rules: []v1alpha1.LifecycleRule{
+									{
+										Expiration: &v1alpha1.LifecycleExpiration{
+											Days: &days1,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				backendName: "s3-backend-1",
+			},
+			want: want{
+				err: nil,
+			},
+		},
+		"Lifecycle config updates successfully": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+
+						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
+							return &s3.GetBucketLifecycleConfigurationOutput{
+								Rules: []s3types.LifecycleRule{
+									{
+										Status: "Enabled",
+										Expiration: &s3types.LifecycleExpiration{
+											Days: int32(2),
+										},
+										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
+									},
+								},
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Spec: v1alpha1.BucketSpec{
+						LifecycleConfigurationDisabled: false,
+						ForProvider: v1alpha1.BucketParameters{
+							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
+								Rules: []v1alpha1.LifecycleRule{
+									{
+										Status: "Enabled",
+										Expiration: &v1alpha1.LifecycleExpiration{
+											Days: &days1,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				backendName: "s3-backend-1",
+			},
+			want: want{
+				err: nil,
+				specificDiff: func(t *testing.T, bb *bucketBackends) {
+					t.Helper()
+					backends := bb.getBackends(bucketName, []string{beName})
+					assert.True(t,
+						backends[beName].LifecycleConfigurationCondition.Equal(v1.Available()),
+						"unexpected lifecycle config condition on s3-backend-1")
+				},
+			},
+		},
+		"Lifecycle config update fails": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+
+						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
+							return &s3.GetBucketLifecycleConfigurationOutput{
+								Rules: []s3types.LifecycleRule{
+									{
+										Status: "Enabled",
+										Expiration: &s3types.LifecycleExpiration{
+											Days: int32(2),
+										},
+										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
+									},
+								},
+							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
+						},
+						PutBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.PutBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.PutBucketLifecycleConfigurationOutput, error) {
+							return &s3.PutBucketLifecycleConfigurationOutput{}, errRandom
+						},
+					}
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Spec: v1alpha1.BucketSpec{
+						LifecycleConfigurationDisabled: false,
+						ForProvider: v1alpha1.BucketParameters{
+							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
+								Rules: []v1alpha1.LifecycleRule{
+									{
+										Status: "Enabled",
+										Expiration: &v1alpha1.LifecycleExpiration{
+											Days: &days1,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				backendName: "s3-backend-1",
+			},
+			want: want{
+				err: errRandom,
+				specificDiff: func(t *testing.T, bb *bucketBackends) {
+					t.Helper()
+					backends := bb.getBackends(bucketName, []string{beName})
+					assert.True(t,
+						backends[beName].LifecycleConfigurationCondition.Equal(v1.Unavailable().
+							WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to put bucket lifecycle configuration"), errHandleLifecycleConfig).Error())),
+						"unexpected lifecycle config condition on s3-backend-1")
+				},
+			},
+		},
+	}
+	for name, tc := range cases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			c := NewLifecycleConfigurationClient(tc.fields.backendStore, logging.NewNopLogger())
+			bb := newBucketBackends()
+			bb.setLifecycleConfigCondition(bucketName, beName, &creating)
+
+			err := c.Handle(context.Background(), tc.args.bucket, tc.args.backendName, bb)
+			assert.ErrorIs(t, err, tc.want.err, "unexpected error")
+			if tc.want.specificDiff != nil {
+				tc.want.specificDiff(t, bb)
+			}
 		})
 	}
 }

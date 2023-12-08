@@ -147,10 +147,11 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 	case Updated:
 		return nil
 	case NeedsDeletion:
-		deleting := xpv1.Deleting()
-		bb.setLifecycleConfigCondition(b.Name, backendName, &deleting)
 		if err := l.delete(ctx, b.Name, backendName); err != nil {
 			err = errors.Wrap(err, errHandleLifecycleConfig)
+			deleting := xpv1.Deleting().WithMessage(err.Error())
+			bb.setLifecycleConfigCondition(b.Name, backendName, &deleting)
+
 			traces.SetAndRecordError(span, err)
 
 			return err

@@ -65,6 +65,9 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 					break
 				}
 			}
+			if err != nil {
+				bucketBackends.setBucketCondition(bucket.Name, beName, xpv1.Deleting().WithMessage(err.Error()))
+			}
 
 			return err
 		})

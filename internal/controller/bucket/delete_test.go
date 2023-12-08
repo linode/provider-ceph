@@ -343,11 +343,11 @@ func TestDelete(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting()),
-						"bucket condition on s3-backend-1 is not deleting")
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						"unexpected bucket condition on s3-backend-1")
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(xpv1.Deleting()),
-						"bucket condition on s3-backend-2 is not deleting")
+						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						"unexpected bucket condition on s3-backend-2")
 				},
 				finalizerDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
@@ -407,13 +407,12 @@ func TestDelete(t *testing.T) {
 				statusDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
-
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting()),
-						"bucket condition on s3-backend-1 is not deleting")
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						"unexpected bucket condition on s3-backend-1")
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(xpv1.Deleting()),
-						"bucket condition on s3-backend-2 is not deleting")
+						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						"unexpected bucket condition on s3-backend-2")
 				},
 				finalizerDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
@@ -489,8 +488,8 @@ func TestDelete(t *testing.T) {
 
 					// s3-backend-1 failed so is stuck in Deleting status.
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting()),
-						"bucket condition on s3-backend-1 is not deleting")
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						"unexpected bucket condition on s3-backend-1")
 
 					// s3-backend-2 was successfully deleted so was removed from status.
 					assert.False(t,

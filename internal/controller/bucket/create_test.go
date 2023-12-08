@@ -205,16 +205,11 @@ func TestCreate(t *testing.T) {
 
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Available()),
-						"condition is not available")
-					assert.Equal(t,
-						v1alpha1.Backends{
-							"s3-backend-1": &v1alpha1.BackendInfo{
-								BucketStatus: v1alpha1.ReadyStatus,
-							},
-						},
-						bucket.Status.AtProvider.Backends,
-						"unexpected bucket backends",
-					)
+						"bucket cr condition is not available")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
+						"bucket condition on backend is not available")
 				},
 			},
 		},
@@ -276,16 +271,11 @@ func TestCreate(t *testing.T) {
 
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Available()),
-						"condition is not available")
-					assert.Equal(t,
-						v1alpha1.Backends{
-							"s3-backend-3": &v1alpha1.BackendInfo{
-								BucketStatus: v1alpha1.ReadyStatus,
-							},
-						},
-						bucket.Status.AtProvider.Backends,
-						"unexpected bucket backends",
-					)
+						"bucket cr condition is not available")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-3"].BucketCondition.Equal(v1.Available()),
+						"bucket condition on backend is not available")
 				},
 			},
 		},

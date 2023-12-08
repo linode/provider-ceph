@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -50,7 +51,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	}
 
 	for _, backendName := range activeBackends {
-		bucketBackends.setBucketStatus(bucket.Name, backendName, v1alpha1.DeletingStatus)
+		bucketBackends.setBucketCondition(bucket.Name, backendName, xpv1.Deleting())
 
 		c.log.Info("Deleting bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 		cl := c.backendStore.GetBackendClient(backendName)

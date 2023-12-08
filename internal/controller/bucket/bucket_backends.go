@@ -4,6 +4,8 @@ import (
 	"sync"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 )
 
 type bucketBackends struct {
@@ -18,7 +20,7 @@ func newBucketBackends() *bucketBackends {
 	}
 }
 
-func (b *bucketBackends) setBucketStatus(bucketName, backendName string, status v1alpha1.Status) {
+func (b *bucketBackends) setBucketCondition(bucketName, backendName string, c xpv1.Condition) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -30,10 +32,10 @@ func (b *bucketBackends) setBucketStatus(bucketName, backendName string, status 
 		b.backends[bucketName][backendName] = &v1alpha1.BackendInfo{}
 	}
 
-	b.backends[bucketName][backendName].BucketStatus = status
+	b.backends[bucketName][backendName].BucketCondition = c
 }
 
-func (b *bucketBackends) setLifecycleConfigStatus(bucketName, backendName string, status v1alpha1.Status) {
+func (b *bucketBackends) setLifecycleConfigCondition(bucketName, backendName string, c xpv1.Condition) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -45,7 +47,7 @@ func (b *bucketBackends) setLifecycleConfigStatus(bucketName, backendName string
 		b.backends[bucketName][backendName] = &v1alpha1.BackendInfo{}
 	}
 
-	b.backends[bucketName][backendName].LifecycleConfigurationStatus = status
+	b.backends[bucketName][backendName].LifecycleConfigurationCondition = c
 }
 
 func (b *bucketBackends) deleteBackend(bucketName, backendName string) {

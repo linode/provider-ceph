@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
@@ -123,8 +124,8 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 
 		beName := backendName
 		g.Go(func() error {
-			// Set the Bucket status to 'NotReady' until we have successfully performed the update.
-			bucketBackends.setBucketStatus(bucket.Name, beName, v1alpha1.NotReadyStatus)
+			// Set the bucket Condition to 'Unavailable' until we have successfully performed the update.
+			bucketBackends.setBucketCondition(bucket.Name, beName, xpv1.Unavailable())
 
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				c.log.Info("Updating bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
@@ -147,14 +148,14 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 					continue
 				}
 				// Check if this backend has been marked as 'Unhealthy'. In which case the
-				// Bucket must remain in 'NotReady' state for this backend.
+				// bucket condition must remain in 'Unavailable' for this backend.
 				if c.backendStore.GetBackendHealthStatus(beName) == apisv1alpha1.HealthStatusUnhealthy {
 					return nil
 				}
 				// Bucket has been successfully updated and the backend is either 'Healthy' or 'Unknown'.
 				// It may be 'Unknown' due to the healthcheck being disabled, in which case we can only assume
-				// the backend is healthy. Either way, set the bucket status as 'Ready' for this backend.
-				bucketBackends.setBucketStatus(bucket.Name, beName, v1alpha1.ReadyStatus)
+				// the backend is healthy. Either way, set the bucket condition as 'Available' for this backend.
+				bucketBackends.setBucketCondition(bucket.Name, beName, xpv1.Available())
 
 				return nil
 			}

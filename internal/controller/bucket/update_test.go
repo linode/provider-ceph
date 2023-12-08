@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
@@ -192,18 +193,13 @@ func TestUpdate(t *testing.T) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					assert.Equal(t,
-						v1alpha1.Backends{
-							"s3-backend-1": &v1alpha1.BackendInfo{
-								BucketStatus: v1alpha1.ReadyStatus,
-							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
-								BucketStatus: v1alpha1.ReadyStatus,
-							},
-						},
-						bucket.Status.AtProvider.Backends,
-						"unexpected bucket backends",
-					)
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
+						"bucket condition on s3-backend-1 is not available")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(v1.Available()),
+						"bucket condition on s3-backend-2 is not available")
 				},
 			},
 		},

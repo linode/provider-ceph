@@ -82,11 +82,11 @@ type BucketParameters struct {
 // BackendInfo contains relevant information about an S3 backend for
 // a single bucket.
 type BackendInfo struct {
-	// BucketStatus is the condition of the Bucket on the S3 backend.
-	BucketStatus Status `json:"bucketStatus,omitempty"`
-	// LifecycleConfigurationStatus is the condition of the
+	// BucketCondition is the condition of the Bucket on the S3 backend.
+	BucketCondition xpv1.Condition `json:"bucketCondition,omitempty"`
+	// LifecycleConfigurationCondition is the condition of the
 	// bucket lifecycle configuration on the S3 backend.
-	LifecycleConfigurationStatus Status `json:"lifecycleConfigurationStatus,omitempty"`
+	LifecycleConfigurationCondition xpv1.Condition `json:"lifecycleConfigurationCondition,omitempty"`
 }
 
 // Backends is a map of the names of the S3 backends to BackendInfo.

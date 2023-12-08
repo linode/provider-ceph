@@ -179,7 +179,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 				bucketLatest.Status.SetConditions(xpv1.Available())
 				bucketLatest.Status.AtProvider.Backends = v1alpha1.Backends{
 					beName: &v1alpha1.BackendInfo{
-						BucketStatus: v1alpha1.ReadyStatus,
+						BucketCondition: xpv1.Available(),
 					},
 				}
 

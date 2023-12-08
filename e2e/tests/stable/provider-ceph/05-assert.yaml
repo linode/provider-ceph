@@ -9,7 +9,10 @@ status:
   atProvider:
     backends:
       localstack-b:
-        bucketStatus: "Ready"
+        bucketCondition:
+          reason: Available
+          status: "True"
+          type: Ready
   conditions:
   - reason: Available
     status: "True"

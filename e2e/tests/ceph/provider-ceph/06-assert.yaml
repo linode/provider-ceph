@@ -9,8 +9,14 @@ status:
   atProvider:
     backends:
       ceph-cluster: 
-        bucketStatus: "Ready"
-        lifecycleConfigurationStatus: "Ready"
+        bucketCondition:
+          reason: Available
+          status: "True"
+          type: Ready
+        lifecycleConfigurationCondition:
+          reason: Available
+          status: "True"
+          type: Ready
   conditions:
   - reason: Available
     status: "True"

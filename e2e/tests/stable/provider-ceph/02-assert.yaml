@@ -9,14 +9,32 @@ status:
   atProvider:
     backends:
       localstack-a:
-        bucketStatus: "Ready"
-        lifecycleConfigurationStatus: "Ready"
+        bucketCondition:
+          reason: Available
+          status: "True"
+          type: Ready
+        lifecycleConfigurationCondition:
+          reason: Available
+          status: "True"
+          type: Ready
       localstack-b:
-        bucketStatus: "Ready"
-        lifecycleConfigurationStatus: "Ready"
+        bucketCondition:
+          reason: Available
+          status: "True"
+          type: Ready
+        lifecycleConfigurationCondition:
+          reason: Available
+          status: "True"
+          type: Ready
       localstack-c:
-        bucketStatus: "Ready"
-        lifecycleConfigurationStatus: "Ready"
+        bucketCondition:
+          reason: Available
+          status: "True"
+          type: Ready
+        lifecycleConfigurationCondition:
+          reason: Available
+          status: "True"
+          type: Ready
   conditions:
   - reason: Available
     status: "True"
@@ -38,11 +56,20 @@ status:
   atProvider:
     backends:
       localstack-a:
-        bucketStatus: "Ready"
+        bucketCondition:
+          reason: Available
+          status: "True"
+          type: Ready
       localstack-b:
-        bucketStatus: "Ready"
+        bucketCondition:
+          reason: Available
+          status: "True"
+          type: Ready
       localstack-c:
-        bucketStatus: "Ready"
+        bucketCondition:
+          reason: Available
+          status: "True"
+          type: Ready
   conditions:
   - reason: Available
     status: "True"

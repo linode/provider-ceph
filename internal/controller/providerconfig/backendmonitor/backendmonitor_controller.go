@@ -35,7 +35,8 @@ import (
 )
 
 const (
-	errCreateClient      = "failed create s3 client"
+	errCreateS3Client    = "failed create s3 client"
+	errCreateSTSClient   = "failed create sts client"
 	errGetProviderConfig = "failed to get ProviderConfig"
 	errGetSecret         = "failed to get Secret"
 )
@@ -76,13 +77,26 @@ func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 		return err
 	}
 
-	s3client, err := s3internal.NewClient(ctx, secret.Data, &pc.Spec, c.s3Timeout)
+	s3client, err := s3internal.NewS3Client(ctx, secret.Data, &pc.Spec, c.s3Timeout)
 	if err != nil {
-		return errors.Wrap(err, errCreateClient)
+		return errors.Wrap(err, errCreateS3Client)
+	}
+
+	// If an STSAddress has not been set in the ProviderConfig Spec, use the HostBase.
+	// The STSAddress is only necessary if we wish to contact an STS compliant authentication
+	// service separate to the HostBase (i.e RGW address).
+	stsAddress := pc.Spec.STSAddress
+	if stsAddress == nil {
+		stsAddress = &pc.Spec.HostBase
+	}
+
+	stsclient, err := s3internal.NewSTSClient(ctx, secret.Data, &pc.Spec, c.s3Timeout)
+	if err != nil {
+		return errors.Wrap(err, errCreateSTSClient)
 	}
 
 	readyCondition := pc.Status.GetCondition(v1.TypeReady)
-	c.backendStore.AddOrUpdateBackend(pc.Name, s3client, nil, true, utils.MapConditionToHealthStatus(readyCondition))
+	c.backendStore.AddOrUpdateBackend(pc.Name, s3client, stsclient, true, utils.MapConditionToHealthStatus(readyCondition))
 
 	return nil
 }

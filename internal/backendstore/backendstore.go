@@ -21,7 +21,7 @@ func NewBackendStore() *BackendStore {
 	}
 }
 
-func (b *BackendStore) GetBackendClient(backendName string) S3Client {
+func (b *BackendStore) GetBackendS3Client(backendName string) S3Client {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
@@ -32,7 +32,18 @@ func (b *BackendStore) GetBackendClient(backendName string) S3Client {
 	return nil
 }
 
-func (b *BackendStore) GetAllBackendClients() []S3Client {
+func (b *BackendStore) GetBackendSTSClient(backendName string) STSClient {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if _, ok := b.s3Backends[backendName]; ok {
+		return b.s3Backends[backendName].stsClient
+	}
+
+	return nil
+}
+
+func (b *BackendStore) GetAllBackendS3Clients() []S3Client {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
@@ -45,7 +56,7 @@ func (b *BackendStore) GetAllBackendClients() []S3Client {
 	return clients
 }
 
-func (b *BackendStore) GetBackendClients(beNames []string) map[string]S3Client {
+func (b *BackendStore) GetBackendS3Clients(beNames []string) map[string]S3Client {
 	requestedBackends := map[string]bool{}
 	for p := range beNames {
 		requestedBackends[beNames[p]] = true
@@ -113,11 +124,11 @@ func (b *BackendStore) DeleteBackend(backendName string) {
 	delete(b.s3Backends, backendName)
 }
 
-func (b *BackendStore) AddOrUpdateBackend(backendName string, backendClient S3Client, active bool, health v1alpha1.HealthStatus) {
+func (b *BackendStore) AddOrUpdateBackend(backendName string, s3C S3Client, stsC STSClient, active bool, health v1alpha1.HealthStatus) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	b.s3Backends[backendName] = newBackend(backendClient, active, health)
+	b.s3Backends[backendName] = newBackend(s3C, stsC, active, health)
 }
 
 func (b *BackendStore) GetBackend(backendName string) *backend {

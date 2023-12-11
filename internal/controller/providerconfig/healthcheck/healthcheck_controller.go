@@ -120,7 +120,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 	}()
 
-	s3BackendClient := c.backendStore.GetBackendClient(providerConfig.Name)
+	s3BackendClient := c.backendStore.GetBackendS3Client(providerConfig.Name)
 	if s3BackendClient == nil {
 		err := errors.New(errBackendNotStored)
 		traces.SetAndRecordError(span, err)
@@ -188,7 +188,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 // cleanup deletes the health check bucket and the lifecycle configuration validation bucket
 // from the backend. This function is only called when a ProviderConfig has been deleted.
 func (c *Controller) cleanup(ctx context.Context, req ctrl.Request, bucketName string) error {
-	backendClient := c.backendStore.GetBackendClient(req.Name)
+	backendClient := c.backendStore.GetBackendS3Client(req.Name)
 	if backendClient == nil {
 		c.log.Info("Backend client not found during health check bucket cleanup - aborting cleanup", consts.KeyBackendName, req.Name)
 
@@ -222,7 +222,7 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 	ctx, span := otel.Tracer("").Start(ctx, "Controller.doHealthCheck")
 	defer span.End()
 
-	s3BackendClient := c.backendStore.GetBackendClient(providerConfig.Name)
+	s3BackendClient := c.backendStore.GetBackendS3Client(providerConfig.Name)
 	if s3BackendClient == nil {
 		return errors.New(errBackendNotStored)
 	}

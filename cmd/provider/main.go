@@ -85,7 +85,7 @@ func main() {
 		reconcileTimeout     = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("3s").Duration()
 		creationGracePeriod  = app.Flag("creation-grace-period", "Duration to wait for the external API to report that a newly created external resource exists.").Default("10s").Duration()
 		tracesEnabled        = app.Flag("otel-enable-tracing", "").Default("false").Bool()
-		tracesExportTimeout  = app.Flag("otel-traces-export-timeout", "Timeout when exporting metrics").Default("2s").Duration()
+		tracesExportTimeout  = app.Flag("otel-traces-export-timeout", "Timeout when exporting traces").Default("2s").Duration()
 		tracesExportInterval = app.Flag("otel-traces-export-interval", "Interval at which traces are exported").Default("5s").Duration()
 		tracesExportAddress  = app.Flag("otel-traces-export-address", "Address of otel collector").Default("opentelemetry-collector.opentelemetry:4317").String()
 

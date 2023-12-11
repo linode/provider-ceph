@@ -7,6 +7,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
@@ -58,7 +59,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		}, nil
 	}
 
-	if !isBucketAvailable(bucket) {
+	if !bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) {
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,
@@ -71,8 +72,8 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 	backendClients := c.backendStore.GetBackendClients(bucket.Spec.Providers)
 
-	// Check that the bucket is Ready on the desired backends.
-	if !isBucketReadyOnBackends(bucket, backendClients) {
+	// Check that the Bucket CR is Available according to its Status backends.
+	if !isBucketAvailableFromStatus(bucket, backendClients) {
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,

@@ -93,14 +93,7 @@ type BackendInfo struct {
 // Backends is a map of the names of the S3 backends to BackendInfo.
 type Backends map[string]*BackendInfo
 
-type Status string
-
 const (
-	ReadyStatus    Status = "Ready"
-	NotReadyStatus Status = "NotReady"
-	DeletingStatus Status = "Deleting"
-	NoStatus       Status = ""
-
 	ValidationRequiredLabel = "provider-ceph.crossplane.io/validation-required"
 )
 

@@ -40,9 +40,9 @@ import (
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	ceph "github.com/linode/provider-ceph/internal/ceph"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
-	s3internal "github.com/linode/provider-ceph/internal/s3"
 	"github.com/linode/provider-ceph/internal/utils"
 )
 
@@ -134,7 +134,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Check the backend for the existence of the health check bucket.
-	bucketExists, err := s3internal.BucketExists(ctx, s3BackendClient, bucketName, o)
+	bucketExists, err := ceph.BucketExists(ctx, s3BackendClient, bucketName, o)
 	if err != nil {
 		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(err.Error()))
 		traces.SetAndRecordError(span, err)
@@ -144,8 +144,8 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Create a health check bucket on the backend if one does not already exist.
 	if !bucketExists {
-		_, err := s3internal.CreateBucket(ctx, s3BackendClient, &s3.CreateBucketInput{Bucket: aws.String(bucketName)}, o)
-		if err != nil {
+		_, err := ceph.CreateBucket(ctx, s3BackendClient, &s3.CreateBucketInput{Bucket: aws.String(bucketName)}, o)
+		if resource.Ignore(ceph.IsAlreadyExists, err) != nil {
 			c.log.Info("Failed to create bucket for health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
 			err = errors.Wrap(err, errCreateHealthCheckBucket)
@@ -198,7 +198,7 @@ func (c *Controller) cleanup(ctx context.Context, req ctrl.Request, bucketName s
 	g := new(errgroup.Group)
 	g.Go(func() error {
 		c.log.Info("Deleting health check bucket", consts.KeyBucketName, bucketName, consts.KeyBackendName, req.Name)
-		if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(bucketName)); err != nil {
+		if err := ceph.DeleteBucket(ctx, backendClient, aws.String(bucketName)); err != nil {
 			return errors.Wrap(err, errDeleteHealthCheckBucket)
 		}
 
@@ -207,7 +207,7 @@ func (c *Controller) cleanup(ctx context.Context, req ctrl.Request, bucketName s
 
 	g.Go(func() error {
 		c.log.Info("Deleting lifecycle configuration validation bucket", consts.KeyBucketName, v1alpha1.LifecycleConfigValidationBucketName, consts.KeyBackendName, req.Name)
-		if err := s3internal.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName)); err != nil {
+		if err := ceph.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName)); err != nil {
 			return errors.Wrap(err, errDeleteLCValidationBucket)
 		}
 
@@ -227,7 +227,7 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 		return errors.New(errBackendNotStored)
 	}
 
-	if putErr := s3internal.PutObject(ctx, s3BackendClient, &s3.PutObjectInput{
+	if putErr := ceph.PutObject(ctx, s3BackendClient, &s3.PutObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(healthCheckFile),
 		Body:   strings.NewReader(time.Now().Format(time.RFC850))}, o...,
@@ -238,7 +238,7 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 		return putErr
 	}
 
-	_, getErr := s3internal.GetObject(ctx, s3BackendClient, &s3.GetObjectInput{
+	_, getErr := ceph.GetObject(ctx, s3BackendClient, &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(healthCheckFile),
 	}, o...)

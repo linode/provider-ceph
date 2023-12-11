@@ -15,9 +15,9 @@ import (
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	ceph "github.com/linode/provider-ceph/internal/ceph"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
-	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
 //nolint:maintidx,gocognit,gocyclo,cyclop,nolintlint // Function requires numerous checks.
@@ -100,7 +100,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 		beName := beName
 		go func() {
-			_, err := s3internal.CreateBucket(ctx, cl, s3internal.BucketToCreateBucketInput(originalBucket))
+			_, err := ceph.CreateBucket(ctx, cl, s3internal.BucketToCreateBucketInput(originalBucket))
 			if err != nil {
 				c.log.Info("Failed to create bucket on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName, "err", err.Error())
 				traces.SetAndRecordError(span, err)

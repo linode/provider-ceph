@@ -14,9 +14,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	ceph "github.com/linode/provider-ceph/internal/ceph"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
-	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
@@ -57,7 +57,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		cl := c.backendStore.GetBackendS3Client(backendName)
 		beName := backendName
 		g.Go(func() error {
-			if err := s3internal.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err != nil {
+			if err := ceph.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err != nil {
 				bucketBackends.setBucketCondition(bucket.Name, beName, xpv1.Deleting().WithMessage(err.Error()))
 
 				return err

@@ -13,9 +13,9 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	ceph "github.com/linode/provider-ceph/internal/ceph"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
-	s3internal "github.com/linode/provider-ceph/internal/s3"
 )
 
 //nolint:gocyclo,cyclop // Function requires numerous checks.
@@ -109,7 +109,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		beName := beName
 		backendClient := backendClient
 		g.Go(func() error {
-			bucketExists, err := s3internal.BucketExists(ctxC, backendClient, bucket.Name)
+			bucketExists, err := ceph.BucketExists(ctxC, backendClient, bucket.Name)
 			if err != nil {
 				traces.SetAndRecordError(span, err)
 

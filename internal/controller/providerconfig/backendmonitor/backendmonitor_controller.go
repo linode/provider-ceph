@@ -29,8 +29,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	ceph "github.com/linode/provider-ceph/internal/ceph"
 	"github.com/linode/provider-ceph/internal/otel/traces"
-	s3internal "github.com/linode/provider-ceph/internal/s3"
 	"github.com/linode/provider-ceph/internal/utils"
 )
 
@@ -77,7 +77,7 @@ func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 		return err
 	}
 
-	s3client, err := s3internal.NewS3Client(ctx, secret.Data, &pc.Spec, c.s3Timeout)
+	s3client, err := ceph.NewS3Client(ctx, secret.Data, &pc.Spec, c.s3Timeout)
 	if err != nil {
 		return errors.Wrap(err, errCreateS3Client)
 	}
@@ -90,7 +90,7 @@ func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 		stsAddress = &pc.Spec.HostBase
 	}
 
-	stsclient, err := s3internal.NewSTSClient(ctx, secret.Data, &pc.Spec, c.s3Timeout)
+	stsclient, err := ceph.NewSTSClient(ctx, secret.Data, &pc.Spec, c.s3Timeout)
 	if err != nil {
 		return errors.Wrap(err, errCreateSTSClient)
 	}

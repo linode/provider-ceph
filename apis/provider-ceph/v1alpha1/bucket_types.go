@@ -77,6 +77,10 @@ type BucketParameters struct {
 	// (https://docs.aws.amazon.com/AmazonS3/latest/dev/s3-access-control.html).
 	// +optional
 	LifecycleConfiguration *BucketLifecycleConfiguration `json:"lifecycleConfiguration,omitempty"`
+
+	// AssumeRoleTags may be used to add custom values to an AssumeRole request.
+	// +optional
+	AssumeRoleTags []Tag `json:"assumeRoleTags,omitempty"`
 }
 
 // BackendInfo contains relevant information about an S3 backend for

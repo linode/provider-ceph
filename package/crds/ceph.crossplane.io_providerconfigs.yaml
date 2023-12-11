@@ -108,6 +108,12 @@ spec:
               hostBucket:
                 description: HostBucket url specified in s3cfg.
                 type: string
+              stsAddress:
+                description: STSAddress is a separate url for an optional external
+                  authenticator service. This service should be able to handle the
+                  AssumeRole S3 API call. If unset, STSAddress defaults to that of
+                  HostBase.
+                type: string
               useHttps:
                 description: UseHTTPS ceph cluster configuration.
                 type: boolean

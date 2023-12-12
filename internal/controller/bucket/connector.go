@@ -9,6 +9,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/controller/clienthandler"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -17,6 +18,7 @@ import (
 type Connector struct {
 	kube                client.Client
 	autoPauseBucket     bool
+	s3clientHandler     *clienthandler.S3ClientHandler
 	backendStore        *backendstore.BackendStore
 	subresourceClients  []SubresourceClient
 	log                 logging.Logger
@@ -45,6 +47,12 @@ func WithKubeClient(k client.Client) func(*Connector) {
 func WithAutoPause(a *bool) func(*Connector) {
 	return func(c *Connector) {
 		c.autoPauseBucket = *a
+	}
+}
+
+func WithS3ClientHandler(h *clienthandler.S3ClientHandler) func(*Connector) {
+	return func(c *Connector) {
+		c.s3clientHandler = h
 	}
 }
 
@@ -104,6 +112,7 @@ func (c *Connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	return &external{
 			kubeClient:         c.kube,
 			autoPauseBucket:    c.autoPauseBucket,
+			clientHandler:      c.s3clientHandler,
 			operationTimeout:   c.operationTimeout,
 			backendStore:       c.backendStore,
 			subresourceClients: c.subresourceClients,
@@ -116,6 +125,7 @@ func (c *Connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 type external struct {
 	kubeClient         client.Client
 	autoPauseBucket    bool
+	clientHandler      *clienthandler.S3ClientHandler
 	operationTimeout   time.Duration
 	backendStore       *backendstore.BackendStore
 	subresourceClients []SubresourceClient

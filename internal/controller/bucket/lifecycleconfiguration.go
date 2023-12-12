@@ -16,6 +16,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	ceph "github.com/linode/provider-ceph/internal/ceph"
 	"github.com/linode/provider-ceph/internal/consts"
+	"github.com/linode/provider-ceph/internal/controller/clienthandler"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 
 	"github.com/google/go-cmp/cmp"
@@ -26,13 +27,14 @@ import (
 
 // LifecycleConfigurationClient is the client for API methods and reconciling the LifecycleConfiguration
 type LifecycleConfigurationClient struct {
-	backendStore *backendstore.BackendStore
-	log          logging.Logger
+	backendStore  *backendstore.BackendStore
+	clientHandler *clienthandler.S3ClientHandler
+	log           logging.Logger
 }
 
 // NewLifecycleConfigurationClient creates the client for Accelerate Configuration
-func NewLifecycleConfigurationClient(backendStore *backendstore.BackendStore, log logging.Logger) *LifecycleConfigurationClient {
-	return &LifecycleConfigurationClient{backendStore: backendStore, log: log}
+func NewLifecycleConfigurationClient(b *backendstore.BackendStore, c *clienthandler.S3ClientHandler, l logging.Logger) *LifecycleConfigurationClient {
+	return &LifecycleConfigurationClient{backendStore: b, clientHandler: c, log: l}
 }
 
 func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {

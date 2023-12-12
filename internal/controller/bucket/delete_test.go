@@ -6,7 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
@@ -59,8 +59,8 @@ func TestDeleteBasicErrors(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					Spec: v1alpha1.BucketSpec{
-						ResourceSpec: v1.ResourceSpec{
-							ProviderConfigReference: &v1.Reference{
+						ResourceSpec: xpv1.ResourceSpec{
+							ProviderConfigReference: &xpv1.Reference{
 								Name: "s3-backend-1",
 							},
 						},
@@ -148,15 +148,64 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-bucket",
+						Name:       "test-bucket",
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1", "s3-backend-2"},
+					},
+					Status: v1alpha1.BucketStatus{
+						AtProvider: v1alpha1.BucketObservation{
+							Backends: v1alpha1.Backends{
+								"s3-backend-1": &v1alpha1.BackendInfo{
+									BucketCondition: xpv1.Available(),
+								},
+								"s3-backend-2": &v1alpha1.BackendInfo{
+									BucketCondition: xpv1.Available(),
+								},
+							},
+						},
 					},
 				},
 			},
 			want: want{
 				err: nil,
+				statusDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					// s3-backend-1 was successfully deleted so was removed from status.
+					assert.False(t,
+						func(b v1alpha1.Backends) bool {
+							if _, ok := b["s3-backend-1"]; ok {
+								return true
+							}
+
+							return false
+						}(bucket.Status.AtProvider.Backends),
+						"s3-backend-1 should not exist in backends")
+
+					// s3-backend-2 was successfully deleted so was removed from status.
+					assert.False(t,
+						func(b v1alpha1.Backends) bool {
+							if _, ok := b["s3-backend-2"]; ok {
+								return true
+							}
+
+							return false
+						}(bucket.Status.AtProvider.Backends),
+						"s3-backend-2 should not exist in backends")
+				},
+				finalizerDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.Equal(t,
+						[]string{},
+						bucket.Finalizers,
+						"unexpeceted finalizers",
+					)
+				},
 			},
 		},
 		"Delete buckets on all backends": {
@@ -182,16 +231,65 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-bucket",
+						Name:       "test-bucket",
+						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
 						// No backends specified, so delete on all backends.
 						Providers: []string{},
 					},
+					Status: v1alpha1.BucketStatus{
+						AtProvider: v1alpha1.BucketObservation{
+							Backends: v1alpha1.Backends{
+								"s3-backend-1": &v1alpha1.BackendInfo{
+									BucketCondition: xpv1.Available(),
+								},
+								"s3-backend-2": &v1alpha1.BackendInfo{
+									BucketCondition: xpv1.Available(),
+								},
+							},
+						},
+					},
 				},
 			},
 			want: want{
 				err: nil,
+				statusDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					// s3-backend-1 was successfully deleted so was removed from status.
+					assert.False(t,
+						func(b v1alpha1.Backends) bool {
+							if _, ok := b["s3-backend-1"]; ok {
+								return true
+							}
+
+							return false
+						}(bucket.Status.AtProvider.Backends),
+						"s3-backend-1 should not exist in backends")
+
+					// s3-backend-2 was successfully deleted so was removed from status.
+					assert.False(t,
+						func(b v1alpha1.Backends) bool {
+							if _, ok := b["s3-backend-2"]; ok {
+								return true
+							}
+
+							return false
+						}(bucket.Status.AtProvider.Backends),
+						"s3-backend-2 should not exist in backends")
+				},
+				finalizerDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.Equal(t,
+						[]string{},
+						bucket.Finalizers,
+						"unexpeceted finalizers",
+					)
+				},
 			},
 		},
 		"Error deleting buckets on all specified backends": {
@@ -228,10 +326,10 @@ func TestDelete(t *testing.T) {
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
 								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: xpv1.Available(),
 								},
 								"s3-backend-2": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: xpv1.Available(),
 								},
 							},
 						},
@@ -244,18 +342,12 @@ func TestDelete(t *testing.T) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					assert.Equal(t,
-						v1alpha1.Backends{
-							"s3-backend-1": &v1alpha1.BackendInfo{
-								BucketStatus: v1alpha1.DeletingStatus,
-							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
-								BucketStatus: v1alpha1.DeletingStatus,
-							},
-						},
-						bucket.Status.AtProvider.Backends,
-						"unexpected bucket status",
-					)
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						"unexpected bucket condition on s3-backend-1")
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						"unexpected bucket condition on s3-backend-2")
 				},
 				finalizerDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
@@ -300,10 +392,10 @@ func TestDelete(t *testing.T) {
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
 								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: xpv1.Available(),
 								},
 								"s3-backend-2": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: xpv1.Available(),
 								},
 							},
 						},
@@ -315,19 +407,12 @@ func TestDelete(t *testing.T) {
 				statusDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
-
-					assert.Equal(t,
-						v1alpha1.Backends{
-							"s3-backend-1": &v1alpha1.BackendInfo{
-								BucketStatus: v1alpha1.DeletingStatus,
-							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
-								BucketStatus: v1alpha1.DeletingStatus,
-							},
-						},
-						bucket.Status.AtProvider.Backends,
-						"unexpected bucket status",
-					)
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						"unexpected bucket condition on s3-backend-1")
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						"unexpected bucket condition on s3-backend-2")
 				},
 				finalizerDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
@@ -385,10 +470,10 @@ func TestDelete(t *testing.T) {
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
 								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: xpv1.Available(),
 								},
 								"s3-backend-2": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: xpv1.Available(),
 								},
 							},
 						},
@@ -401,17 +486,21 @@ func TestDelete(t *testing.T) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					assert.Equal(t,
-						v1alpha1.Backends{
-							// s3-backend-1 failed so is stuck in Deleting status.
-							// s3-backend-2 was successful so was removed from status.
-							"s3-backend-1": &v1alpha1.BackendInfo{
-								BucketStatus: v1alpha1.DeletingStatus,
-							},
-						},
-						bucket.Status.AtProvider.Backends,
-						"unexpected bucket status",
-					)
+					// s3-backend-1 failed so is stuck in Deleting status.
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						"unexpected bucket condition on s3-backend-1")
+
+					// s3-backend-2 was successfully deleted so was removed from status.
+					assert.False(t,
+						func(b v1alpha1.Backends) bool {
+							if _, ok := b["s3-backend-2"]; ok {
+								return true
+							}
+
+							return false
+						}(bucket.Status.AtProvider.Backends),
+						"s3-backend-2 should not exist in backends")
 				},
 				finalizerDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()

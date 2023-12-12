@@ -6,15 +6,19 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/document"
+
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
+
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	s3internal "github.com/linode/provider-ceph/internal/s3"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"go.opentelemetry.io/otel"
 )
@@ -143,24 +147,29 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 	case Updated:
 		return nil
 	case NeedsDeletion:
-		bb.setLifecycleConfigStatus(b.Name, backendName, v1alpha1.DeletingStatus)
 		if err := l.delete(ctx, b.Name, backendName); err != nil {
 			err = errors.Wrap(err, errHandleLifecycleConfig)
+			deleting := xpv1.Deleting().WithMessage(err.Error())
+			bb.setLifecycleConfigCondition(b.Name, backendName, &deleting)
+
 			traces.SetAndRecordError(span, err)
 
 			return err
 		}
-		bb.setLifecycleConfigStatus(b.Name, backendName, v1alpha1.NoStatus)
+		bb.setLifecycleConfigCondition(b.Name, backendName, nil)
 
 	case NeedsUpdate:
-		bb.setLifecycleConfigStatus(b.Name, backendName, v1alpha1.NotReadyStatus)
 		if err := l.createOrUpdate(ctx, b, backendName); err != nil {
 			err = errors.Wrap(err, errHandleLifecycleConfig)
+			unavailable := xpv1.Unavailable().WithMessage(err.Error())
+			bb.setLifecycleConfigCondition(b.Name, backendName, &unavailable)
+
 			traces.SetAndRecordError(span, err)
 
 			return err
 		}
-		bb.setLifecycleConfigStatus(b.Name, backendName, v1alpha1.ReadyStatus)
+		available := xpv1.Available()
+		bb.setLifecycleConfigCondition(b.Name, backendName, &available)
 	}
 
 	return nil

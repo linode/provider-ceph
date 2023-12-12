@@ -11,26 +11,11 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
 
-	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
-
-// isBucketAvailable return true if the bucket status has the following condition:
-// Type: Ready
-// Reason: Available
-// Status: Ready
-func isBucketAvailable(bucket *v1alpha1.Bucket) bool {
-	for _, c := range bucket.Status.Conditions {
-		if c.Type == xpv1.TypeReady && c.Reason == xpv1.ReasonAvailable && c.Status == corev1.ConditionTrue {
-			return true
-		}
-	}
-
-	return false
-}
 
 // isBucketPaused returns true if the bucket has the paused label set.
 func isBucketPaused(bucket *v1alpha1.Bucket) bool {
@@ -63,9 +48,9 @@ func isPauseRequired(bucket *v1alpha1.Bucket, bucketIsReady, autopauseEnabled bo
 		bucket.Labels[meta.AnnotationKeyReconciliationPaused] == ""
 }
 
-// isBucketReadyOnBackends checks the backends listed in Spec.Providers against the
-// backends in Status to ensure buckets are considered Ready on all desired backends.
-func isBucketReadyOnBackends(bucket *v1alpha1.Bucket, backendClients map[string]backendstore.S3Client) bool {
+// isBucketAvailableFromStatus checks the backends listed in Spec.Providers against the
+// backends in Status to ensure buckets are considered Available on all desired backends.
+func isBucketAvailableFromStatus(bucket *v1alpha1.Bucket, backendClients map[string]backendstore.S3Client) bool {
 	for _, backendName := range bucket.Spec.Providers {
 		if _, ok := backendClients[backendName]; !ok {
 			// This backend does not exist in the list of available backends.
@@ -78,8 +63,8 @@ func isBucketReadyOnBackends(bucket *v1alpha1.Bucket, backendClients map[string]
 			return false
 		}
 
-		if status := bucket.Status.AtProvider.Backends[backendName].BucketStatus; status != v1alpha1.ReadyStatus {
-			// The bucket is not ready on this backend.
+		if !bucket.Status.AtProvider.Backends[backendName].BucketCondition.Equal(xpv1.Available()) {
+			// The bucket is not Available on this backend.
 			return false
 		}
 	}
@@ -109,7 +94,9 @@ func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends) {
 	bucket.Status.AtProvider.Backends = backends
 
 	for _, backend := range backends {
-		if backend.BucketStatus == v1alpha1.ReadyStatus {
+		if backend.BucketCondition.Equal(xpv1.Available()) {
+			// If the bucket is Availailable on ANY backend,
+			// the Bucket CR is also considered Available.
 			bucket.Status.SetConditions(xpv1.Available())
 
 			break

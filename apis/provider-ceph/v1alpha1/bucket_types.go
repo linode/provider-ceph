@@ -82,24 +82,18 @@ type BucketParameters struct {
 // BackendInfo contains relevant information about an S3 backend for
 // a single bucket.
 type BackendInfo struct {
-	// BucketStatus is the condition of the Bucket on the S3 backend.
-	BucketStatus Status `json:"bucketStatus,omitempty"`
-	// LifecycleConfigurationStatus is the condition of the
-	// bucket lifecycle configuration on the S3 backend.
-	LifecycleConfigurationStatus Status `json:"lifecycleConfigurationStatus,omitempty"`
+	// BucketCondition is the condition of the Bucket on the S3 backend.
+	BucketCondition xpv1.Condition `json:"bucketCondition,omitempty"`
+	// LifecycleConfigurationCondition is the condition of the bucket lifecycle
+	// configuration on the S3 backend. Use a pointer to allow nil value when
+	// there is no lifecycle configuration.
+	LifecycleConfigurationCondition *xpv1.Condition `json:"lifecycleConfigurationCondition,omitempty"`
 }
 
 // Backends is a map of the names of the S3 backends to BackendInfo.
 type Backends map[string]*BackendInfo
 
-type Status string
-
 const (
-	ReadyStatus    Status = "Ready"
-	NotReadyStatus Status = "NotReady"
-	DeletingStatus Status = "Deleting"
-	NoStatus       Status = ""
-
 	ValidationRequiredLabel = "provider-ceph.crossplane.io/validation-required"
 )
 

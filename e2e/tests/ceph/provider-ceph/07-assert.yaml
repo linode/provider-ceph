@@ -8,8 +8,11 @@ metadata:
 status:
   atProvider:
     backends:
-      ceph-cluster: 
-        bucketStatus: "Ready"
+      ceph-cluster:
+        bucketCondition:
+          reason: Available
+          status: "True"
+          type: Ready
   conditions:
   - reason: Available
     status: "True"

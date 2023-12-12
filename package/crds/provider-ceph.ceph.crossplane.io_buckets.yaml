@@ -589,14 +589,74 @@ spec:
                       description: BackendInfo contains relevant information about
                         an S3 backend for a single bucket.
                       properties:
-                        bucketStatus:
-                          description: BucketStatus is the condition of the Bucket
+                        bucketCondition:
+                          description: BucketCondition is the condition of the Bucket
                             on the S3 backend.
-                          type: string
-                        lifecycleConfigurationStatus:
-                          description: LifecycleConfigurationStatus is the condition
+                          properties:
+                            lastTransitionTime:
+                              description: LastTransitionTime is the last time this
+                                condition transitioned from one status to another.
+                              format: date-time
+                              type: string
+                            message:
+                              description: A Message containing details about this
+                                condition's last transition from one status to another,
+                                if any.
+                              type: string
+                            reason:
+                              description: A Reason for this condition's last transition
+                                from one status to another.
+                              type: string
+                            status:
+                              description: Status of this condition; is it currently
+                                True, False, or Unknown?
+                              type: string
+                            type:
+                              description: Type of this condition. At most one of
+                                each condition type may apply to a resource at any
+                                point in time.
+                              type: string
+                          required:
+                          - lastTransitionTime
+                          - reason
+                          - status
+                          - type
+                          type: object
+                        lifecycleConfigurationCondition:
+                          description: LifecycleConfigurationCondition is the condition
                             of the bucket lifecycle configuration on the S3 backend.
-                          type: string
+                            Use a pointer to allow nil value when there is no lifecycle
+                            configuration.
+                          properties:
+                            lastTransitionTime:
+                              description: LastTransitionTime is the last time this
+                                condition transitioned from one status to another.
+                              format: date-time
+                              type: string
+                            message:
+                              description: A Message containing details about this
+                                condition's last transition from one status to another,
+                                if any.
+                              type: string
+                            reason:
+                              description: A Reason for this condition's last transition
+                                from one status to another.
+                              type: string
+                            status:
+                              description: Status of this condition; is it currently
+                                True, False, or Unknown?
+                              type: string
+                            type:
+                              description: Type of this condition. At most one of
+                                each condition type may apply to a resource at any
+                                point in time.
+                              type: string
+                          required:
+                          - lastTransitionTime
+                          - reason
+                          - status
+                          - type
+                          type: object
                       type: object
                     description: Backends is a map of the names of the S3 backends
                       to BackendInfo.

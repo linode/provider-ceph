@@ -6,11 +6,20 @@ status:
   atProvider:
     backends:
       localstack-a:
-        bucketStatus: "Ready"
+        bucketCondition:
+          reason: Available
+          status: "True"
+          type: Ready
       localstack-b:
-        bucketStatus: "Ready"
+        bucketCondition:
+          reason: Available
+          status: "True"
+          type: Ready
       localstack-c:
-        bucketStatus: "Ready"
+        bucketCondition:
+          reason: Available
+          status: "True"
+          type: Ready
   conditions:
   - reason: Available
     status: "True"

@@ -144,7 +144,7 @@ func TestObserve(t *testing.T) {
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
 								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: v1.Available(),
 								},
 							},
 						},
@@ -180,7 +180,7 @@ func TestObserve(t *testing.T) {
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
 								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: v1.Available(),
 								},
 							},
 						},
@@ -219,7 +219,7 @@ func TestObserve(t *testing.T) {
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
 								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: v1.Available(),
 								},
 							},
 						},
@@ -266,7 +266,7 @@ func TestObserve(t *testing.T) {
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
 								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.NotReadyStatus,
+									BucketCondition: v1.Unavailable(),
 								},
 							},
 						},
@@ -320,7 +320,7 @@ func TestObserve(t *testing.T) {
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
 								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: v1.Available(),
 								},
 							},
 						},
@@ -375,7 +375,7 @@ func TestObserve(t *testing.T) {
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
 								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: v1.Available(),
 								},
 							},
 						},
@@ -430,7 +430,7 @@ func TestObserve(t *testing.T) {
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
 								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: v1.Available(),
 								},
 							},
 						},
@@ -485,7 +485,7 @@ func TestObserve(t *testing.T) {
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
 								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketStatus: v1alpha1.ReadyStatus,
+									BucketCondition: v1.Available(),
 								},
 							},
 						},

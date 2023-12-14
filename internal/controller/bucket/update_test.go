@@ -15,6 +15,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/controller/clienthandler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -220,8 +221,8 @@ func TestUpdate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -272,8 +273,8 @@ func TestUpdate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -394,8 +395,11 @@ func TestUpdate(t *testing.T) {
 				WithScheme(s).Build()
 
 			e := external{
-				kubeClient:      cl,
-				backendStore:    tc.fields.backendStore,
+				kubeClient:   cl,
+				backendStore: tc.fields.backendStore,
+				clientHandler: clienthandler.NewS3ClientHandler(
+					clienthandler.WithAssumeRoleArn(nil),
+					clienthandler.WithBackendStore(tc.fields.backendStore)),
 				autoPauseBucket: tc.fields.autoPauseBucket,
 				log:             logging.NewNopLogger(),
 			}

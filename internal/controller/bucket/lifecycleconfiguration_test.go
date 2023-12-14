@@ -34,6 +34,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	ceph "github.com/linode/provider-ceph/internal/ceph"
+	"github.com/linode/provider-ceph/internal/controller/clienthandler"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -446,7 +447,14 @@ func TestObserveBackend(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			c := NewLifecycleConfigurationClient(tc.fields.backendStore, logging.NewNopLogger())
+			c := NewLifecycleConfigurationClient(
+				LifecycleConfiguraionClientWithBackendStore(tc.fields.backendStore),
+				LifecycleConfigurationClientWithClientHandler(
+					clienthandler.NewS3ClientHandler(
+						clienthandler.WithAssumeRoleArn(nil),
+						clienthandler.WithBackendStore(tc.fields.backendStore))),
+				LifecycleConfiguraionClientWithLog(logging.NewNopLogger()))
+
 			got, err := c.observeBackend(context.Background(), tc.args.bucket, tc.args.backendName)
 			require.ErrorIs(t, err, tc.want.err, "unexpected error")
 			assert.Equal(t, tc.want.status, got, "unexpected status")
@@ -498,7 +506,7 @@ func TestHandle(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -548,7 +556,7 @@ func TestHandle(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(beName, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(beName, &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -584,12 +592,12 @@ func TestHandle(t *testing.T) {
 						GetBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.GetBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{},
-							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: ceph.LifecycleNotFoundErrCode}
 						},
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -636,12 +644,12 @@ func TestHandle(t *testing.T) {
 										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
 									},
 								},
-							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: ceph.LifecycleNotFoundErrCode}
 						},
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -696,14 +704,14 @@ func TestHandle(t *testing.T) {
 										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
 									},
 								},
-							}, &smithy.GenericAPIError{Code: s3internal.LifecycleNotFoundErrCode}
+							}, &smithy.GenericAPIError{Code: ceph.LifecycleNotFoundErrCode}
 						},
 						PutBucketLifecycleConfigurationStub: func(ctx context.Context, lci *s3.PutBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.PutBucketLifecycleConfigurationOutput, error) {
 							return &s3.PutBucketLifecycleConfigurationOutput{}, errRandom
 						},
 					}
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -749,7 +757,14 @@ func TestHandle(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			c := NewLifecycleConfigurationClient(tc.fields.backendStore, logging.NewNopLogger())
+			c := NewLifecycleConfigurationClient(
+				LifecycleConfiguraionClientWithBackendStore(tc.fields.backendStore),
+				LifecycleConfigurationClientWithClientHandler(
+					clienthandler.NewS3ClientHandler(
+						clienthandler.WithAssumeRoleArn(nil),
+						clienthandler.WithBackendStore(tc.fields.backendStore))),
+				LifecycleConfiguraionClientWithLog(logging.NewNopLogger()))
+
 			bb := newBucketBackends()
 			bb.setLifecycleConfigCondition(bucketName, beName, &creating)
 

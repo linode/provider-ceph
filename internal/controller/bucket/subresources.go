@@ -35,7 +35,10 @@ type SubresourceClient interface {
 // NewSubresourceClients creates the array of all sub resource clients.
 func NewSubresourceClients(b *backendstore.BackendStore, c *clienthandler.S3ClientHandler, l logging.Logger) []SubresourceClient {
 	return []SubresourceClient{
-		NewLifecycleConfigurationClient(b, c, l.WithValues("lifecycle-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
+		NewLifecycleConfigurationClient(
+			LifecycleConfiguraionClientWithBackendStore(b),
+			LifecycleConfigurationClientWithClientHandler(c),
+			LifecycleConfiguraionClientWithLog(l.WithValues("lifecycle-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind)))),
 	}
 }
 

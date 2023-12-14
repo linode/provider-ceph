@@ -32,9 +32,32 @@ type LifecycleConfigurationClient struct {
 	log           logging.Logger
 }
 
-// NewLifecycleConfigurationClient creates the client for Accelerate Configuration
-func NewLifecycleConfigurationClient(b *backendstore.BackendStore, c *clienthandler.S3ClientHandler, l logging.Logger) *LifecycleConfigurationClient {
-	return &LifecycleConfigurationClient{backendStore: b, clientHandler: c, log: l}
+// NewLifecycleConfigurationClient creates the client for Lifecycle Configuration
+func NewLifecycleConfigurationClient(options ...func(*LifecycleConfigurationClient)) *LifecycleConfigurationClient {
+	l := &LifecycleConfigurationClient{}
+	for _, o := range options {
+		o(l)
+	}
+
+	return l
+}
+
+func LifecycleConfigurationClientWithClientHandler(h *clienthandler.S3ClientHandler) func(*LifecycleConfigurationClient) {
+	return func(l *LifecycleConfigurationClient) {
+		l.clientHandler = h
+	}
+}
+
+func LifecycleConfiguraionClientWithBackendStore(s *backendstore.BackendStore) func(*LifecycleConfigurationClient) {
+	return func(l *LifecycleConfigurationClient) {
+		l.backendStore = s
+	}
+}
+
+func LifecycleConfiguraionClientWithLog(log logging.Logger) func(*LifecycleConfigurationClient) {
+	return func(l *LifecycleConfigurationClient) {
+		l.log = log
+	}
 }
 
 func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {

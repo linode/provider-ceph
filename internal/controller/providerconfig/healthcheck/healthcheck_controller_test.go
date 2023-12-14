@@ -32,6 +32,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -676,7 +677,7 @@ func TestReconcile(t *testing.T) {
 
 			got, err := r.Reconcile(context.Background(), tc.args.req)
 			assert.Equal(t, tc.want.res, got, "unexpected result")
-			assert.ErrorIs(t, err, tc.want.err, "unexpected error")
+			require.ErrorIs(t, err, tc.want.err, "unexpected error")
 
 			// Now check that the reconciled ProviderConfig was updated correctly.
 			if tc.want.pc == nil {

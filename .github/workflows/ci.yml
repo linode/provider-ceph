@@ -11,7 +11,6 @@ on:
 env:
   # Common versions
   GO_VERSION: '1.21'
-  GOLANGCI_VERSION: 'v1.52.2'
   DOCKER_BUILDX_VERSION: 'v0.9.1'
 
   # Common users. We can't run a step 'if secrets.XXX != ""' but we can run a
@@ -70,13 +69,8 @@ jobs:
       - name: Vendor Dependencies
         run: make vendor vendor.check
 
-      # We could run 'make lint' but we prefer this action because it leaves
-      # 'annotations' (i.e. it comments on PRs to point out linter violations).
       - name: Lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: ${{ env.GOLANGCI_VERSION }}
-          args: --timeout=5m
+        run: make lint
 
   check-diff:
     runs-on: ubuntu-22.04

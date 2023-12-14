@@ -15,6 +15,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -95,7 +96,7 @@ func TestDeleteBasicErrors(t *testing.T) {
 			}
 
 			err := e.Delete(context.Background(), tc.args.mg)
-			assert.EqualError(t, err, tc.want.err.Error(), "unexpected error")
+			require.EqualError(t, err, tc.want.err.Error(), "unexpected error")
 		})
 	}
 }
@@ -535,7 +536,7 @@ func TestDelete(t *testing.T) {
 			}
 
 			err := e.Delete(context.Background(), tc.args.mg)
-			assert.ErrorIs(t, err, tc.want.err, "unexpected err")
+			require.ErrorIs(t, err, tc.want.err, "unexpected err")
 			if tc.want.statusDiff != nil {
 				tc.want.statusDiff(t, tc.args.mg)
 			}

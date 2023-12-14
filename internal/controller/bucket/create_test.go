@@ -16,6 +16,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -138,7 +139,7 @@ func TestCreateBasicErrors(t *testing.T) {
 			}
 
 			_, err := e.Create(context.Background(), tc.args.mg)
-			assert.EqualError(t, err, tc.want.err.Error(), "unexpected error")
+			require.EqualError(t, err, tc.want.err.Error(), "unexpected error")
 		})
 	}
 }
@@ -362,7 +363,7 @@ func TestCreate(t *testing.T) {
 			}
 
 			got, err := e.Create(context.Background(), tc.args.mg)
-			assert.ErrorIs(t, err, tc.want.err, "unexpected err")
+			require.ErrorIs(t, err, tc.want.err, "unexpected err")
 			assert.Equal(t, got, tc.want.o, "unexpected result")
 			if tc.want.statusDiff != nil {
 				tc.want.statusDiff(t, tc.args.mg)

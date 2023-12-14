@@ -24,6 +24,7 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
@@ -422,7 +423,7 @@ func TestObserveBackend(t *testing.T) {
 
 			c := NewLifecycleConfigurationClient(tc.fields.backendStore, logging.NewNopLogger())
 			got, err := c.observeBackend(context.Background(), tc.args.bucket, tc.args.backendName)
-			assert.ErrorIs(t, err, tc.want.err, "unexpected error")
+			require.ErrorIs(t, err, tc.want.err, "unexpected error")
 			assert.Equal(t, tc.want.status, got, "unexpected status")
 		})
 	}
@@ -728,7 +729,7 @@ func TestHandle(t *testing.T) {
 			bb.setLifecycleConfigCondition(bucketName, beName, &creating)
 
 			err := c.Handle(context.Background(), tc.args.bucket, tc.args.backendName, bb)
-			assert.ErrorIs(t, err, tc.want.err, "unexpected error")
+			require.ErrorIs(t, err, tc.want.err, "unexpected error")
 			if tc.want.specificDiff != nil {
 				tc.want.specificDiff(t, bb)
 			}

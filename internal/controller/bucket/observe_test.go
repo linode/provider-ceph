@@ -16,6 +16,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -93,7 +94,7 @@ func TestObserveBasicErrors(t *testing.T) {
 
 			e := external{backendStore: tc.fields.backendStore, log: logging.NewNopLogger()}
 			_, err := e.Observe(context.Background(), tc.args.mg)
-			assert.EqualError(t, err, tc.want.err.Error(), "unexpected error")
+			require.EqualError(t, err, tc.want.err.Error(), "unexpected error")
 		})
 	}
 }
@@ -514,7 +515,7 @@ func TestObserve(t *testing.T) {
 
 			e := external{backendStore: tc.fields.backendStore, autoPauseBucket: tc.fields.autoPauseBucket, log: logging.NewNopLogger()}
 			got, err := e.Observe(context.Background(), tc.args.mg)
-			assert.ErrorIs(t, err, tc.want.err, "unexpected error")
+			require.ErrorIs(t, err, tc.want.err, "unexpected error")
 			assert.Equal(t, got, tc.want.o, "unexpected result")
 		})
 	}

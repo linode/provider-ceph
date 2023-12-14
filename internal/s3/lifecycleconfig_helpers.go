@@ -46,7 +46,8 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 				rule.Expiration.Days = *local.Expiration.Days
 			}
 			if local.Expiration.Date != nil {
-				rule.Expiration.Date = &local.Expiration.Date.Time
+				t := local.Expiration.Date.Time
+				rule.Expiration.Date = &t
 			}
 		}
 		if local.NoncurrentVersionExpiration != nil && local.NoncurrentVersionExpiration.NoncurrentDays != nil {
@@ -76,7 +77,8 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 					transition.Days = *localTransition.Days
 				}
 				if localTransition.Date != nil {
-					transition.Date = &localTransition.Date.Time
+					t := localTransition.Date.Time
+					transition.Date = &t
 				}
 
 				transition.StorageClass = types.TransitionStorageClass(localTransition.StorageClass)

@@ -8,7 +8,7 @@ spec:
     source: Secret
     secretRef:
       namespace: crossplane-system
-      name: localstack
+      name: localstack-a
       key: credentials
   disableHealthCheck: false
   healthCheckIntervalSeconds: 5
@@ -23,7 +23,7 @@ spec:
     source: Secret
     secretRef:
       namespace: crossplane-system
-      name: localstack
+      name: localstack-b
       key: credentials
   disableHealthCheck: false
   healthCheckIntervalSeconds: 5
@@ -38,7 +38,7 @@ spec:
     source: Secret
     secretRef:
       namespace: crossplane-system
-      name: localstack
+      name: localstack-c
       key: credentials
   disableHealthCheck: false
   healthCheckIntervalSeconds: 5

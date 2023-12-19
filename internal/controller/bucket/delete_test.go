@@ -315,6 +315,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
+						Name:       "bucket",
 						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
@@ -384,6 +385,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
+						Name:       "bucket",
 						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{
@@ -459,6 +461,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
+						Name:       "bucket",
 						Finalizers: []string{v1alpha1.InUseFinalizer},
 					},
 					Spec: v1alpha1.BucketSpec{

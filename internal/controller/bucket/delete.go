@@ -96,6 +96,8 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		c.log.Info("Failed to update Bucket Status after attempting to delete bucket from backends", consts.KeyBucketName, bucket.Name)
 		err := errors.Wrap(err, errUpdateBucketCR)
 		traces.SetAndRecordError(span, err)
+
+		return err
 	}
 
 	// If an error occurred during deletion, we must return for requeue.

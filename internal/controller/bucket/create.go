@@ -153,7 +153,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 	ctx, span := otel.Tracer("").Start(ctx, "waitForCreationAndUpdateBucketCR")
 	defer span.End()
 
-	var err error
+	var createErr error
 
 	for i := 0; i < backendCount; i++ {
 		select {
@@ -193,9 +193,9 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 			}
 
 			return managed.ExternalCreation{}, err
-		case err := <-errChan:
-			if err != nil {
-				traces.SetAndRecordError(span, err)
+		case createErr = <-errChan:
+			if createErr != nil {
+				traces.SetAndRecordError(span, createErr)
 			}
 
 			continue
@@ -204,14 +204,17 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 
 	c.log.Info("Failed to create bucket on any backend", consts.KeyBucketName, bucket.Name)
 
-	err = c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+	if err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
 		bucketLatest.Status.SetConditions(xpv1.Unavailable())
 
 		return NeedsStatusUpdate
-	})
-	if err != nil {
+	}); err != nil {
 		c.log.Info("Failed to update backend unavailable status on Bucket CR", consts.KeyBucketName, bucket.Name)
+		err = errors.Wrap(err, errUpdateBucketCR)
+		traces.SetAndRecordError(span, err)
+
+		return managed.ExternalCreation{}, err
 	}
 
-	return managed.ExternalCreation{}, err
+	return managed.ExternalCreation{}, createErr
 }

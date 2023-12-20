@@ -146,6 +146,8 @@ func TestCreateBasicErrors(t *testing.T) {
 
 //nolint:paralleltest // Running in parallel causes issues with client.
 func TestCreate(t *testing.T) {
+	randomErr := errors.New("some error")
+
 	type fields struct {
 		backendStore    *backendstore.BackendStore
 		providerConfigs *apisv1alpha1.ProviderConfigList
@@ -241,7 +243,7 @@ func TestCreate(t *testing.T) {
 
 					fakeClientError.CreateBucketReturns(
 						&s3.CreateBucketOutput{},
-						errors.New("some error"),
+						randomErr,
 					)
 
 					fakeClientOK.CreateBucketReturns(
@@ -306,7 +308,7 @@ func TestCreate(t *testing.T) {
 
 					fakeClientError.CreateBucketReturns(
 						&s3.CreateBucketOutput{},
-						errors.New("some error"),
+						randomErr,
 					)
 
 					bs := backendstore.NewBackendStore()
@@ -325,7 +327,7 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			want: want{
-				err: nil,
+				err: randomErr,
 				statusDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)

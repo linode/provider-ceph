@@ -119,8 +119,8 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 		return NeedsObjectUpdate
 	}); err != nil {
-		c.log.Info("Failed to remove 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name)
 		err := errors.Wrap(err, errUpdateBucketCR)
+		c.log.Info("Failed to remove 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name, "error", err.Error())
 		traces.SetAndRecordError(span, err)
 
 		return err

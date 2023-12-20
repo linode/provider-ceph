@@ -13,7 +13,6 @@ import (
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -168,20 +167,8 @@ func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, 
 
 	nn := types.NamespacedName{Name: bucket.GetName()}
 
-	const (
-		steps  = 3
-		divide = 2
-		factor = 0.5
-		jitter = 0.1
-	)
-
 	for _, cb := range callbacks {
-		err := retry.OnError(wait.Backoff{
-			Steps:    steps,
-			Duration: c.operationTimeout / divide,
-			Factor:   factor,
-			Jitter:   jitter,
-		}, resource.IsAPIError, func() error {
+		err := retry.OnError(retry.DefaultRetry, resource.IsAPIError, func() error {
 			if err := c.kubeClient.Get(ctx, nn, bucket); err != nil {
 				return err
 			}

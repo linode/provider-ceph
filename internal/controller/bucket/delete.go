@@ -5,13 +5,15 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/consts"
@@ -109,18 +111,46 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	}
 
 	c.log.Info("All buckets successfully deleted from backends for Bucket CR", consts.KeyBucketName, bucket.Name)
+	/*
+			c.log.Info("Removing 'in-use' finalizer from Bucket CR NEW METHOD", consts.KeyBucketName, bucket.Name)
 
-	// No errors occurred - the bucket has successfully been deleted from all backends.
-	// We do not need to update the Bucket CR Status, we simply remove the "in-use" finalizer.
-	if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-		c.log.Info("Removing 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name)
+			if err := resource.Finalizer.RemoveFinalizer(resource.NewAPIFinalizer(c.kubeClient, v1alpha1.InUseFinalizer), ctx, bucket); err != nil {
+				c.log.Info("Failed to remove 'in-use' finalizer from Bucket CR NEW METHOD", consts.KeyBucketName, bucket.Name, "error", err.Error())
+				traces.SetAndRecordError(span, err)
 
-		controllerutil.RemoveFinalizer(bucketLatest, v1alpha1.InUseFinalizer)
+				return err
+			}
 
-		return NeedsObjectUpdate
-	}); err != nil {
-		err := errors.Wrap(err, errUpdateBucketCR)
-		c.log.Info("Failed to remove 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name, "error", err.Error())
+		// No errors occurred - the bucket has successfully been deleted from all backends.
+		// We do not need to update the Bucket CR Status, we simply remove the "in-use" finalizer.
+		if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+			c.log.Info("Removing 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name)
+
+			controllerutil.RemoveFinalizer(bucketLatest, v1alpha1.InUseFinalizer)
+
+			return NeedsObjectUpdate
+		}); err != nil {
+			err := errors.Wrap(err, errUpdateBucketCR)
+			c.log.Info("Failed to remove 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name, "error", err.Error())
+			traces.SetAndRecordError(span, err)
+
+			return err
+		}
+	*/
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		c.log.Info("Removing 'in-use' finalizer from Bucket CR RETRY METHOD", consts.KeyBucketName, bucket.Name)
+
+		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: bucket.Name}, bucket); err != nil {
+			return err
+		}
+
+		controllerutil.RemoveFinalizer(bucket, v1alpha1.InUseFinalizer)
+
+		return c.kubeClient.Update(ctx, bucket)
+	})
+	if err != nil {
+		err = errors.Wrap(err, errUpdateBucketCR)
+		c.log.Info("Failed to remove 'in-use' finalizer from Bucket CR RETRY METHOD", consts.KeyBucketName, bucket.Name, "error", err.Error())
 		traces.SetAndRecordError(span, err)
 
 		return err

@@ -93,9 +93,11 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 		return NeedsStatusUpdate
 	}); err != nil {
-		c.log.Info("Failed to update Bucket Status after attempting to delete bucket from backends", consts.KeyBucketName, bucket.Name)
-		err := errors.Wrap(err, errUpdateBucketCR)
+		err = errors.Wrap(err, errUpdateBucketCR)
+		c.log.Info("Failed to update Bucket Status after attempting to delete bucket from backends", consts.KeyBucketName, bucket.Name, "error", err.Error())
 		traces.SetAndRecordError(span, err)
+
+		return err
 	}
 
 	// If an error occurred during deletion, we must return for requeue.
@@ -117,8 +119,8 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 		return NeedsObjectUpdate
 	}); err != nil {
-		c.log.Info("Failed to remove 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name)
-		err := errors.Wrap(err, errUpdateBucketCR)
+		err = errors.Wrap(err, errUpdateBucketCR)
+		c.log.Info("Failed to remove 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name, "error", err.Error())
 		traces.SetAndRecordError(span, err)
 
 		return err

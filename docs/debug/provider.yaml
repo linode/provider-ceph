@@ -3,6 +3,6 @@ kind: Provider
 metadata:
   name: linode-provider-ceph
 spec:
-  package: xpkg.upbound.io/linode/provider-ceph:v0.0.3
-  controllerConfigRef:
+  package: xpkg.upbound.io/linode/provider-ceph:<insert-version>
+  runtimeConfigRef:
     name: debug-config

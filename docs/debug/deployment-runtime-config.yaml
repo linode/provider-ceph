@@ -1,0 +1,15 @@
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: debug-config
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          containers:
+          - name: package-runtime
+            args:
+            - --zap-stacktrace-level=debug
+            - --zap-log-level=debug

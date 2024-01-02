@@ -1,5 +1,5 @@
 run:
-  deadline: 2m
+  timrout: 2m
 
   skip-files:
   - "zz_generated\\..+\\.go$"

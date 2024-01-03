@@ -16,4 +16,4 @@ fi
 make generate generate-pkg generate-tests
 git diff --exit-code --quiet || (git status && exit 1)
 
-make lint go.test.unit
+make lint go.test.unit nilcheck vulncheck

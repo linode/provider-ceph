@@ -8,6 +8,13 @@ on:
   pull_request: {}
   workflow_dispatch: {}
 
+concurrency:
+  group: ci-${{ github.ref }}-1
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 env:
   # Common versions
   GO_VERSION: '1.21'
@@ -39,38 +46,64 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
 
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "::set-output name=cache::$(make go.cachedir)"
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-lint-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-lint-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v2
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
 
       - name: Lint
         run: make lint
+
+  nilcheck:
+    runs-on: ubuntu-22.04
+    needs: detect-noop
+    if: needs.detect-noop.outputs.noop != 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Vendor Dependencies
+        run: make vendor vendor.check
+
+      - name: Nilcheck
+        run: make nilcheck
+
+  vulncheck:
+    runs-on: ubuntu-22.04
+    needs: detect-noop
+    if: needs.detect-noop.outputs.noop != 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Vendor Dependencies
+        run: make vendor vendor.check
+
+      - name: Vulncheck
+        run: make vulncheck
 
   check-diff:
     runs-on: ubuntu-22.04
@@ -79,32 +112,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
 
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "::set-output name=cache::$(make go.cachedir)"
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-check-diff-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-check-diff-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v2
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
@@ -126,7 +141,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -134,27 +149,9 @@ jobs:
         run: git fetch --prune --unshallow
 
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "::set-output name=cache::$(make go.cachedir)"
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-unit-tests-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-unit-tests-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v2
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
@@ -194,7 +191,7 @@ jobs:
           password: ${{ secrets.UPBOUND_MARKETPLACE_PUSH_ROBOT_PSW }}
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -202,27 +199,9 @@ jobs:
         run: git fetch --prune --unshallow
 
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-
-      - name: Find the Go Build Cache
-        id: go
-        run: echo "::set-output name=cache::$(make go.cachedir)"
-
-      - name: Cache the Go Build Cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.go.outputs.cache }}
-          key: ${{ runner.os }}-build-publish-artifacts-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-build-publish-artifacts-
-
-      - name: Cache Go Dependencies
-        uses: actions/cache@v2
-        with:
-          path: .work/pkg
-          key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-pkg-
 
       - name: Vendor Dependencies
         run: make vendor vendor.check
@@ -235,7 +214,7 @@ jobs:
           BUILD_ARGS: "--load"
 
       - name: Publish Artifacts to GitHub
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: output
           path: _output/**

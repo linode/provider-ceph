@@ -91,6 +91,11 @@ file=./.github/workflows/kuttl-e2e-test-${major}.yaml
 ${HEADER}
 name: kuttl e2e test ${major}
 on: [push]
+concurrency:
+  group: kuttl-${major}-\${{ github.ref }}-1
+  cancel-in-progress: true
+permissions:
+  contents: read
 jobs:
   test:
     name: kuttl e2e test ${major}
@@ -102,8 +107,8 @@ jobs:
         uses: styfle/cancel-workflow-action@0.9.1
         with:
           access_token: \${{ github.token }}
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.21'
       - name: Install dependencies
@@ -120,7 +125,7 @@ jobs:
           AWS_ACCESS_KEY_ID: 'Dummy'
           AWS_SECRET_ACCESS_KEY: 'Dummy'
           AWS_DEFAULT_REGION: 'us-east-1'
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: \${{ always() }}
         with:
           name: kind-logs

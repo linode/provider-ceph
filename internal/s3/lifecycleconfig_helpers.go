@@ -34,7 +34,7 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 			Status: types.ExpirationStatus(local.Status),
 		}
 		if local.Prefix != nil {
-			rule.Prefix = local.Prefix
+			rule.Prefix = local.Prefix //nolint:staticcheck // Support deprecated field.
 		}
 		if local.AbortIncompleteMultipartUpload != nil {
 			rule.AbortIncompleteMultipartUpload = &types.AbortIncompleteMultipartUpload{

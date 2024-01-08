@@ -14,7 +14,7 @@ import (
 
 func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 	bucketname := "bucket"
-	filterPrefix := "someprefix/"
+	prefix := "someprefix/"
 	days90 := int32(90)
 	days365 := int32(365)
 	days3650 := int32(3650)
@@ -41,6 +41,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 					Rules: []v1alpha1.LifecycleRule{
 						{
 							Status: "Enabled",
+							Prefix: &prefix,
 							Expiration: &v1alpha1.LifecycleExpiration{
 								Days: &days365,
 							},
@@ -55,6 +56,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 						Rules: []types.LifecycleRule{
 							{
 								Status: "Enabled",
+								Prefix: &prefix,
 								Expiration: &types.LifecycleExpiration{
 									Days: days365,
 								},
@@ -72,11 +74,12 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 					Rules: []v1alpha1.LifecycleRule{
 						{
 							Status: "Enabled",
+							Prefix: &prefix,
 							Expiration: &v1alpha1.LifecycleExpiration{
 								Days: &days3650,
 							},
 							Filter: &v1alpha1.LifecycleRuleFilter{
-								Prefix: &filterPrefix,
+								Prefix: &prefix,
 							},
 							Transitions: []v1alpha1.Transition{
 								{
@@ -87,6 +90,8 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 						},
 						{
 							Status: "Enabled",
+							Prefix: &prefix,
+
 							Expiration: &v1alpha1.LifecycleExpiration{
 								Days: &days3650,
 							},
@@ -99,11 +104,12 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 						},
 						{
 							Status: "Enabled",
+							Prefix: &prefix,
 							Expiration: &v1alpha1.LifecycleExpiration{
 								Days: &days365,
 							},
 							Filter: &v1alpha1.LifecycleRuleFilter{
-								Prefix: &filterPrefix,
+								Prefix: &prefix,
 							},
 							Transitions: []v1alpha1.Transition{
 								{
@@ -122,11 +128,12 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 						Rules: []types.LifecycleRule{
 							{
 								Status: "Enabled",
+								Prefix: &prefix,
 								Expiration: &types.LifecycleExpiration{
 									Days: days3650,
 								},
 								Filter: &types.LifecycleRuleFilterMemberPrefix{
-									Value: filterPrefix,
+									Value: prefix,
 								},
 								Transitions: []types.Transition{
 									{
@@ -137,6 +144,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 							},
 							{
 								Status: "Enabled",
+								Prefix: &prefix,
 								Expiration: &types.LifecycleExpiration{
 									Days: days3650,
 								},
@@ -150,11 +158,12 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 							},
 							{
 								Status: "Enabled",
+								Prefix: &prefix,
 								Expiration: &types.LifecycleExpiration{
 									Days: days365,
 								},
 								Filter: &types.LifecycleRuleFilterMemberPrefix{
-									Value: filterPrefix,
+									Value: prefix,
 								},
 								Transitions: []types.Transition{
 									{

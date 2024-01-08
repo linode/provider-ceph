@@ -33,6 +33,9 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 			ID:     local.ID,
 			Status: types.ExpirationStatus(local.Status),
 		}
+		if local.Prefix != nil {
+			rule.Prefix = local.Prefix
+		}
 		if local.AbortIncompleteMultipartUpload != nil {
 			rule.AbortIncompleteMultipartUpload = &types.AbortIncompleteMultipartUpload{
 				DaysAfterInitiation: local.AbortIncompleteMultipartUpload.DaysAfterInitiation,

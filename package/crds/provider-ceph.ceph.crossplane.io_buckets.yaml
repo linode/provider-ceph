@@ -300,6 +300,10 @@ spec:
                                 - storageClass
                                 type: object
                               type: array
+                            prefix:
+                              description: Prefix identifying one or more objects
+                                to which the rule applies.
+                              type: string
                             status:
                               description: "If 'Enabled', the rule is currently being
                                 applied. If 'Disabled', the rule is not currently

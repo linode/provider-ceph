@@ -5,8 +5,10 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
 
 type Controller struct {
@@ -45,5 +47,6 @@ func WithBackendStore(b *backendstore.BackendStore) func(*Controller) {
 func (c *Controller) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&apisv1alpha1.ProviderConfig{}).
+		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}).
 		Complete(c)
 }

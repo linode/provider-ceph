@@ -79,6 +79,12 @@ type LifecycleRule struct {
 	// Specifies when an Amazon S3 object transitions to a specified storage class.
 	// +optional
 	Transitions []Transition `json:"transitions,omitempty"`
+
+	// Prefix identifying one or more objects to which the rule applies.
+	// Deprecated: Use Filter instead.
+	// This field is still supported as it is a required field in PutBucketLifecycle v1.
+	// +optional
+	Prefix *string `json:"prefix,omitempty"`
 }
 
 // AbortIncompleteMultipartUpload specifies the days since the initiation of an incomplete multipart upload

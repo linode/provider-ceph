@@ -81,7 +81,7 @@ type LifecycleRule struct {
 	Transitions []Transition `json:"transitions,omitempty"`
 
 	// Prefix identifying one or more objects to which the rule applies.
-	// Deprecated. Use Filter instead.
+	// Deprecated: Use Filter instead.
 	// This field is still supported as it is a required field in PutBucketLifecycle v1.
 	// +optional
 	Prefix *string `json:"prefix,omitempty"`

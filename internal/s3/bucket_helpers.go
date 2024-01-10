@@ -55,8 +55,15 @@ func BucketToPutBucketOwnershipControlsInput(bucket *v1alpha1.Bucket) *s3.PutBuc
 	}
 }
 
-// IsAlreadyExists helper function to test for ErrCodeBucketAlreadyOwnedByYou error
+// IsAlreadyExists helper function to test for ErrCodeBucketAlreadyExists error
 func IsAlreadyExists(err error) bool {
+	var alreadyExists *s3types.BucketAlreadyExists
+
+	return errors.As(err, &alreadyExists)
+}
+
+// IsAlreadyOwnedByYou helper function to test for ErrCodeBucketAlreadyOwnedByYou error
+func IsAlreadyOwnedByYou(err error) bool {
 	var alreadyOwnedByYou *s3types.BucketAlreadyOwnedByYou
 
 	return errors.As(err, &alreadyOwnedByYou)

@@ -104,7 +104,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			for i := 0; i < s3internal.RequestRetries; i++ {
 				_, err = s3internal.CreateBucket(ctx, cl, s3internal.BucketToCreateBucketInput(originalBucket))
-				if resource.Ignore(s3internal.IsAlreadyExists, err) == nil {
+				if err == nil {
 					c.log.Info("Bucket created on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 
 					break

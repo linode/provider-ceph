@@ -140,7 +140,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// Create a health check bucket on the backend if one does not already exist.
 	if !bucketExists {
 		_, err := s3internal.CreateBucket(ctx, s3BackendClient, &s3.CreateBucketInput{Bucket: aws.String(bucketName)})
-		if resource.Ignore(s3internal.IsAlreadyExists, err) != nil {
+		if err != nil {
 			c.log.Info("Failed to create bucket for health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
 			err = errors.Wrap(err, errCreateHealthCheckBucket)

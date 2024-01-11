@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - release-*
+      - fix-codeql-*
   workflow_dispatch: {}
 
 concurrency:
@@ -45,8 +46,11 @@ jobs:
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v2
+
+      # Custom Go version because of: https://github.com/github/codeql/issues/13992#issuecomment-1711721716
+      - uses: actions/setup-go@v5
         with:
-          languages: go
+          go-version: '1.21'
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2

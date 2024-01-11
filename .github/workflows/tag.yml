@@ -10,6 +10,14 @@ on:
         description: 'Tag message'
         required: true
 
+concurrency:
+  group: tag-${{ github.ref }}-1
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   create-tag:
     runs-on: ubuntu-22.04

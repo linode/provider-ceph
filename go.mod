@@ -2,6 +2,8 @@ module github.com/linode/provider-ceph
 
 go 1.21
 
+toolchain go1.21.5
+
 require (
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/aws/aws-sdk-go-v2 v1.20.2

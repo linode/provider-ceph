@@ -15,6 +15,8 @@ LATEST_KUBE_VERSION ?= 1.28
 LATEST_KIND_NODE ?= 1.28.0
 REPO ?= provider-ceph
 
+KUTTL_VERSION ?= 0.15.0
+
 # ====================================================================================
 # Setup Output
 
@@ -278,3 +280,38 @@ ifeq (,$(wildcard $(AWS)))
 	unzip $PWD/bin/awscliv2.zip -d $PWD/bin/
 	$PWD/bin/aws/install
 endif
+
+NILAWAY_VERSION ?= latest
+NILAWAY := $(TOOLS_HOST_DIR)/nilaway-$(NILAWAY_VERSION)
+
+.PHONY: nilcheck
+nilcheck: $(NILAWAY) ## Run nil check against codemake.
+	@# The bucket_backends.go is nil safe, covered by tests.
+	@# Backendstore contains mostly nil safe generated files.
+	go list ./... | xargs -I {} -d '\n' $(NILAWAY) \
+		-exclude-errors-in-files $(PWD)/internal/controller/bucket/bucket_backends.go \
+		-exclude-pkgs github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1,github.com/linode/provider-ceph/internal/backendstore \
+		-include-pkgs {} ./...
+
+# nilaway download and install.
+$(NILAWAY):
+	@$(INFO) installing nilaway $(NILAWAY_VERSION)
+	@mkdir -p $(TOOLS_HOST_DIR)
+	@GOBIN=$(TOOLS_HOST_DIR) go install go.uber.org/nilaway/cmd/nilaway@$(NILAWAY_VERSION)
+	@mv $(TOOLS_HOST_DIR)/nilaway $(NILAWAY)
+	@$(OK) installing nilaway $(NILAWAY_VERSION)
+
+GOVULNCHECK_VERSION ?= v1.0.1
+GOVULNCHECK := $(TOOLS_HOST_DIR)/govulncheck-$(GOVULNCHECK_VERSION)
+
+.PHONY: vulncheck
+vulncheck: $(GOVULNCHECK) ## Run vulnerability check against code.
+	$(GOVULNCHECK) ./...
+
+# govulncheck download and install.
+$(GOVULNCHECK):
+	@$(INFO) installing govulncheck $(GOVULNCHECK_VERSION)
+	@mkdir -p $(TOOLS_HOST_DIR)
+	@GOBIN=$(TOOLS_HOST_DIR) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+	@mv $(TOOLS_HOST_DIR)/govulncheck $(GOVULNCHECK)
+	@$(OK) installing govulncheck $(GOVULNCHECK_VERSION)

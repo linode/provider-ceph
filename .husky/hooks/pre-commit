@@ -1,3 +1,6 @@
 #!/usr/bin/env bash
 
-$PWD/bin/husky install
+PROJ_DIR=$(git rev-parse --show-toplevel)
+HUSKY_VERSION=$(cat $PROJ_DIR/.husky/husky.mk | grep "HUSKY_VERSION ?=" | awk '{print $3}')
+
+find $PROJ_DIR/.cache/tools -name husky-$HUSKY_VERSION -exec {} install \;

@@ -30,7 +30,7 @@ func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *
 	defer span.End()
 
 	resp, err := s3Backend.CreateBucket(ctx, bucket)
-	if resource.Ignore(IsAlreadyExists, err) != nil {
+	if resource.IgnoreAny(err, IsAlreadyOwnedByYou, IsAlreadyExists) != nil {
 		traces.SetAndRecordError(span, err)
 
 		return resp, errors.Wrap(err, errCreateBucket)

@@ -57,7 +57,7 @@ func isBucketAvailableFromStatus(bucket *v1alpha1.Bucket, backendClients map[str
 			continue
 		}
 
-		if backend, ok := bucket.Status.AtProvider.Backends[backendName]; !ok || backend == nil {
+		if backend := bucket.Status.AtProvider.Backends[backendName]; backend == nil {
 			// The bucket has not been created on this backend.
 			return false
 		} else if !backend.BucketCondition.Equal(xpv1.Available()) {

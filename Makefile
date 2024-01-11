@@ -286,6 +286,8 @@ NILAWAY := $(TOOLS_HOST_DIR)/nilaway-$(NILAWAY_VERSION)
 
 .PHONY: nilcheck
 nilcheck: $(NILAWAY) ## Run nil check against codemake.
+	@# The bucket_backends.go is nil safe, covered by tests.
+	@# Backendstore contains mostly nil safe generated files.
 	go list ./... | xargs -I {} -d '\n' $(NILAWAY) \
 		-exclude-errors-in-files $(PWD)/internal/controller/bucket/bucket_backends.go \
 		-exclude-pkgs github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1,github.com/linode/provider-ceph/internal/backendstore \

@@ -2,6 +2,7 @@ package bucket
 
 import (
 	"context"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -84,6 +85,15 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 
 	response, err := s3internal.GetBucketLifecycleConfiguration(ctx, s3Client, aws.String(bucket.Name))
 	if err != nil {
+		// Ceph may return an error such as `deserialition failed, failed to decode response body' which
+		// also includes 'StatusCode: 200'. In this case it is safe to assume that the lifecycle config does
+		// not exist and we can return no error.
+		if strings.Contains(err.Error(), "StatusCode: 200") {
+			l.log.Info("Error occurred deserilializing response", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+
+			return Updated, nil
+		}
+
 		return NeedsUpdate, err
 	}
 

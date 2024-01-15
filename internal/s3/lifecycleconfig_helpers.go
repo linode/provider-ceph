@@ -36,17 +36,18 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 		if local.Prefix != nil {
 			rule.Prefix = local.Prefix //nolint:staticcheck // Support deprecated field.
 		}
-		if local.AbortIncompleteMultipartUpload != nil {
+		if local.AbortIncompleteMultipartUpload != nil && local.AbortIncompleteMultipartUpload.DaysAfterInitiation != nil {
 			rule.AbortIncompleteMultipartUpload = &types.AbortIncompleteMultipartUpload{
 				DaysAfterInitiation: local.AbortIncompleteMultipartUpload.DaysAfterInitiation,
 			}
 		}
 		if local.Expiration != nil {
-			rule.Expiration = &types.LifecycleExpiration{
-				ExpiredObjectDeleteMarker: local.Expiration.ExpiredObjectDeleteMarker,
+			rule.Expiration = &types.LifecycleExpiration{}
+			if rule.Expiration.ExpiredObjectDeleteMarker != nil {
+				rule.Expiration.ExpiredObjectDeleteMarker = local.Expiration.ExpiredObjectDeleteMarker
 			}
 			if local.Expiration.Days != nil {
-				rule.Expiration.Days = *local.Expiration.Days
+				rule.Expiration.Days = local.Expiration.Days
 			}
 			if local.Expiration.Date != nil {
 				t := local.Expiration.Date.Time
@@ -54,7 +55,7 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 			}
 		}
 		if local.NoncurrentVersionExpiration != nil && local.NoncurrentVersionExpiration.NoncurrentDays != nil {
-			rule.NoncurrentVersionExpiration = &types.NoncurrentVersionExpiration{NoncurrentDays: *local.NoncurrentVersionExpiration.NoncurrentDays}
+			rule.NoncurrentVersionExpiration = &types.NoncurrentVersionExpiration{NoncurrentDays: local.NoncurrentVersionExpiration.NoncurrentDays}
 		}
 
 		if local.NoncurrentVersionTransitions != nil {
@@ -62,10 +63,10 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 			for _, transition := range local.NoncurrentVersionTransitions {
 				nonCurrentVersionTransition := types.NoncurrentVersionTransition{}
 				if transition.NoncurrentDays != nil {
-					nonCurrentVersionTransition.NoncurrentDays = *transition.NoncurrentDays
+					nonCurrentVersionTransition.NoncurrentDays = transition.NoncurrentDays
 				}
 				if transition.NewerNoncurrentVersions != nil {
-					nonCurrentVersionTransition.NewerNoncurrentVersions = *transition.NewerNoncurrentVersions
+					nonCurrentVersionTransition.NewerNoncurrentVersions = transition.NewerNoncurrentVersions
 				}
 				nonCurrentVersionTransition.StorageClass = types.TransitionStorageClass(transition.StorageClass)
 
@@ -77,7 +78,7 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 			for _, localTransition := range local.Transitions {
 				transition := types.Transition{}
 				if localTransition.Days != nil {
-					transition.Days = *localTransition.Days
+					transition.Days = localTransition.Days
 				}
 				if localTransition.Date != nil {
 					t := localTransition.Date.Time

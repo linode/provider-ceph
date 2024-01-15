@@ -97,7 +97,7 @@ type AbortIncompleteMultipartUpload struct {
 	// upload is aborted.
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=2147483647
-	DaysAfterInitiation int32 `json:"daysAfterInitiation"`
+	DaysAfterInitiation *int32 `json:"daysAfterInitiation"`
 }
 
 // LifecycleExpiration contains for the expiration for the lifecycle of the object.
@@ -114,7 +114,7 @@ type LifecycleExpiration struct {
 	// versions. If set to true, the delete marker will be expired; if set to false
 	// the policy takes no action. This cannot be specified with Days or Date in
 	// a Lifecycle Expiration Policy.
-	ExpiredObjectDeleteMarker bool `json:"expiredObjectDeleteMarker,omitempty"`
+	ExpiredObjectDeleteMarker *bool `json:"expiredObjectDeleteMarker,omitempty"`
 }
 
 // LifecycleRuleFilter is used to identify objects that a Lifecycle Rule applies to.

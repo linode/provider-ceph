@@ -21,10 +21,10 @@ spec:
       - id: "ClassADocRule"
         status: "Enabled"
         transitions:
-        - days: 365
+        - date: "2035-01-01T00:00:00Z"
           storageClass: "GLACIER"
         expiration:
-          days: 3650
+          date: "2045-01-01T00:00:00Z"
       - id: "ClassBDocRule"
         filter:
           prefix: "classB"

@@ -40,6 +40,7 @@ import (
 var (
 	errExternal = errors.New("external error")
 	days1       = int32(1)
+	days2       = int32(2)
 	days3       = int32(3)
 )
 
@@ -274,7 +275,7 @@ func TestObserveBackend(t *testing.T) {
 								Rules: []s3types.LifecycleRule{
 									{
 										Expiration: &s3types.LifecycleExpiration{
-											Days: days1,
+											Days: &days1,
 										},
 									},
 								},
@@ -320,7 +321,7 @@ func TestObserveBackend(t *testing.T) {
 									{
 										Status: "Enabled",
 										Expiration: &s3types.LifecycleExpiration{
-											Days: int32(2),
+											Days: &days2,
 										},
 										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
 									},
@@ -373,7 +374,7 @@ func TestObserveBackend(t *testing.T) {
 								Rules: []s3types.LifecycleRule{
 									{
 										Expiration: &s3types.LifecycleExpiration{
-											Days: int32(3),
+											Days: &days3,
 										},
 										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
 									},
@@ -606,7 +607,7 @@ func TestHandle(t *testing.T) {
 									{
 										Status: "Enabled",
 										Expiration: &s3types.LifecycleExpiration{
-											Days: int32(2),
+											Days: &days2,
 										},
 										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
 									},
@@ -666,7 +667,7 @@ func TestHandle(t *testing.T) {
 									{
 										Status: "Enabled",
 										Expiration: &s3types.LifecycleExpiration{
-											Days: int32(2),
+											Days: &days2,
 										},
 										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
 									},

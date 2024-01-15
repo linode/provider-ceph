@@ -139,7 +139,7 @@ func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, b
 		// might not return all of the objects in the first listing. Check to
 		// see whether the listing was truncated. If so, retrieve the next page
 		// of objects and delete them.
-		if !objects.IsTruncated {
+		if objects.IsTruncated != nil && !*objects.IsTruncated {
 			break
 		}
 
@@ -189,7 +189,7 @@ func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Cl
 		// might not return all of the objects in the first listing. Check to
 		// see whether the listing was truncated. If so, retrieve the next page
 		// of objects and delete them.
-		if !objectVersions.IsTruncated {
+		if objectVersions.IsTruncated != nil && !*objectVersions.IsTruncated {
 			break
 		}
 

@@ -17,7 +17,7 @@ func BucketToCreateBucketInput(bucket *v1alpha1.Bucket) *s3.CreateBucketInput {
 		GrantReadACP:               bucket.Spec.ForProvider.GrantReadACP,
 		GrantWrite:                 bucket.Spec.ForProvider.GrantWrite,
 		GrantWriteACP:              bucket.Spec.ForProvider.GrantWriteACP,
-		ObjectLockEnabledForBucket: aws.ToBool(bucket.Spec.ForProvider.ObjectLockEnabledForBucket),
+		ObjectLockEnabledForBucket: bucket.Spec.ForProvider.ObjectLockEnabledForBucket,
 		ObjectOwnership:            s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)),
 	}
 

@@ -48,7 +48,6 @@ func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1
 	return s3.NewFromConfig(sessionConfig, func(o *s3.Options) {
 		o.UsePathStyle = true
 		o.HTTPClient = &http.Client{Timeout: s3Timeout}
-
 	}), nil
 }
 

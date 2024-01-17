@@ -108,7 +108,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 				errChan <- err
 
 				return
-
 			}
 			c.log.Info("Bucket created on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 

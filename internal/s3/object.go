@@ -3,7 +3,6 @@ package s3
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -19,7 +18,7 @@ const (
 	errPutObject          = "failed to put object"
 )
 
-func GetObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.GetObjectInput, o ...func(*s3.Options)) (*awss3.GetObjectOutput, error) {
+func GetObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.GetObjectInput, o ...func(*awss3.Options)) (*awss3.GetObjectOutput, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "GetObject")
 	defer span.End()
 
@@ -34,7 +33,7 @@ func GetObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss
 	return resp, nil
 }
 
-func DeleteObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.DeleteObjectInput, o ...func(*s3.Options)) error {
+func DeleteObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.DeleteObjectInput, o ...func(*awss3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "DeleteObject")
 	defer span.End()
 
@@ -49,7 +48,7 @@ func DeleteObject(ctx context.Context, s3Backend backendstore.S3Client, input *a
 	return nil
 }
 
-func PutObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.PutObjectInput, o ...func(*s3.Options)) error {
+func PutObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.PutObjectInput, o ...func(*awss3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "PutObject")
 	defer span.End()
 
@@ -64,7 +63,7 @@ func PutObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss
 	return nil
 }
 
-func ListObjectsV2(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.ListObjectsV2Input, o ...func(*s3.Options)) (*awss3.ListObjectsV2Output, error) {
+func ListObjectsV2(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.ListObjectsV2Input, o ...func(*awss3.Options)) (*awss3.ListObjectsV2Output, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "ListObjectsV2")
 	defer span.End()
 
@@ -79,7 +78,7 @@ func ListObjectsV2(ctx context.Context, s3Backend backendstore.S3Client, input *
 	return resp, nil
 }
 
-func ListObjectVersions(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.ListObjectVersionsInput, o ...func(*s3.Options)) (*awss3.ListObjectVersionsOutput, error) {
+func ListObjectVersions(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.ListObjectVersionsInput, o ...func(*awss3.Options)) (*awss3.ListObjectVersionsOutput, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "ListObjectsVersions")
 	defer span.End()
 

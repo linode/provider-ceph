@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
@@ -24,8 +23,7 @@ const (
 	errHeadBucket   = "failed to perform head bucket"
 )
 
-func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *awss3.CreateBucketInput, o ...func(*s3.Options)) (*awss3.CreateBucketOutput, error) {
-
+func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *awss3.CreateBucketInput, o ...func(*awss3.Options)) (*awss3.CreateBucketOutput, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "CreateBucket")
 	defer span.End()
 
@@ -41,7 +39,7 @@ func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *
 	return resp, err
 }
 
-func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketName string, o ...func(*s3.Options)) (bool, error) {
+func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketName string, o ...func(*awss3.Options)) (bool, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "BucketExists")
 	defer span.End()
 
@@ -63,7 +61,7 @@ func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 	return true, nil
 }
 
-func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, o ...func(*s3.Options)) error {
+func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, o ...func(*awss3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "DeleteBucket")
 	defer span.End()
 
@@ -106,7 +104,7 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 	return nil
 }
 
-func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, o ...func(*s3.Options)) error {
+func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, o ...func(*awss3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "deleteBucketObjects")
 	defer span.End()
 
@@ -149,7 +147,7 @@ func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, b
 	return nil
 }
 
-func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, o ...func(*s3.Options)) error {
+func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, o ...func(*awss3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "deleteBucketObjectVersions")
 	defer span.End()
 

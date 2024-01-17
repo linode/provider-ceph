@@ -128,8 +128,13 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
+	// Enforce no retries on health check operations to give faster feedback on backend health.
+	o := func(options *s3.Options) {
+		options.Retryer = aws.NopRetryer{}
+	}
+
 	// Check the backend for the existence of the health check bucket.
-	bucketExists, err := s3internal.BucketExists(ctx, s3BackendClient, bucketName)
+	bucketExists, err := s3internal.BucketExists(ctx, s3BackendClient, bucketName, o)
 	if err != nil {
 		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(err.Error()))
 		traces.SetAndRecordError(span, err)
@@ -139,7 +144,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Create a health check bucket on the backend if one does not already exist.
 	if !bucketExists {
-		_, err := s3internal.CreateBucket(ctx, s3BackendClient, &s3.CreateBucketInput{Bucket: aws.String(bucketName)})
+		_, err := s3internal.CreateBucket(ctx, s3BackendClient, &s3.CreateBucketInput{Bucket: aws.String(bucketName)}, o)
 		if err != nil {
 			c.log.Info("Failed to create bucket for health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
@@ -213,7 +218,7 @@ func (c *Controller) cleanup(ctx context.Context, req ctrl.Request, bucketName s
 }
 
 // doHealthCheck performs a PutObject and GetObject on the health check bucket on the backend.
-func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, bucketName string) error {
+func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, bucketName string, o ...func(*s3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "Controller.doHealthCheck")
 	defer span.End()
 
@@ -225,8 +230,8 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 	if putErr := s3internal.PutObject(ctx, s3BackendClient, &s3.PutObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(healthCheckFile),
-		Body:   strings.NewReader(time.Now().Format(time.RFC850)),
-	}); putErr != nil {
+		Body:   strings.NewReader(time.Now().Format(time.RFC850))}, o...,
+	); putErr != nil {
 		putErr = errors.Wrap(putErr, errPutHealthCheckFile)
 		traces.SetAndRecordError(span, putErr)
 
@@ -236,7 +241,7 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 	_, getErr := s3internal.GetObject(ctx, s3BackendClient, &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(healthCheckFile),
-	})
+	}, o...)
 	if getErr != nil {
 		getErr = errors.Wrap(getErr, errGetHealthCheckFile)
 		traces.SetAndRecordError(span, getErr)

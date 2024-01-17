@@ -83,6 +83,7 @@ func main() {
 		reconcileConcurrency = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("100").Int()
 		maxReconcileRate     = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("1000").Int()
 		reconcileTimeout     = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("3s").Duration()
+		s3Timeout            = app.Flag("s3-timeout", "S3 API operations timeout").Default("10s").Duration()
 		creationGracePeriod  = app.Flag("creation-grace-period", "Duration to wait for the external API to report that a newly created external resource exists.").Default("10s").Duration()
 		tracesEnabled        = app.Flag("otel-enable-tracing", "").Default("false").Bool()
 		tracesExportTimeout  = app.Flag("otel-traces-export-timeout", "Timeout when exporting traces").Default("2s").Duration()
@@ -274,6 +275,7 @@ func main() {
 		backendmonitor.NewController(
 			backendmonitor.WithKubeClient(mgr.GetClient()),
 			backendmonitor.WithBackendStore(backendStore),
+			backendmonitor.WithS3Timeout(*s3Timeout),
 			backendmonitor.WithLogger(o.Logger)),
 		healthcheck.NewController(
 			healthcheck.WithAutoPause(autoPauseBucket),

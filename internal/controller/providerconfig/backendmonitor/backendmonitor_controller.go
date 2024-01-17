@@ -76,7 +76,7 @@ func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 		return err
 	}
 
-	s3client, err := s3internal.NewClient(ctx, secret.Data, &pc.Spec)
+	s3client, err := s3internal.NewClient(ctx, secret.Data, &pc.Spec, c.s3Timeout)
 	if err != nil {
 		return errors.Wrap(err, errCreateClient)
 	}

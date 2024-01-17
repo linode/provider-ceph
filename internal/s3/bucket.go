@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
@@ -23,11 +24,12 @@ const (
 	errHeadBucket   = "failed to perform head bucket"
 )
 
-func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *awss3.CreateBucketInput) (*awss3.CreateBucketOutput, error) {
+func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *awss3.CreateBucketInput, o ...func(*s3.Options)) (*awss3.CreateBucketOutput, error) {
+
 	ctx, span := otel.Tracer("").Start(ctx, "CreateBucket")
 	defer span.End()
 
-	resp, err := s3Backend.CreateBucket(ctx, bucket)
+	resp, err := s3Backend.CreateBucket(ctx, bucket, o...)
 	if resource.IgnoreAny(err, IsAlreadyOwnedByYou, IsAlreadyExists) != nil {
 		traces.SetAndRecordError(span, err)
 
@@ -39,11 +41,11 @@ func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *
 	return resp, err
 }
 
-func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketName string) (bool, error) {
+func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketName string, o ...func(*s3.Options)) (bool, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "BucketExists")
 	defer span.End()
 
-	_, err := s3Backend.HeadBucket(ctx, &awss3.HeadBucketInput{Bucket: aws.String(bucketName)})
+	_, err := s3Backend.HeadBucket(ctx, &awss3.HeadBucketInput{Bucket: aws.String(bucketName)}, o...)
 	if err != nil {
 		// An IsNotFound error means the call was successful
 		// and the bucket does not exist so we return no error.
@@ -61,11 +63,11 @@ func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 	return true, nil
 }
 
-func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
+func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, o ...func(*s3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "DeleteBucket")
 	defer span.End()
 
-	bucketExists, err := BucketExists(ctx, s3Backend, *bucketName)
+	bucketExists, err := BucketExists(ctx, s3Backend, *bucketName, o...)
 	if err != nil {
 		return err
 	}
@@ -77,12 +79,12 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 
 	// Delete all objects from the bucket. This is sufficient for unversioned buckets.
 	g.Go(func() error {
-		return deleteBucketObjects(ctx, s3Backend, bucketName)
+		return deleteBucketObjects(ctx, s3Backend, bucketName, o...)
 	})
 
 	// Delete all object versions (required for versioned buckets).
 	g.Go(func() error {
-		return deleteBucketObjectVersions(ctx, s3Backend, bucketName)
+		return deleteBucketObjectVersions(ctx, s3Backend, bucketName, o...)
 	})
 
 	if err := g.Wait(); err != nil {
@@ -94,7 +96,7 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 		return errors.Wrap(err, errDeleteBucket)
 	}
 
-	_, err = s3Backend.DeleteBucket(ctx, &awss3.DeleteBucketInput{Bucket: bucketName})
+	_, err = s3Backend.DeleteBucket(ctx, &awss3.DeleteBucketInput{Bucket: bucketName}, o...)
 	if resource.Ignore(IsNotFound, err) != nil {
 		traces.SetAndRecordError(span, err)
 
@@ -104,13 +106,13 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 	return nil
 }
 
-func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
+func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, o ...func(*s3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "deleteBucketObjects")
 	defer span.End()
 
 	objectsInput := &awss3.ListObjectsV2Input{Bucket: bucketName}
 	for {
-		objects, err := ListObjectsV2(ctx, s3Backend, objectsInput)
+		objects, err := ListObjectsV2(ctx, s3Backend, objectsInput, o...)
 		if err != nil {
 			err = errors.Wrap(err, errListObjects)
 			traces.SetAndRecordError(span, err)
@@ -122,7 +124,7 @@ func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, b
 		for _, object := range objects.Contents {
 			obj := object
 			g.Go(func() error {
-				return DeleteObject(ctx, s3Backend, &awss3.DeleteObjectInput{Bucket: bucketName, Key: obj.Key})
+				return DeleteObject(ctx, s3Backend, &awss3.DeleteObjectInput{Bucket: bucketName, Key: obj.Key}, o...)
 			})
 		}
 
@@ -147,13 +149,13 @@ func deleteBucketObjects(ctx context.Context, s3Backend backendstore.S3Client, b
 	return nil
 }
 
-func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
+func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, o ...func(*s3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "deleteBucketObjectVersions")
 	defer span.End()
 
 	objVersionsInput := &awss3.ListObjectVersionsInput{Bucket: bucketName}
 	for {
-		objectVersions, err := ListObjectVersions(ctx, s3Backend, objVersionsInput)
+		objectVersions, err := ListObjectVersions(ctx, s3Backend, objVersionsInput, o...)
 		if err != nil {
 			err = errors.Wrap(err, errListObjects)
 			traces.SetAndRecordError(span, err)
@@ -165,14 +167,14 @@ func deleteBucketObjectVersions(ctx context.Context, s3Backend backendstore.S3Cl
 		for _, deleteMarkerEntry := range objectVersions.DeleteMarkers {
 			delMark := deleteMarkerEntry
 			g.Go(func() error {
-				return DeleteObject(ctx, s3Backend, &awss3.DeleteObjectInput{Bucket: bucketName, Key: delMark.Key, VersionId: delMark.VersionId})
+				return DeleteObject(ctx, s3Backend, &awss3.DeleteObjectInput{Bucket: bucketName, Key: delMark.Key, VersionId: delMark.VersionId}, o...)
 			})
 		}
 
 		for _, objectVersion := range objectVersions.Versions {
 			objVer := objectVersion
 			g.Go(func() error {
-				return DeleteObject(ctx, s3Backend, &awss3.DeleteObjectInput{Bucket: bucketName, Key: objVer.Key, VersionId: objVer.VersionId})
+				return DeleteObject(ctx, s3Backend, &awss3.DeleteObjectInput{Bucket: bucketName, Key: objVer.Key, VersionId: objVer.VersionId}, o...)
 			})
 		}
 

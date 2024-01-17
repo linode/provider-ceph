@@ -81,7 +81,6 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
 	l.log.Info("Observing subresource lifecycle configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
-	s3Client := l.backendStore.GetBackendClient(backendName)
 	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
 		// If a backend is marked as unhealthy, we can ignore it for now by returning Updated.
 		// The backend may be down for some time and we do not want to block Create/Update/Delete
@@ -90,6 +89,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 		return Updated, nil
 	}
 
+	s3Client := l.backendStore.GetBackendClient(backendName)
 	response, err := s3internal.GetBucketLifecycleConfiguration(ctx, s3Client, aws.String(bucket.Name))
 	if err != nil {
 		return NeedsUpdate, err

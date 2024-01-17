@@ -12,6 +12,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
@@ -81,6 +82,13 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	l.log.Info("Observing subresource lifecycle configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	s3Client := l.backendStore.GetBackendClient(backendName)
+	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
+		// If a backend is marked as unhealthy, we can ignore it for now by returning Updated.
+		// The backend may be down for some time and we do not want to block Create/Update/Delete
+		// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
+		// phase until the backend becomes Healthy or Disabled.
+		return Updated, nil
+	}
 
 	response, err := s3internal.GetBucketLifecycleConfiguration(ctx, s3Client, aws.String(bucket.Name))
 	if err != nil {

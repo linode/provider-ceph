@@ -99,6 +99,30 @@ func TestObserveBackend(t *testing.T) {
 				err:    errExternal,
 			},
 		},
+		"Attempt to observe lifecycle config on unhealthy backend (consider it updated to unblock)": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusUnhealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+				},
+				backendName: "s3-backend-1",
+			},
+			want: want{
+				status: Updated,
+				err:    nil,
+			},
+		},
 		"Lifecycle config not specified in CR but exists on backend so NeedsDeletion": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {

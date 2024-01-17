@@ -138,42 +138,38 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 		}
 		beName := backendName
 		g.Go(func() error {
-			for i := 0; i < s3internal.RequestRetries; i++ {
-				c.log.Info("Updating bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
-				bucketExists, err := s3internal.BucketExists(ctx, cl, bucket.Name)
-				if err != nil {
-					c.log.Info("Error occurred attempting HeadBucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
-					bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
+			c.log.Info("Updating bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+			bucketExists, err := s3internal.BucketExists(ctx, cl, bucket.Name)
+			if err != nil {
+				c.log.Info("Error occurred attempting HeadBucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+				bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
 
-					return err
-				}
-				if !bucketExists {
-					bb.deleteBackend(bucket.Name, beName)
-
-					return nil
-				}
-
-				err = c.updateOnBackend(ctx, bucket, beName, bb)
-				if err != nil {
-					c.log.Info("Error occurred attempting to update bucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
-					bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
-
-					continue
-				}
-				// Check if this backend has been marked as 'Unhealthy'. In which case the
-				// bucket condition must remain in 'Unavailable' for this backend.
-				if c.backendStore.GetBackendHealthStatus(beName) == apisv1alpha1.HealthStatusUnhealthy {
-					bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage("Backend is marked Unhealthy"))
-
-					return nil
-				}
-				// Bucket has been successfully updated and the backend is either 'Healthy' or 'Unknown'.
-				// It may be 'Unknown' due to the healthcheck being disabled, in which case we can only assume
-				// the backend is healthy. Either way, set the bucket condition as 'Available' for this backend.
-				bb.setBucketCondition(bucket.Name, beName, xpv1.Available())
+				return err
+			}
+			if !bucketExists {
+				bb.deleteBackend(bucket.Name, beName)
 
 				return nil
 			}
+
+			err = c.updateOnBackend(ctx, bucket, beName, bb)
+			if err != nil {
+				c.log.Info("Error occurred attempting to update bucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+				bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
+
+				return err
+			}
+			// Check if this backend has been marked as 'Unhealthy'. In which case the
+			// bucket condition must remain in 'Unavailable' for this backend.
+			if c.backendStore.GetBackendHealthStatus(beName) == apisv1alpha1.HealthStatusUnhealthy {
+				bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage("Backend is marked Unhealthy"))
+
+				return nil
+			}
+			// Bucket has been successfully updated and the backend is either 'Healthy' or 'Unknown'.
+			// It may be 'Unknown' due to the healthcheck being disabled, in which case we can only assume
+			// the backend is healthy. Either way, set the bucket condition as 'Available' for this backend.
+			bb.setBucketCondition(bucket.Name, beName, xpv1.Available())
 
 			return nil
 		})

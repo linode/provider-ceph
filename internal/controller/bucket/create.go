@@ -100,16 +100,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 		beName := beName
 		go func() {
-			var err error
-
-			for i := 0; i < s3internal.RequestRetries; i++ {
-				_, err = s3internal.CreateBucket(ctx, cl, s3internal.BucketToCreateBucketInput(originalBucket))
-				if err == nil {
-					c.log.Info("Bucket created on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
-
-					break
-				}
-			}
+			_, err := s3internal.CreateBucket(ctx, cl, s3internal.BucketToCreateBucketInput(originalBucket))
 			if err != nil {
 				c.log.Info("Failed to create bucket on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName, "err", err.Error())
 				traces.SetAndRecordError(span, err)
@@ -117,7 +108,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 				errChan <- err
 
 				return
+
 			}
+			c.log.Info("Bucket created on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 
 			// This compare-and-swap operation is the atomic equivalent of:
 			//	if *bucketAlreadyCreated == false {

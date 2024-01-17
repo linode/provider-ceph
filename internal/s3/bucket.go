@@ -21,8 +21,6 @@ const (
 	errUpdateBucket = "failed to update bucket"
 	errDeleteBucket = "failed to delete bucket"
 	errHeadBucket   = "failed to perform head bucket"
-
-	RequestRetries = 5
 )
 
 func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *awss3.CreateBucketInput) (*awss3.CreateBucketOutput, error) {

@@ -1,6 +1,6 @@
 # Release Process
 
-The release process for `provider-ceph` *mostly* follows the process described [here](https://github.com/crossplane/crossplane/blob/master/contributing/release-process.md).
+The release process for `provider-ceph` *mostly* follows the process described [here](https://github.com/crossplane/release#tldr-process-overview).
 
 Here is a simplified set of steps to create a release for `provider-ceph`.
 

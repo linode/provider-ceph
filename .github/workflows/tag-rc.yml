@@ -1,0 +1,40 @@
+name: Tag Release Canditate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release canditate version (e.g. v0.1.0-rc.0)'
+        required: true
+      message:
+        description: 'Tag message'
+        required: true
+
+concurrency:
+  group: tag-${{ github.ref }}-1
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-22.04
+    env:
+      VERSION: ${{ github.event.inputs.version }}
+      MESSAGE: ${{ github.event.inputs.message }}
+      BRANCH: main
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set git config
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "<>"
+
+    - name: Tag
+      run: |
+        git tag $VERSION -m "$MESSAGE"
+        git push origin $VERSION

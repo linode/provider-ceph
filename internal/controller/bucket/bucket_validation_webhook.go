@@ -100,25 +100,14 @@ func (b *BucketValidator) validateLifecycleConfiguration(ctx context.Context, bu
 
 	// Create dummy bucket 'life-cycle-configuration-validation-bucket' for the lifecycle config validation.
 	// Cleanup of this bucket is performed by the health-check controller on deletion of the ProviderConfig.
-	var err error
-	for i := 0; i < s3internal.RequestRetries; i++ {
-		_, err = s3internal.CreateBucket(ctx, s3Client, s3internal.BucketToCreateBucketInput(dummyBucket))
-		if err == nil {
-			break
-		}
-	}
+	_, err := s3internal.CreateBucket(ctx, s3Client, s3internal.BucketToCreateBucketInput(dummyBucket))
 	if err != nil {
 		return err
 	}
 
 	// Attempt to Put the lifecycle config.
 	dummyBucket.Spec.ForProvider.LifecycleConfiguration = bucket.Spec.ForProvider.LifecycleConfiguration
-	for i := 0; i < s3internal.RequestRetries; i++ {
-		_, err = s3internal.PutBucketLifecycleConfiguration(ctx, s3Client, dummyBucket)
-		if err == nil {
-			break
-		}
-	}
+	_, err = s3internal.PutBucketLifecycleConfiguration(ctx, s3Client, dummyBucket)
 	if err != nil {
 		return err
 	}

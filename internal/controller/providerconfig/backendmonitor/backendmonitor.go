@@ -1,6 +1,8 @@
 package backendmonitor
 
 import (
+	"time"
+
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
@@ -13,6 +15,7 @@ type Controller struct {
 	kubeClient   client.Client
 	backendStore *backendstore.BackendStore
 	log          logging.Logger
+	s3Timeout    time.Duration
 }
 
 func NewController(options ...func(*Controller)) *Controller {
@@ -39,6 +42,12 @@ func WithLogger(l logging.Logger) func(*Controller) {
 func WithBackendStore(b *backendstore.BackendStore) func(*Controller) {
 	return func(r *Controller) {
 		r.backendStore = b
+	}
+}
+
+func WithS3Timeout(t time.Duration) func(*Controller) {
+	return func(r *Controller) {
+		r.s3Timeout = t
 	}
 }
 

@@ -57,19 +57,14 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		cl := c.backendStore.GetBackendClient(backendName)
 		beName := backendName
 		g.Go(func() error {
-			var err error
-			for i := 0; i < s3internal.RequestRetries; i++ {
-				if err = s3internal.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err == nil {
-					bucketBackends.deleteBackend(bucket.Name, beName)
-
-					break
-				}
-			}
-			if err != nil {
+			if err := s3internal.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err != nil {
 				bucketBackends.setBucketCondition(bucket.Name, beName, xpv1.Deleting().WithMessage(err.Error()))
-			}
 
-			return err
+				return err
+			}
+			bucketBackends.deleteBackend(bucket.Name, beName)
+
+			return nil
 		})
 	}
 

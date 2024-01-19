@@ -2,7 +2,9 @@ package s3
 
 import (
 	"context"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -20,7 +22,7 @@ const (
 	secretKey = "secret_key"
 )
 
-func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec) (*s3.Client, error) {
+func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec, s3Timeout time.Duration) (*s3.Client, error) {
 	hostBase := resolveHostBase(pcSpec.HostBase, pcSpec.UseHTTPS)
 
 	endpointResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
@@ -45,6 +47,7 @@ func NewClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1
 
 	return s3.NewFromConfig(sessionConfig, func(o *s3.Options) {
 		o.UsePathStyle = true
+		o.HTTPClient = &http.Client{Timeout: s3Timeout}
 	}), nil
 }
 

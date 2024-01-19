@@ -18,11 +18,11 @@ const (
 	errPutObject          = "failed to put object"
 )
 
-func GetObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.GetObjectInput) (*awss3.GetObjectOutput, error) {
+func GetObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.GetObjectInput, o ...func(*awss3.Options)) (*awss3.GetObjectOutput, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "GetObject")
 	defer span.End()
 
-	resp, err := s3Backend.GetObject(ctx, input)
+	resp, err := s3Backend.GetObject(ctx, input, o...)
 	if err != nil {
 		err = errors.Wrap(err, errGetObject)
 		traces.SetAndRecordError(span, err)
@@ -33,11 +33,11 @@ func GetObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss
 	return resp, nil
 }
 
-func DeleteObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.DeleteObjectInput) error {
+func DeleteObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.DeleteObjectInput, o ...func(*awss3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "DeleteObject")
 	defer span.End()
 
-	_, err := s3Backend.DeleteObject(ctx, input)
+	_, err := s3Backend.DeleteObject(ctx, input, o...)
 	if err != nil {
 		err = errors.Wrap(err, errDeleteObject)
 		traces.SetAndRecordError(span, err)
@@ -48,11 +48,11 @@ func DeleteObject(ctx context.Context, s3Backend backendstore.S3Client, input *a
 	return nil
 }
 
-func PutObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.PutObjectInput) error {
+func PutObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.PutObjectInput, o ...func(*awss3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "PutObject")
 	defer span.End()
 
-	_, err := s3Backend.PutObject(ctx, input)
+	_, err := s3Backend.PutObject(ctx, input, o...)
 	if err != nil {
 		err = errors.Wrap(err, errPutObject)
 		traces.SetAndRecordError(span, err)
@@ -63,11 +63,11 @@ func PutObject(ctx context.Context, s3Backend backendstore.S3Client, input *awss
 	return nil
 }
 
-func ListObjectsV2(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.ListObjectsV2Input) (*awss3.ListObjectsV2Output, error) {
+func ListObjectsV2(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.ListObjectsV2Input, o ...func(*awss3.Options)) (*awss3.ListObjectsV2Output, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "ListObjectsV2")
 	defer span.End()
 
-	resp, err := s3Backend.ListObjectsV2(ctx, input)
+	resp, err := s3Backend.ListObjectsV2(ctx, input, o...)
 	if err != nil {
 		err = errors.Wrap(err, errListObjects)
 		traces.SetAndRecordError(span, err)
@@ -78,11 +78,11 @@ func ListObjectsV2(ctx context.Context, s3Backend backendstore.S3Client, input *
 	return resp, nil
 }
 
-func ListObjectVersions(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.ListObjectVersionsInput) (*awss3.ListObjectVersionsOutput, error) {
+func ListObjectVersions(ctx context.Context, s3Backend backendstore.S3Client, input *awss3.ListObjectVersionsInput, o ...func(*awss3.Options)) (*awss3.ListObjectVersionsOutput, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "ListObjectsVersions")
 	defer span.End()
 
-	resp, err := s3Backend.ListObjectVersions(ctx, input)
+	resp, err := s3Backend.ListObjectVersions(ctx, input, o...)
 	if err != nil {
 		err = errors.Wrap(err, errListObjectVersions)
 		traces.SetAndRecordError(span, err)

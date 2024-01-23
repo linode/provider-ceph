@@ -93,7 +93,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			// Auto pause the Bucket CR if required.
 			cls := c.backendStore.GetBackendClients(bucketLatest.Spec.Providers)
-			if isPauseRequired(bucketLatest, bucketBackends.isBucketAvailableOnBackends(bucketLatest, cls), c.autoPauseBucket) {
+			if isPauseRequired(bucketLatest, cls, bucketBackends, c.autoPauseBucket) {
 				c.log.Info("Auto pausing bucket", consts.KeyBucketName, bucket.Name)
 				pauseBucket(bucketLatest)
 			}

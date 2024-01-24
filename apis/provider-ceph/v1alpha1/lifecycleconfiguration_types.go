@@ -153,7 +153,8 @@ type LifecycleRuleAndOperator struct {
 
 	// All of these tags must exist in the object's tag set in order for the rule
 	// to apply.
-	Tags []Tag `json:"tags"`
+	// +optional
+	Tags []Tag `json:"tags,omitempty"`
 
 	// Minimum object size to which the rule applies.
 	// +optional

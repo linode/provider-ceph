@@ -66,6 +66,21 @@ func (b *bucketBackends) setLifecycleConfigCondition(bucketName, backendName str
 	b.backends[bucketName][backendName].LifecycleConfigurationCondition = c
 }
 
+func (b *bucketBackends) getLifecycleConfigCondition(bucketName, backendName string) *xpv1.Condition {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if _, ok := b.backends[bucketName]; !ok {
+		return nil
+	}
+
+	if _, ok := b.backends[bucketName][backendName]; !ok {
+		return nil
+	}
+
+	return b.backends[bucketName][backendName].LifecycleConfigurationCondition
+}
+
 func (b *bucketBackends) deleteBackend(bucketName, backendName string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -119,6 +134,51 @@ func (b *bucketBackends) isBucketAvailableOnBackends(bucket *v1alpha1.Bucket, c 
 
 		if !bucketCondition.Equal(xpv1.Available()) {
 			// The bucket is not Available on this backend.
+			return false
+		}
+	}
+
+	return true
+}
+
+// isLifecycleConfigAvailableOnBackends checks the backends listed in Spec.Providers against
+// bucketBackends to ensure lifecycle configurations are considered Available on all desired backends.
+func (b *bucketBackends) isLifecycleConfigAvailableOnBackends(bucket *v1alpha1.Bucket, c map[string]backendstore.S3Client) bool {
+	for _, backendName := range bucket.Spec.Providers {
+		if _, ok := c[backendName]; !ok {
+			// This backend does not exist in the list of available backends.
+			// The backend may be offline, so it is skipped.
+			continue
+		}
+
+		lcCondition := b.getLifecycleConfigCondition(bucket.Name, backendName)
+		if lcCondition == nil {
+			// The lifecycleconfig has not been created on this backend.
+			return false
+		}
+
+		if !lcCondition.Equal(xpv1.Available()) {
+			// The lifecycleconfig is not Available on this backend.
+			return false
+		}
+	}
+
+	return true
+}
+
+// isLifecycleConfigRemovedFromBackends checks the backends listed in Spec.Providers against
+// bucketBackends to ensure lifecycle configurations are removed from all desired backends.
+func (b *bucketBackends) isLifecycleConfigRemovedFromBackends(bucket *v1alpha1.Bucket, c map[string]backendstore.S3Client) bool {
+	for _, backendName := range bucket.Spec.Providers {
+		if _, ok := c[backendName]; !ok {
+			// This backend does not exist in the list of available backends.
+			// The backend may be offline, so it is skipped.
+			continue
+		}
+
+		lcCondition := b.getLifecycleConfigCondition(bucket.Name, backendName)
+		if lcCondition != nil {
+			// The lifecycleconfig has not been created on this backend.
 			return false
 		}
 	}

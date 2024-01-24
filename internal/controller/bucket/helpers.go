@@ -34,17 +34,29 @@ func pauseBucket(bucket *v1alpha1.Bucket) {
 }
 
 // isPauseRequired determines if the Bucket should be paused.
-func isPauseRequired(bucket *v1alpha1.Bucket, bucketIsReady, autopauseEnabled bool) bool {
-	if !bucketIsReady {
+func isPauseRequired(b *v1alpha1.Bucket, c map[string]backendstore.S3Client, bb *bucketBackends, autopauseEnabled bool) bool {
+	if !bb.isBucketAvailableOnBackends(b, c) {
 		return false
 	}
 
-	return (bucket.Spec.AutoPause || autopauseEnabled) &&
+	// If lifecycle config is enabled and is specified in the spec, we should only pause once
+	// the lifecycle config is available on all backends.
+	if !b.Spec.LifecycleConfigurationDisabled && b.Spec.ForProvider.LifecycleConfiguration != nil && !bb.isLifecycleConfigAvailableOnBackends(b, c) {
+		return false
+	}
+
+	// If lifecycle config is disabled, we should only pause once the lifecycle config is
+	// removed from all backends.
+	if b.Spec.LifecycleConfigurationDisabled && !bb.isLifecycleConfigRemovedFromBackends(b, c) {
+		return false
+	}
+
+	return (b.Spec.AutoPause || autopauseEnabled) &&
 		// Only return true if this label value is "".
 		// This is to allow the user to delete a paused bucket with autopause enabled.
 		// By setting this value to "false" or some other no-empty-string value, the
 		// Update loop can bypass autopause, subsequently enabling deletion to take place.
-		bucket.Labels[meta.AnnotationKeyReconciliationPaused] == ""
+		b.Labels[meta.AnnotationKeyReconciliationPaused] == ""
 }
 
 // isBucketAvailableFromStatus checks the backends listed in Spec.Providers against the

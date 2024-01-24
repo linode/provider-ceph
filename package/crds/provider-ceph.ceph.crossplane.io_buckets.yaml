@@ -206,8 +206,6 @@ spec:
                                         - value
                                         type: object
                                       type: array
-                                  required:
-                                  - tags
                                   type: object
                                 objectSizeGreaterThan:
                                   description: Minimum object size to which the rule

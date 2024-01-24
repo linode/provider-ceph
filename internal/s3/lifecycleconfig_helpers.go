@@ -43,7 +43,7 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 		}
 		if local.Expiration != nil {
 			rule.Expiration = &types.LifecycleExpiration{}
-			if rule.Expiration.ExpiredObjectDeleteMarker != nil {
+			if local.Expiration.ExpiredObjectDeleteMarker != nil {
 				rule.Expiration.ExpiredObjectDeleteMarker = local.Expiration.ExpiredObjectDeleteMarker
 			}
 			if local.Expiration.Days != nil {

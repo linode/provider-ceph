@@ -82,14 +82,6 @@ func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 		return errors.Wrap(err, errCreateS3Client)
 	}
 
-	// If an STSAddress has not been set in the ProviderConfig Spec, use the HostBase.
-	// The STSAddress is only necessary if we wish to contact an STS compliant authentication
-	// service separate to the HostBase (i.e RGW address).
-	stsAddress := pc.Spec.STSAddress
-	if stsAddress == nil {
-		stsAddress = &pc.Spec.HostBase
-	}
-
 	stsclient, err := ceph.NewSTSClient(ctx, secret.Data, &pc.Spec, c.s3Timeout)
 	if err != nil {
 		return errors.Wrap(err, errCreateSTSClient)

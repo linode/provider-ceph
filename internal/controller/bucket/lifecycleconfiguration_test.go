@@ -106,7 +106,7 @@ func TestObserveBackend(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, true, apisv1alpha1.HealthStatusUnhealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusUnhealthy)
 
 					return bs
 				}(),

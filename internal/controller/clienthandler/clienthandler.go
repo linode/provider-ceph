@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"math/big"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -22,6 +23,7 @@ type S3ClientHandler struct {
 	kubeClient    client.Client
 	assumeRoleArn *string
 	backendStore  *backendstore.BackendStore
+	s3Timeout     time.Duration
 	log           logging.Logger
 }
 
@@ -55,6 +57,12 @@ func WithBackendStore(s *backendstore.BackendStore) func(*S3ClientHandler) {
 func WithLog(l logging.Logger) func(*S3ClientHandler) {
 	return func(c *S3ClientHandler) {
 		c.log = l
+	}
+}
+
+func WithS3Timeout(t time.Duration) func(*S3ClientHandler) {
+	return func(r *S3ClientHandler) {
+		r.s3Timeout = t
 	}
 }
 
@@ -97,7 +105,7 @@ func (c *S3ClientHandler) assumeRoleS3Client(ctx context.Context, bucket *v1alph
 		return nil, err
 	}
 
-	return ceph.NewS3Client(ctx, data, pc.Spec.HostBase, pc.Spec.UseHTTPS)
+	return ceph.NewS3Client(ctx, data, &pc.Spec, c.s3Timeout)
 }
 
 // copySTSTags converts a list of local v1alpha1.Tags to STS Tags

@@ -106,7 +106,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 		beName := beName
 		go func() {
-			_, err := ceph.CreateBucket(ctx, cl, s3internal.BucketToCreateBucketInput(originalBucket))
+			_, err := ceph.CreateBucket(ctx, cl, ceph.BucketToCreateBucketInput(originalBucket))
 			if err != nil {
 				c.log.Info("Failed to create bucket on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName, "err", err.Error())
 				traces.SetAndRecordError(span, err)

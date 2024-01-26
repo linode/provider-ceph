@@ -100,7 +100,7 @@ func (b *BucketValidator) validateLifecycleConfiguration(ctx context.Context, bu
 
 	// Create dummy bucket 'life-cycle-configuration-validation-bucket' for the lifecycle config validation.
 	// Cleanup of this bucket is performed by the health-check controller on deletion of the ProviderConfig.
-	_, err := ceph.CreateBucket(ctx, s3Client, s3internal.BucketToCreateBucketInput(dummyBucket))
+	_, err := ceph.CreateBucket(ctx, s3Client, ceph.BucketToCreateBucketInput(dummyBucket))
 	if err != nil {
 		return err
 	}

@@ -17,6 +17,7 @@ import (
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/rgw"
@@ -130,7 +131,13 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 			continue
 		}
 
-		cl := c.backendStore.GetBackendS3Client(backendName)
+		cl, err := c.s3ClientHandler.GetS3Client(backendName)
+		if err != nil {
+			traces.SetAndRecordError(span, err)
+			c.log.Info("Failed to get client for backend - bucket cannot be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName, "error", err.Error())
+
+			continue
+		}
 		if cl == nil {
 			c.log.Info("Backend client not found for backend - bucket cannot be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
@@ -152,7 +159,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 				return nil
 			}
 
-			err = c.updateOnBackend(ctx, bucket, beName, bb)
+			err = c.updateOnBackend(ctx, cl, bucket, beName, bb)
 			if err != nil {
 				c.log.Info("Error occurred attempting to update bucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 				bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
@@ -184,8 +191,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 	return nil
 }
 
-func (c *external) updateOnBackend(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
-	cl := c.backendStore.GetBackendS3Client(backendName)
+func (c *external) updateOnBackend(ctx context.Context, cl backendstore.S3Client, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	if s3types.ObjectOwnership(aws.ToString(b.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
 		_, err := cl.PutBucketAcl(ctx, rgw.BucketToPutBucketACLInput(b))
 		if err != nil {

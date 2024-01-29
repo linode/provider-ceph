@@ -15,6 +15,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -358,8 +359,11 @@ func TestCreate(t *testing.T) {
 			}
 
 			e := external{
-				kubeClient:       cl.Build(),
-				backendStore:     tc.fields.backendStore,
+				kubeClient:   cl.Build(),
+				backendStore: tc.fields.backendStore,
+				s3ClientHandler: s3clienthandler.NewHandler(
+					s3clienthandler.WithAssumeRoleArn(nil),
+					s3clienthandler.WithBackendStore(tc.fields.backendStore)),
 				log:              logging.NewNopLogger(),
 				operationTimeout: time.Second * 5,
 			}

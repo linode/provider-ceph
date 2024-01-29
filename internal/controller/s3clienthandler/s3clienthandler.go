@@ -45,3 +45,11 @@ func WithLog(l logging.Logger) func(*Handler) {
 		c.log = l
 	}
 }
+
+func (c *Handler) GetS3Client(backendName string) (backendstore.S3Client, error) {
+	// TODO: We should only return the existing backend s3 client if the user has not
+	// specified --assume-role-arn. Otherwise, we should use the backend's STS client
+	// perform AssumeRole and use the response credentials to buld a temporary S3 client
+	// for the operation being undertaken.
+	return c.backendStore.GetBackendS3Client(backendName), nil
+}

@@ -6,12 +6,12 @@ toolchain go1.21.5
 
 require (
 	github.com/allegro/bigcache/v3 v3.1.0
-	github.com/aws/aws-sdk-go-v2 v1.23.5
+	github.com/aws/aws-sdk-go-v2 v1.24.1
 	github.com/aws/aws-sdk-go-v2/config v1.18.34
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.33
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.47.2
-	github.com/aws/aws-sdk-go-v2/service/sts v1.21.3
-	github.com/aws/smithy-go v1.18.1
+	github.com/aws/aws-sdk-go-v2/service/sts v1.26.7
+	github.com/aws/smithy-go v1.19.0
 	github.com/crossplane/crossplane-runtime v1.13.0
 	github.com/crossplane/crossplane-tools v0.0.0-20230714144037-2684f4bc7638
 	github.com/google/go-cmp v0.6.0
@@ -39,13 +39,13 @@ require (
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.5.3 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.9 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.8 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.8 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.10 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.10 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.40 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.2.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.2.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.8 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.10 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.16.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.13.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.15.3 // indirect

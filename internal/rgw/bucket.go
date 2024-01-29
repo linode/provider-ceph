@@ -1,4 +1,4 @@
-package s3
+package rgw
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/otel/traces"
-	"github.com/linode/provider-ceph/internal/s3/cache"
+	"github.com/linode/provider-ceph/internal/rgw/cache"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 )

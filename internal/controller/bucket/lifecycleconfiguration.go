@@ -16,7 +16,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
-	s3internal "github.com/linode/provider-ceph/internal/s3"
+	"github.com/linode/provider-ceph/internal/rgw"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -90,7 +90,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	}
 
 	s3Client := l.backendStore.GetBackendClient(backendName)
-	response, err := s3internal.GetBucketLifecycleConfiguration(ctx, s3Client, aws.String(bucket.Name))
+	response, err := rgw.GetBucketLifecycleConfiguration(ctx, s3Client, aws.String(bucket.Name))
 	if err != nil {
 		return NeedsUpdate, err
 	}
@@ -120,7 +120,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 		external = response.Rules
 	}
 
-	s3internal.SortFilterTags(external)
+	rgw.SortFilterTags(external)
 
 	if len(external) != 0 && len(local) == 0 {
 		return NeedsDeletion, nil
@@ -129,7 +129,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	// NOTE(muvaf): We ignore ID because it might have been auto-assigned by AWS
 	// and we don't have late-init for this subresource. Besides, a change in ID
 	// is almost never expected.
-	if !cmp.Equal(external, s3internal.GenerateLifecycleRules(local),
+	if !cmp.Equal(external, rgw.GenerateLifecycleRules(local),
 		cmpopts.IgnoreFields(s3types.LifecycleRule{}, "ID"), cmpopts.IgnoreTypes(document.NoSerde{})) {
 		l.log.Info("lifecycle configuration requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
@@ -187,7 +187,7 @@ func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1
 	l.log.Info("Updating lifecycle configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
 	s3Client := l.backendStore.GetBackendClient(backendName)
 
-	_, err := s3internal.PutBucketLifecycleConfiguration(ctx, s3Client, b)
+	_, err := rgw.PutBucketLifecycleConfiguration(ctx, s3Client, b)
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func (l *LifecycleConfigurationClient) delete(ctx context.Context, bucketName, b
 	l.log.Info("Deleting lifecycle configuration", consts.KeyBucketName, bucketName, consts.KeyBackendName, backendName)
 	s3Client := l.backendStore.GetBackendClient(backendName)
 
-	if err := s3internal.DeleteBucketLifecycle(ctx, s3Client, aws.String(bucketName)); err != nil {
+	if err := rgw.DeleteBucketLifecycle(ctx, s3Client, aws.String(bucketName)); err != nil {
 		return err
 	}
 

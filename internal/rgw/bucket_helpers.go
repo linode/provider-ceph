@@ -1,4 +1,4 @@
-package s3
+package rgw
 
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"

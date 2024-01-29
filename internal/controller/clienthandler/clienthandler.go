@@ -87,7 +87,12 @@ func (c *S3ClientHandler) assumeRoleS3Client(ctx context.Context, bucket *v1alph
 		Tags:            copySTSTags(bucket.Spec.ForProvider.AssumeRoleTags),
 	}
 
-	resp, err := ceph.AssumeRole(ctx, c.backendStore.GetBackendSTSClient(backendName), input)
+	stsClient := c.backendStore.GetBackendSTSClient(backendName)
+	if stsClient == nil {
+		return nil, errors.New("No STS client found for backend")
+	}
+
+	resp, err := ceph.AssumeRole(ctx, stsClient, input)
 	if err != nil {
 		return nil, err
 	}

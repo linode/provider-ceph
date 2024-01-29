@@ -23,6 +23,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 )
 
 // SubresourceClient is the interface all Bucket sub-resources must conform to.
@@ -32,9 +33,9 @@ type SubresourceClient interface {
 }
 
 // NewSubresourceClients creates the array of all sub resource clients.
-func NewSubresourceClients(backendStore *backendstore.BackendStore, log logging.Logger) []SubresourceClient {
+func NewSubresourceClients(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) []SubresourceClient {
 	return []SubresourceClient{
-		NewLifecycleConfigurationClient(backendStore, log.WithValues("lifecycle-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
+		NewLifecycleConfigurationClient(b, h, l.WithValues("lifecycle-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
 	}
 }
 

@@ -57,6 +57,7 @@ import (
 	"github.com/linode/provider-ceph/internal/controller/providerconfig"
 	"github.com/linode/provider-ceph/internal/controller/providerconfig/backendmonitor"
 	"github.com/linode/provider-ceph/internal/controller/providerconfig/healthcheck"
+	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 
 	"github.com/linode/provider-ceph/internal/features"
 	"github.com/linode/provider-ceph/internal/rgw/cache"
@@ -98,7 +99,7 @@ func main() {
 
 		autoPauseBucket = app.Flag("auto-pause-bucket", "Enable auto pause of reconciliation of ready buckets").Default("false").Envar("AUTO_PAUSE_BUCKET").Bool()
 
-		_ = app.Flag("assume-role-arn", "Assume role ARN to be used for STS authentication").Default("").Envar("ASSUME_ROLE_ARN").String()
+		assumeRoleArn = app.Flag("assume-role-arn", "Assume role ARN to be used for STS authentication").Default("").Envar("ASSUME_ROLE_ARN").String()
 
 		webhookTLSCertDir = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
 		_                 = app.Flag("enable-validation-webhooks", "Enable support for Webhooks. [Deprecated, has no effect]").Default("false").Bool()
@@ -286,6 +287,12 @@ func main() {
 			healthcheck.WithLogger(o.Logger))),
 		"Cannot setup ProviderConfig controllers")
 
+	s3ClientHandler := s3clienthandler.NewHandler(
+		s3clienthandler.WithAssumeRoleArn(assumeRoleArn),
+		s3clienthandler.WithBackendStore(backendStore),
+		s3clienthandler.WithKubeClient(mgr.GetClient()),
+		s3clienthandler.WithLog(o.Logger))
+
 	kingpin.FatalIfError(bucket.Setup(mgr, o, bucket.NewConnector(
 		bucket.WithAutoPause(autoPauseBucket),
 		bucket.WithBackendStore(backendStore),
@@ -294,7 +301,8 @@ func main() {
 		bucket.WithCreationGracePeriod(*creationGracePeriod),
 		bucket.WithPollInterval(*pollInterval),
 		bucket.WithLog(o.Logger),
-		bucket.WithSubresourceClients(bucket.NewSubresourceClients(backendStore, o.Logger)),
+		bucket.WithSubresourceClients(bucket.NewSubresourceClients(backendStore, s3ClientHandler, o.Logger)),
+		bucket.WithS3ClientHandler(s3ClientHandler),
 		bucket.WithUsage(resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{})),
 		bucket.WithNewServiceFn(bucket.NewNoOpService))), "Cannot setup Bucket controller")
 

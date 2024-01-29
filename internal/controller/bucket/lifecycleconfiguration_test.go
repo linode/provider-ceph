@@ -33,6 +33,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"github.com/linode/provider-ceph/internal/rgw"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -446,7 +447,13 @@ func TestObserveBackend(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			c := NewLifecycleConfigurationClient(tc.fields.backendStore, logging.NewNopLogger())
+			c := NewLifecycleConfigurationClient(
+				tc.fields.backendStore,
+				s3clienthandler.NewHandler(
+					s3clienthandler.WithAssumeRoleArn(nil),
+					s3clienthandler.WithBackendStore(tc.fields.backendStore)),
+				logging.NewNopLogger())
+
 			got, err := c.observeBackend(context.Background(), tc.args.bucket, tc.args.backendName)
 			require.ErrorIs(t, err, tc.want.err, "unexpected error")
 			assert.Equal(t, tc.want.status, got, "unexpected status")
@@ -749,7 +756,13 @@ func TestHandle(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			c := NewLifecycleConfigurationClient(tc.fields.backendStore, logging.NewNopLogger())
+			c := NewLifecycleConfigurationClient(
+				tc.fields.backendStore,
+				s3clienthandler.NewHandler(
+					s3clienthandler.WithAssumeRoleArn(nil),
+					s3clienthandler.WithBackendStore(tc.fields.backendStore)),
+				logging.NewNopLogger())
+
 			bb := newBucketBackends()
 			bb.setLifecycleConfigCondition(bucketName, beName, &creating)
 

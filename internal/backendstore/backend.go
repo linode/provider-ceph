@@ -6,20 +6,23 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/linode/provider-ceph/apis/v1alpha1"
 )
 
 type backend struct {
-	s3Client S3Client
-	active   bool
-	health   v1alpha1.HealthStatus
+	s3Client  S3Client
+	stsClient STSClient
+	active    bool
+	health    v1alpha1.HealthStatus
 }
 
-func newBackend(s3Client S3Client, active bool, health v1alpha1.HealthStatus) *backend {
+func newBackend(s3Client S3Client, stsClient STSClient, active bool, health v1alpha1.HealthStatus) *backend {
 	return &backend{
-		s3Client: s3Client,
-		active:   active,
-		health:   health,
+		s3Client:  s3Client,
+		stsClient: stsClient,
+		active:    active,
+		health:    health,
 	}
 }
 
@@ -37,4 +40,9 @@ type S3Client interface {
 	PutBucketLifecycleConfiguration(context.Context, *s3.PutBucketLifecycleConfigurationInput, ...func(*s3.Options)) (*s3.PutBucketLifecycleConfigurationOutput, error)
 	GetBucketLifecycleConfiguration(context.Context, *s3.GetBucketLifecycleConfigurationInput, ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error)
 	DeleteBucketLifecycle(context.Context, *s3.DeleteBucketLifecycleInput, ...func(*s3.Options)) (*s3.DeleteBucketLifecycleOutput, error)
+}
+
+//counterfeiter:generate . STSClient
+type STSClient interface {
+	AssumeRole(context.Context, *sts.AssumeRoleInput, ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
 }

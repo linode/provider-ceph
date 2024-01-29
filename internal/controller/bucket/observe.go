@@ -70,7 +70,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if len(bucket.Spec.Providers) == 0 {
 		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
 	}
-	backendClients := c.backendStore.GetBackendClients(bucket.Spec.Providers)
+	backendClients := c.backendStore.GetBackendS3Clients(bucket.Spec.Providers)
 
 	// Check that the Bucket CR is Available according to its Status backends.
 	if !isBucketAvailableFromStatus(bucket, backendClients) {

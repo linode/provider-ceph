@@ -92,7 +92,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			bucketLatest.Spec.Providers = bucketDeepCopy.Spec.Providers
 
 			// Auto pause the Bucket CR if required.
-			cls := c.backendStore.GetBackendClients(bucketLatest.Spec.Providers)
+			cls := c.backendStore.GetBackendS3Clients(bucketLatest.Spec.Providers)
 			if isPauseRequired(bucketLatest, cls, bucketBackends, c.autoPauseBucket) {
 				c.log.Info("Auto pausing bucket", consts.KeyBucketName, bucket.Name)
 				pauseBucket(bucketLatest)
@@ -130,7 +130,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 			continue
 		}
 
-		cl := c.backendStore.GetBackendClient(backendName)
+		cl := c.backendStore.GetBackendS3Client(backendName)
 		if cl == nil {
 			c.log.Info("Backend client not found for backend - bucket cannot be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
@@ -185,7 +185,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 }
 
 func (c *external) updateOnBackend(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
-	cl := c.backendStore.GetBackendClient(backendName)
+	cl := c.backendStore.GetBackendS3Client(backendName)
 	if s3types.ObjectOwnership(aws.ToString(b.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
 		_, err := cl.PutBucketAcl(ctx, rgw.BucketToPutBucketACLInput(b))
 		if err != nil {

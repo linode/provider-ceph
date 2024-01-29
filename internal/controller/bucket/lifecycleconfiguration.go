@@ -89,7 +89,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 		return Updated, nil
 	}
 
-	s3Client := l.backendStore.GetBackendClient(backendName)
+	s3Client := l.backendStore.GetBackendS3Client(backendName)
 	response, err := rgw.GetBucketLifecycleConfiguration(ctx, s3Client, aws.String(bucket.Name))
 	if err != nil {
 		return NeedsUpdate, err
@@ -185,7 +185,7 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 
 func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
 	l.log.Info("Updating lifecycle configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
-	s3Client := l.backendStore.GetBackendClient(backendName)
+	s3Client := l.backendStore.GetBackendS3Client(backendName)
 
 	_, err := rgw.PutBucketLifecycleConfiguration(ctx, s3Client, b)
 	if err != nil {
@@ -197,7 +197,7 @@ func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1
 
 func (l *LifecycleConfigurationClient) delete(ctx context.Context, bucketName, backendName string) error {
 	l.log.Info("Deleting lifecycle configuration", consts.KeyBucketName, bucketName, consts.KeyBackendName, backendName)
-	s3Client := l.backendStore.GetBackendClient(backendName)
+	s3Client := l.backendStore.GetBackendS3Client(backendName)
 
 	if err := rgw.DeleteBucketLifecycle(ctx, s3Client, aws.String(bucketName)); err != nil {
 		return err

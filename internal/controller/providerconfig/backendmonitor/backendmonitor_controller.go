@@ -82,7 +82,7 @@ func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 	}
 
 	readyCondition := pc.Status.GetCondition(v1.TypeReady)
-	c.backendStore.AddOrUpdateBackend(pc.Name, s3client, true, utils.MapConditionToHealthStatus(readyCondition))
+	c.backendStore.AddOrUpdateBackend(pc.Name, s3client, nil, true, utils.MapConditionToHealthStatus(readyCondition))
 
 	return nil
 }

@@ -30,7 +30,7 @@ import (
 
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/otel/traces"
-	s3internal "github.com/linode/provider-ceph/internal/s3"
+	"github.com/linode/provider-ceph/internal/rgw"
 	"github.com/linode/provider-ceph/internal/utils"
 )
 
@@ -76,7 +76,7 @@ func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 		return err
 	}
 
-	s3client, err := s3internal.NewClient(ctx, secret.Data, &pc.Spec, c.s3Timeout)
+	s3client, err := rgw.NewClient(ctx, secret.Data, &pc.Spec, c.s3Timeout)
 	if err != nil {
 		return errors.Wrap(err, errCreateClient)
 	}

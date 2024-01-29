@@ -23,7 +23,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
-	s3internal "github.com/linode/provider-ceph/internal/s3"
+	"github.com/linode/provider-ceph/internal/rgw"
 	"github.com/linode/provider-ceph/internal/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -100,14 +100,14 @@ func (b *BucketValidator) validateLifecycleConfiguration(ctx context.Context, bu
 
 	// Create dummy bucket 'life-cycle-configuration-validation-bucket' for the lifecycle config validation.
 	// Cleanup of this bucket is performed by the health-check controller on deletion of the ProviderConfig.
-	_, err := s3internal.CreateBucket(ctx, s3Client, s3internal.BucketToCreateBucketInput(dummyBucket))
+	_, err := rgw.CreateBucket(ctx, s3Client, rgw.BucketToCreateBucketInput(dummyBucket))
 	if err != nil {
 		return err
 	}
 
 	// Attempt to Put the lifecycle config.
 	dummyBucket.Spec.ForProvider.LifecycleConfiguration = bucket.Spec.ForProvider.LifecycleConfiguration
-	_, err = s3internal.PutBucketLifecycleConfiguration(ctx, s3Client, dummyBucket)
+	_, err = rgw.PutBucketLifecycleConfiguration(ctx, s3Client, dummyBucket)
 	if err != nil {
 		return err
 	}

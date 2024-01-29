@@ -89,7 +89,7 @@ func (b *BucketValidator) validateCreateOrUpdate(ctx context.Context, bucket *v1
 }
 
 func (b *BucketValidator) validateLifecycleConfiguration(ctx context.Context, bucket *v1alpha1.Bucket) error {
-	s3Client := b.backendStore.GetActiveBackends(bucket.Spec.Providers).GetFirst()
+	s3Client := b.backendStore.GetActiveBackends(b.backendStore.GetAllActiveBackendNames()).GetFirst()
 	if s3Client == nil {
 		return errors.New(errNoS3BackendsStored)
 	}

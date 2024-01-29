@@ -84,6 +84,23 @@ spec:
                   acl:
                     description: The canned ACL to apply to the bucket.
                     type: string
+                  assumeRoleTags:
+                    description: AssumeRoleTags may be used to add custom values to
+                      an AssumeRole request.
+                    items:
+                      description: Tag is a container for a key value name pair.
+                      properties:
+                        key:
+                          description: Name of the tag. Key is a required field
+                          type: string
+                        value:
+                          description: Value of the tag. Value is a required field
+                          type: string
+                      required:
+                      - key
+                      - value
+                      type: object
+                    type: array
                   grantFullControl:
                     description: Allows grantee the read, write, read ACP, and write
                       ACP permissions on the bucket.

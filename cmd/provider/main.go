@@ -59,7 +59,7 @@ import (
 	"github.com/linode/provider-ceph/internal/controller/providerconfig/healthcheck"
 
 	"github.com/linode/provider-ceph/internal/features"
-	"github.com/linode/provider-ceph/internal/s3/cache"
+	"github.com/linode/provider-ceph/internal/rgw/cache"
 	kcache "sigs.k8s.io/controller-runtime/pkg/cache"
 )
 

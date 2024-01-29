@@ -19,7 +19,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
-	s3internal "github.com/linode/provider-ceph/internal/s3"
+	"github.com/linode/provider-ceph/internal/rgw"
 )
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
@@ -139,7 +139,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 		beName := backendName
 		g.Go(func() error {
 			c.log.Info("Updating bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
-			bucketExists, err := s3internal.BucketExists(ctx, cl, bucket.Name)
+			bucketExists, err := rgw.BucketExists(ctx, cl, bucket.Name)
 			if err != nil {
 				c.log.Info("Error occurred attempting HeadBucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 				bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
@@ -187,7 +187,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 func (c *external) updateOnBackend(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	cl := c.backendStore.GetBackendS3Client(backendName)
 	if s3types.ObjectOwnership(aws.ToString(b.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
-		_, err := cl.PutBucketAcl(ctx, s3internal.BucketToPutBucketACLInput(b))
+		_, err := cl.PutBucketAcl(ctx, rgw.BucketToPutBucketACLInput(b))
 		if err != nil {
 			return err
 		}

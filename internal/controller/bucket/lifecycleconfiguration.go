@@ -187,7 +187,7 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 
 func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
 	l.log.Info("Updating lifecycle configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
-	s3Client, err := l.s3ClientHandler.GetS3Client(backendName)
+	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {
 		return err
 	}

@@ -131,7 +131,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 			continue
 		}
 
-		cl, err := c.s3ClientHandler.GetS3Client(backendName)
+		cl, err := c.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 		if err != nil {
 			traces.SetAndRecordError(span, err)
 			c.log.Info("Failed to get client for backend - bucket cannot be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName, "error", err.Error())

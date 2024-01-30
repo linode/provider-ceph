@@ -15,6 +15,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
+	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/rgw"
 
@@ -26,13 +27,14 @@ import (
 
 // LifecycleConfigurationClient is the client for API methods and reconciling the LifecycleConfiguration
 type LifecycleConfigurationClient struct {
-	backendStore *backendstore.BackendStore
-	log          logging.Logger
+	backendStore    *backendstore.BackendStore
+	s3ClientHandler *s3clienthandler.Handler
+	log             logging.Logger
 }
 
 // NewLifecycleConfigurationClient creates the client for Accelerate Configuration
-func NewLifecycleConfigurationClient(backendStore *backendstore.BackendStore, log logging.Logger) *LifecycleConfigurationClient {
-	return &LifecycleConfigurationClient{backendStore: backendStore, log: log}
+func NewLifecycleConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *LifecycleConfigurationClient {
+	return &LifecycleConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
 func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
@@ -185,9 +187,12 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 
 func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
 	l.log.Info("Updating lifecycle configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
-	s3Client := l.backendStore.GetBackendS3Client(backendName)
+	s3Client, err := l.s3ClientHandler.GetS3Client(backendName)
+	if err != nil {
+		return err
+	}
 
-	_, err := rgw.PutBucketLifecycleConfiguration(ctx, s3Client, b)
+	_, err = rgw.PutBucketLifecycleConfiguration(ctx, s3Client, b)
 	if err != nil {
 		return err
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -19,6 +20,7 @@ type Connector struct {
 	autoPauseBucket     bool
 	backendStore        *backendstore.BackendStore
 	subresourceClients  []SubresourceClient
+	s3ClientHandler     *s3clienthandler.Handler
 	log                 logging.Logger
 	operationTimeout    time.Duration
 	creationGracePeriod time.Duration
@@ -84,6 +86,12 @@ func WithSubresourceClients(s []SubresourceClient) func(*Connector) {
 	}
 }
 
+func WithS3ClientHandler(h *s3clienthandler.Handler) func(*Connector) {
+	return func(c *Connector) {
+		c.s3ClientHandler = h
+	}
+}
+
 func WithLog(l logging.Logger) func(*Connector) {
 	return func(c *Connector) {
 		c.log = l
@@ -107,6 +115,7 @@ func (c *Connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 			operationTimeout:   c.operationTimeout,
 			backendStore:       c.backendStore,
 			subresourceClients: c.subresourceClients,
+			s3ClientHandler:    c.s3ClientHandler,
 			log:                c.log},
 		nil
 }
@@ -119,5 +128,6 @@ type external struct {
 	operationTimeout   time.Duration
 	backendStore       *backendstore.BackendStore
 	subresourceClients []SubresourceClient
+	s3ClientHandler    *s3clienthandler.Handler
 	log                logging.Logger
 }

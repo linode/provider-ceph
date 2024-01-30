@@ -28,6 +28,7 @@ spec:
             - --reconcile-concurrency=160
             - --poll=30m
             - --sync=1h
+            - --assume-role-arn=arn:aws:iam:linode:role/provider-ceph
 EOF
 
 # Apply the provider.

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
@@ -145,13 +146,15 @@ func TestCreateBasicErrors(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Running in parallel causes issues with client.
+//nolint:paralleltest,maintidx // Running in parallel causes issues with client.
 func TestCreate(t *testing.T) {
 	randomErr := errors.New("some error")
+	roleArn := "role-arn"
 
 	type fields struct {
 		backendStore    *backendstore.BackendStore
 		providerConfigs *apisv1alpha1.ProviderConfigList
+		roleArn         *string
 	}
 
 	type args struct {
@@ -217,6 +220,47 @@ func TestCreate(t *testing.T) {
 				},
 			},
 		},
+		"Create skipped for both backends because assume role fails for sts client": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeSTSClient{
+						AssumeRoleStub: func(ctx context.Context, ari *sts.AssumeRoleInput, f ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+							return &sts.AssumeRoleOutput{}, randomErr
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				roleArn: &roleArn,
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-bucket",
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+					},
+				},
+			},
+			want: want{
+				statusDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.Empty(t, bucket.Status.Conditions, "no bucket conditions expected")
+					assert.Empty(t, bucket.Status.AtProvider.Backends, "backends should not exist in status")
+				},
+			},
+		},
+
 		"Create fails on two backends and succeeds on one": {
 			fields: fields{
 				providerConfigs: &apisv1alpha1.ProviderConfigList{
@@ -362,7 +406,7 @@ func TestCreate(t *testing.T) {
 				kubeClient:   cl.Build(),
 				backendStore: tc.fields.backendStore,
 				s3ClientHandler: s3clienthandler.NewHandler(
-					s3clienthandler.WithAssumeRoleArn(nil),
+					s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
 					s3clienthandler.WithBackendStore(tc.fields.backendStore)),
 				log:              logging.NewNopLogger(),
 				operationTimeout: time.Second * 5,

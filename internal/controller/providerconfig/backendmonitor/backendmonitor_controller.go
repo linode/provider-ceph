@@ -35,7 +35,8 @@ import (
 )
 
 const (
-	errCreateClient      = "failed create s3 client"
+	errCreateS3Client    = "failed create s3 client"
+	errCreateSTSClient   = "failed create sts client"
 	errGetProviderConfig = "failed to get ProviderConfig"
 	errGetSecret         = "failed to get Secret"
 )
@@ -76,13 +77,18 @@ func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 		return err
 	}
 
-	s3client, err := rgw.NewClient(ctx, secret.Data, &pc.Spec, c.s3Timeout)
+	s3Client, err := rgw.NewS3Client(ctx, secret.Data, &pc.Spec, c.s3Timeout)
 	if err != nil {
-		return errors.Wrap(err, errCreateClient)
+		return errors.Wrap(err, errCreateS3Client)
+	}
+
+	stsClient, err := rgw.NewSTSClient(ctx, secret.Data, &pc.Spec, c.s3Timeout)
+	if err != nil {
+		return errors.Wrap(err, errCreateSTSClient)
 	}
 
 	readyCondition := pc.Status.GetCondition(v1.TypeReady)
-	c.backendStore.AddOrUpdateBackend(pc.Name, s3client, nil, true, utils.MapConditionToHealthStatus(readyCondition))
+	c.backendStore.AddOrUpdateBackend(pc.Name, s3Client, stsClient, true, utils.MapConditionToHealthStatus(readyCondition))
 
 	return nil
 }

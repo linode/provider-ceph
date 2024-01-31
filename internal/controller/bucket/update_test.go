@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
@@ -142,10 +143,12 @@ func TestUpdateBasicErrors(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	t.Parallel()
 	someError := errors.New("some error")
+	roleArn := "role-arn"
 
 	type fields struct {
 		backendStore    *backendstore.BackendStore
 		autoPauseBucket bool
+		roleArn         *string
 		initObjects     []client.Object
 	}
 
@@ -208,6 +211,47 @@ func TestUpdate(t *testing.T) {
 					assert.True(t,
 						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(v1.Available()),
 						"bucket condition on s3-backend-2 is not available")
+				},
+			},
+		},
+		"Update skipped for both backends because assume role fails for sts client": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeSTSClient{
+						AssumeRoleStub: func(ctx context.Context, ari *sts.AssumeRoleInput, f ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+							return &sts.AssumeRoleOutput{}, someError
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				roleArn: &roleArn,
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.True(t,
+						bucket.Status.Conditions[0].Equal(v1.Unavailable()),
+						"unexpected bucket condition")
+
+					assert.True(t, (len(bucket.Status.AtProvider.Backends) == 0), "backends should not exist in status")
 				},
 			},
 		},
@@ -398,8 +442,9 @@ func TestUpdate(t *testing.T) {
 				kubeClient:   cl,
 				backendStore: tc.fields.backendStore,
 				s3ClientHandler: s3clienthandler.NewHandler(
-					s3clienthandler.WithAssumeRoleArn(nil),
-					s3clienthandler.WithBackendStore(tc.fields.backendStore)),
+					s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
+					s3clienthandler.WithBackendStore(tc.fields.backendStore),
+					s3clienthandler.WithKubeClient(cl)),
 				autoPauseBucket: tc.fields.autoPauseBucket,
 				log:             logging.NewNopLogger(),
 			}

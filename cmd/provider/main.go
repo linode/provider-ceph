@@ -291,6 +291,7 @@ func main() {
 		s3clienthandler.WithAssumeRoleArn(assumeRoleArn),
 		s3clienthandler.WithBackendStore(backendStore),
 		s3clienthandler.WithKubeClient(mgr.GetClient()),
+		s3clienthandler.WithS3Timeout(*s3Timeout),
 		s3clienthandler.WithLog(o.Logger))
 
 	kingpin.FatalIfError(bucket.Setup(mgr, o, bucket.NewConnector(

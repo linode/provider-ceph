@@ -15,13 +15,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/consts"
 )
 
 const (
 	defaultRegion = "us-east-1"
-
-	accessKey = "access_key"
-	secretKey = "secret_key"
 )
 
 func NewS3Client(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec, s3Timeout time.Duration) (*s3.Client, error) {
@@ -70,8 +68,8 @@ func buildSessionConfig(ctx context.Context, data map[string][]byte, address str
 		config.WithRetryMode(aws.RetryModeStandard),
 		config.WithRegion(defaultRegion),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-			string(data[accessKey]),
-			string(data[secretKey]),
+			string(data[consts.KeyAccessKey]),
+			string(data[consts.KeySecretKey]),
 			"",
 		)))
 }

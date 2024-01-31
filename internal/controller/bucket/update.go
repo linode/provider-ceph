@@ -126,7 +126,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 
 	for backendName := range c.backendStore.GetActiveBackends(bucket.Spec.Providers) {
 		if !c.backendStore.IsBackendActive(backendName) {
-			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", "bucket_ name", bucket.Name, consts.KeyBackendName, backendName)
+			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			continue
 		}

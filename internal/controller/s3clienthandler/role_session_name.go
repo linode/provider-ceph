@@ -1,7 +1,7 @@
 package s3clienthandler
 
 import (
-	"strings"
+	"fmt"
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
@@ -56,12 +56,5 @@ func (r *roleSessionNameGenerator) generate(serviceName string) (string, error) 
 		return "", errors.Wrap(err, errSuffixGenerationFailed.Error())
 	}
 
-	sb := strings.Builder{}
-	sb.WriteString(serviceName)
-	sb.WriteByte('-')
-	sb.WriteString(r.now().Format(roleSessionNameTimestampFormat))
-	sb.WriteByte('-')
-	sb.WriteString(suffix)
-
-	return sb.String(), nil
+	return fmt.Sprintf("%s-%s-%s", serviceName, r.now().Format(roleSessionNameTimestampFormat), suffix), nil
 }

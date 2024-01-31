@@ -36,7 +36,7 @@ guide may also be of use.
 Install the provider by using the Upbound CLI after changing the image tag to the latest release:
 
 ```
-up ctp provider install xpkg.upbound.io/linode/provider-ceph:v0.0.35
+up ctp provider install xpkg.upbound.io/linode/provider-ceph:v0.0.36
 ```
 
 Alternatively, you can use declarative installation:
@@ -47,7 +47,7 @@ kind: Provider
 metadata:
   name: linode-provider-ceph
 spec:
-  package: xpkg.upbound.io/linode/provider-ceph:v0.0.35
+  package: xpkg.upbound.io/linode/provider-ceph:v0.0.36
 EOF
 ```
 See [WEBHOOKS.md](docs/WEBHOOKS.md) for instructions on how to enable webhooks.

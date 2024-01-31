@@ -76,7 +76,7 @@ func WithLog(l logging.Logger) func(*Handler) {
 }
 
 func (h *Handler) GetS3Client(ctx context.Context, b *v1alpha1.Bucket, backendName string) (backendstore.S3Client, error) {
-	if h.assumeRoleArn != nil {
+	if h.assumeRoleArn != nil && *h.assumeRoleArn != "" {
 		return h.createAssumeRoleS3Client(ctx, b, backendName)
 	}
 

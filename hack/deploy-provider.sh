@@ -28,7 +28,7 @@ spec:
             - --reconcile-concurrency=160
             - --poll=30m
             - --sync=1h
-            - --assume-role-arn=arn:aws:iam:linode:role/provider-ceph
+            - --assume-role-arn=arn:akamai:sts:::assumed-role/TestRole
 EOF
 
 # Apply the provider.

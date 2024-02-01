@@ -23,14 +23,17 @@ const (
 )
 
 func NewS3Client(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec, s3Timeout time.Duration) (*s3.Client, error) {
-	sessionConfig, err := buildSessionConfig(ctx, data, pcSpec.HostBase, pcSpec.UseHTTPS)
+	sessionConfig, err := buildSessionConfig(ctx, data)
 	if err != nil {
 		return nil, err
 	}
 
+	resolvedAddress := resolveHostBase(pcSpec.HostBase, pcSpec.UseHTTPS)
+
 	return s3.NewFromConfig(sessionConfig, func(o *s3.Options) {
 		o.UsePathStyle = true
 		o.HTTPClient = &http.Client{Timeout: s3Timeout}
+		o.BaseEndpoint = &resolvedAddress
 	}), nil
 }
 
@@ -43,27 +46,21 @@ func NewSTSClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alp
 		stsAddress = &pcSpec.HostBase
 	}
 
-	sessionConfig, err := buildSessionConfig(ctx, data, *stsAddress, pcSpec.UseHTTPS)
+	sessionConfig, err := buildSessionConfig(ctx, data)
 	if err != nil {
 		return nil, err
 	}
 
+	resolvedAddress := resolveHostBase(*stsAddress, pcSpec.UseHTTPS)
+
 	return sts.NewFromConfig(sessionConfig, func(o *sts.Options) {
 		o.HTTPClient = &http.Client{Timeout: s3Timeout}
+		o.BaseEndpoint = &resolvedAddress
 	}), nil
 }
 
-func buildSessionConfig(ctx context.Context, data map[string][]byte, address string, useHTTPS bool) (aws.Config, error) {
-	resolvedAddress := resolveHostBase(address, useHTTPS)
-
-	endpointResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-		return aws.Endpoint{
-			URL: resolvedAddress,
-		}, nil
-	})
-
+func buildSessionConfig(ctx context.Context, data map[string][]byte) (aws.Config, error) {
 	return config.LoadDefaultConfig(ctx,
-		config.WithEndpointResolverWithOptions(endpointResolver),
 		config.WithRetryMaxAttempts(retry.DefaultRetry.Steps),
 		config.WithRetryMode(aws.RetryModeStandard),
 		config.WithRegion(defaultRegion),

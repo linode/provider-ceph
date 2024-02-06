@@ -110,7 +110,10 @@ func (h *Handler) createAssumeRoleS3Client(ctx context.Context, b *v1alpha1.Buck
 		return nil, errors.Wrap(err, errFailedToCreateAssumeRoleS3Client.Error())
 	}
 
-	if resp.Credentials == nil || resp.Credentials.AccessKeyId == nil || resp.Credentials.SecretAccessKey == nil {
+	if resp.Credentials == nil ||
+		resp.Credentials.AccessKeyId == nil ||
+		resp.Credentials.SecretAccessKey == nil ||
+		resp.Credentials.SessionToken == nil {
 		return nil, errors.Wrap(errNoCreds, errFailedToCreateAssumeRoleS3Client.Error())
 	}
 
@@ -123,7 +126,7 @@ func (h *Handler) createAssumeRoleS3Client(ctx context.Context, b *v1alpha1.Buck
 		return nil, errors.Wrap(err, errFailedToCreateAssumeRoleS3Client.Error())
 	}
 
-	s3Client, err := rgw.NewS3Client(ctx, data, &pc.Spec, h.s3Timeout)
+	s3Client, err := rgw.NewS3Client(ctx, data, &pc.Spec, h.s3Timeout, resp.Credentials.SessionToken)
 	if err != nil {
 		return nil, errors.Wrap(err, errFailedToCreateAssumeRoleS3Client.Error())
 	}

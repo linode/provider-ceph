@@ -29,6 +29,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 	roleArn := "role-arn"
 	dummySK := "secretkey"
 	dummyAK := "accesskey"
+	dummyST := "sessiontoken"
 
 	type fields struct {
 		backendStore *backendstore.BackendStore
@@ -202,6 +203,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 							return &sts.AssumeRoleOutput{
 								Credentials: &ststypes.Credentials{
 									SecretAccessKey: &dummySK,
+									SessionToken:    &dummyST,
 								},
 							}, nil
 						},
@@ -242,7 +244,50 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 						AssumeRoleStub: func(context.Context, *sts.AssumeRoleInput, ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
 							return &sts.AssumeRoleOutput{
 								Credentials: &ststypes.Credentials{
-									AccessKeyId: &dummyAK,
+									AccessKeyId:  &dummyAK,
+									SessionToken: &dummyST,
+								},
+							}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Spec: v1alpha1.BucketSpec{
+						ForProvider: v1alpha1.BucketParameters{
+							AssumeRoleTags: []v1alpha1.Tag{},
+						},
+					},
+				},
+				backendName: "s3-backend-1",
+			},
+			want: want{
+				requireErr: func(t *testing.T, err error) {
+					t.Helper()
+
+					require.ErrorIs(t, err, errNoCreds, "unexpected error")
+				},
+			},
+		},
+		"missing credentials error no session token": {
+			fields: fields{
+				roleArn: &roleArn,
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeSTSClient{
+						AssumeRoleStub: func(context.Context, *sts.AssumeRoleInput, ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+							return &sts.AssumeRoleOutput{
+								Credentials: &ststypes.Credentials{
+									AccessKeyId:     &dummyAK,
+									SecretAccessKey: &dummySK,
 								},
 							}, nil
 						},

@@ -8,6 +8,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/smithy-go/middleware"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
+
 	"k8s.io/client-go/util/retry"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -22,7 +25,7 @@ const (
 	defaultRegion = "us-east-1"
 )
 
-func NewS3Client(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec, s3Timeout time.Duration) (*s3.Client, error) {
+func NewS3Client(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec, s3Timeout time.Duration, sessionToken *string) (*s3.Client, error) {
 	sessionConfig, err := buildSessionConfig(ctx, data)
 	if err != nil {
 		return nil, err
@@ -34,6 +37,11 @@ func NewS3Client(ctx context.Context, data map[string][]byte, pcSpec *apisv1alph
 		o.UsePathStyle = true
 		o.HTTPClient = &http.Client{Timeout: s3Timeout}
 		o.BaseEndpoint = &resolvedAddress
+		if sessionToken != nil {
+			o.APIOptions = []func(*middleware.Stack) error{
+				smithyhttp.AddHeaderValue(consts.KeySecurityToken, *sessionToken),
+			}
+		}
 	}), nil
 }
 

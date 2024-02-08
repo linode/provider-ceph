@@ -89,6 +89,9 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		c.log.Info("Health check is disabled for s3 backend", consts.KeyBackendName, providerConfig.Name)
 
 		c.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
+		if providerConfig.Status.GetCondition(v1.TypeReady).Equal(v1alpha1.HealthCheckDisabled()) {
+			return ctrl.Result{}, nil
+		}
 
 		if err := UpdateProviderConfigStatus(ctx, c.kubeClient, providerConfig, func(_, pcLatest *apisv1alpha1.ProviderConfig) {
 			pcLatest.Status.SetConditions(v1alpha1.HealthCheckDisabled())
@@ -108,9 +111,14 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Assume the backend is unhealthy and set a HealthCheckFail  condition until we can verify otherwise.
 	providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail())
+
 	defer func() {
 		health := utils.MapConditionToHealthStatus(providerConfig.Status.GetCondition(v1.TypeReady))
 		c.backendStore.SetBackendHealthStatus(req.Name, health)
+
+		if providerConfig.Status.GetCondition(v1.TypeReady).Equal(conditionBeforeCheck) {
+			return
+		}
 
 		if err := UpdateProviderConfigStatus(ctx, c.kubeClient, providerConfig, func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
 			pcLatest.Status.SetConditions(pcDeepCopy.Status.Conditions...)
@@ -136,7 +144,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// Check the backend for the existence of the health check bucket.
 	bucketExists, err := rgw.BucketExists(ctx, s3BackendClient, bucketName, o)
 	if err != nil {
-		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(err.Error()))
+		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(errNoRequestID(err)))
 		traces.SetAndRecordError(span, err)
 
 		return ctrl.Result{}, err
@@ -149,7 +157,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			c.log.Info("Failed to create bucket for health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
 			err = errors.Wrap(err, errCreateHealthCheckBucket)
-			providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(err.Error()))
+			providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(errNoRequestID(err)))
 			traces.SetAndRecordError(span, err)
 
 			return ctrl.Result{}, err
@@ -161,7 +169,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if err := c.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
 		c.log.Info("Failed to do health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
-		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(err.Error()))
+		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(errNoRequestID(err)))
 		traces.SetAndRecordError(span, err)
 
 		return ctrl.Result{}, err

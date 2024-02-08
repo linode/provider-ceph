@@ -2,6 +2,7 @@ package healthcheck
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
@@ -62,7 +63,6 @@ func UpdateProviderConfigStatus(ctx context.Context, kubeClient client.Client, p
 		if err := kubeClient.Get(ctx, nn, pc); err != nil {
 			return err
 		}
-
 		callback(pcDeepCopy, pc)
 
 		return kubeClient.Status().Update(ctx, pc)
@@ -77,4 +77,20 @@ func UpdateProviderConfigStatus(ctx context.Context, kubeClient client.Client, p
 	}
 
 	return nil
+}
+
+// errNoRequestID removes any 'RequestID' field from an existing error. It is useful to remove
+// this field before setting a Condition with an error message. This is because the request ID
+// will be unique for every request, even if the error message is the same. So to avoid updating
+// the CR status unnecessarily for every request, we omit this field from the message.
+func errNoRequestID(err error) string {
+	errMsgs := strings.Split(err.Error(), ",")
+	filteredStrings := make([]string, 0)
+	for _, msg := range errMsgs {
+		if !strings.Contains(msg, "RequestID") {
+			filteredStrings = append(filteredStrings, msg)
+		}
+	}
+
+	return strings.Join(filteredStrings, ",")
 }

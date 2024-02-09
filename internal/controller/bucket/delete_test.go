@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
@@ -14,6 +15,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -105,9 +107,11 @@ func TestDeleteBasicErrors(t *testing.T) {
 func TestDelete(t *testing.T) {
 	errRandomStr := "some err"
 	errRandom := errors.New(errRandomStr)
+	roleArn := "role-arn"
 
 	type fields struct {
 		backendStore *backendstore.BackendStore
+		roleArn      *string
 	}
 
 	type args struct {
@@ -429,6 +433,72 @@ func TestDelete(t *testing.T) {
 				},
 			},
 		},
+
+		"Error deleting buckets on all backends because assume role fails for sts client": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeSTSClient{
+						AssumeRoleStub: func(ctx context.Context, ari *sts.AssumeRoleInput, f ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+							return &sts.AssumeRoleOutput{}, errRandom
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				roleArn: &roleArn,
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:       "bucket",
+						Finalizers: []string{v1alpha1.InUseFinalizer},
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{},
+					},
+					Status: v1alpha1.BucketStatus{
+						AtProvider: v1alpha1.BucketObservation{
+							Backends: v1alpha1.Backends{
+								"s3-backend-1": &v1alpha1.BackendInfo{
+									BucketCondition: xpv1.Available(),
+								},
+								"s3-backend-2": &v1alpha1.BackendInfo{
+									BucketCondition: xpv1.Available(),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				err: errRandom,
+				statusDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to assume role"), "Failed to create s3 client via assume role").Error())),
+						"unexpected bucket condition on s3-backend-1")
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to assume role"), "Failed to create s3 client via assume role").Error())),
+						"unexpected bucket condition on s3-backend-2")
+				},
+				finalizerDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.Equal(t,
+						[]string{v1alpha1.InUseFinalizer},
+						bucket.Finalizers,
+						"unexpected finalizers",
+					)
+				},
+			},
+		},
+
 		"Error deleting bucket on only one specified backend": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
@@ -534,8 +604,12 @@ func TestDelete(t *testing.T) {
 
 			e := external{
 				backendStore: tc.fields.backendStore,
-				log:          logging.NewNopLogger(),
-				kubeClient:   kubeClient,
+				s3ClientHandler: s3clienthandler.NewHandler(
+					s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
+					s3clienthandler.WithBackendStore(tc.fields.backendStore),
+					s3clienthandler.WithKubeClient(kubeClient)),
+				log:        logging.NewNopLogger(),
+				kubeClient: kubeClient,
 			}
 
 			err := e.Delete(context.Background(), tc.args.mg)

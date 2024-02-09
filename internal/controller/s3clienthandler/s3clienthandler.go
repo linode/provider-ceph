@@ -80,7 +80,12 @@ func (h *Handler) GetS3Client(ctx context.Context, b *v1alpha1.Bucket, backendNa
 		return h.createAssumeRoleS3Client(ctx, b, backendName)
 	}
 
-	return h.backendStore.GetBackendS3Client(backendName), nil
+	cl := h.backendStore.GetBackendS3Client(backendName)
+	if cl == nil {
+		return nil, errors.New("No S3 client found for backend")
+	}
+
+	return cl, nil
 }
 
 func (h *Handler) createAssumeRoleS3Client(ctx context.Context, b *v1alpha1.Bucket, backendName string) (backendstore.S3Client, error) {

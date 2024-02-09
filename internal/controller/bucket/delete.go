@@ -54,9 +54,15 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		bucketBackends.setBucketCondition(bucket.Name, backendName, xpv1.Deleting())
 
 		c.log.Info("Deleting bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
-		cl := c.backendStore.GetBackendS3Client(backendName)
 		beName := backendName
 		g.Go(func() error {
+			cl, err := c.s3ClientHandler.GetS3Client(ctx, bucket, beName)
+			if err != nil {
+				bucketBackends.setBucketCondition(bucket.Name, beName, xpv1.Deleting().WithMessage(err.Error()))
+
+				return err
+			}
+
 			if err := rgw.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err != nil {
 				bucketBackends.setBucketCondition(bucket.Name, beName, xpv1.Deleting().WithMessage(err.Error()))
 

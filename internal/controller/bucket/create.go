@@ -84,11 +84,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			continue
 		}
-		if cl == nil {
-			c.log.Info("Backend client not found for backend - bucket cannot be created on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName)
-
-			continue
-		}
 
 		c.log.Info("Creating bucket on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName)
 

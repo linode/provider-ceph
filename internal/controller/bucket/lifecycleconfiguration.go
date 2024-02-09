@@ -80,6 +80,7 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 	return Updated, nil
 }
 
+//nolint:gocyclo,cyclop // Function requires multiple checks.
 func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
 	l.log.Info("Observing subresource lifecycle configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
@@ -91,7 +92,10 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 		return Updated, nil
 	}
 
-	s3Client := l.backendStore.GetBackendS3Client(backendName)
+	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
+	if err != nil {
+		return NeedsUpdate, err
+	}
 	response, err := rgw.GetBucketLifecycleConfiguration(ctx, s3Client, aws.String(bucket.Name))
 	if err != nil {
 		return NeedsUpdate, err
@@ -157,7 +161,7 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 	case Updated:
 		return nil
 	case NeedsDeletion:
-		if err := l.delete(ctx, b.Name, backendName); err != nil {
+		if err := l.delete(ctx, b, backendName); err != nil {
 			err = errors.Wrap(err, errHandleLifecycleConfig)
 			deleting := xpv1.Deleting().WithMessage(err.Error())
 			bb.setLifecycleConfigCondition(b.Name, backendName, &deleting)
@@ -200,11 +204,14 @@ func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1
 	return nil
 }
 
-func (l *LifecycleConfigurationClient) delete(ctx context.Context, bucketName, backendName string) error {
-	l.log.Info("Deleting lifecycle configuration", consts.KeyBucketName, bucketName, consts.KeyBackendName, backendName)
-	s3Client := l.backendStore.GetBackendS3Client(backendName)
+func (l *LifecycleConfigurationClient) delete(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
+	l.log.Info("Deleting lifecycle configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
+	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, b, backendName)
+	if err != nil {
+		return err
+	}
 
-	if err := rgw.DeleteBucketLifecycle(ctx, s3Client, aws.String(bucketName)); err != nil {
+	if err := rgw.DeleteBucketLifecycle(ctx, s3Client, aws.String(b.Name)); err != nil {
 		return err
 	}
 

@@ -186,7 +186,7 @@ ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
 # Create ProviderConfig CR representing localstack.
 dev-cluster: $(KUBECTL) cluster
 	@$(INFO) Installing CRDs, ProviderConfig and Localstack
-	@$(KUBECTL) apply -k https://github.com/crossplane/crossplane//cluster?ref=master
+	@$(KUBECTL) apply -k https://github.com/crossplane/crossplane//cluster?ref=release-1.14
 	@$(KUBECTL) apply -R -f package/crds
 	@# TODO: apply package/webhookconfigurations when webhooks can be enabled locally.
 	@$(KUBECTL) apply -R -f e2e/localstack/localstack-deployment.yaml

@@ -2,6 +2,9 @@ resources:
 - manifests.yaml
 
 patches:
-- path: patch.yaml
+- path: object-selector-patch.yaml
+  target:
+    kind: ValidatingWebhookConfiguration
+- path: service-patch.yaml
   target:
     kind: ValidatingWebhookConfiguration

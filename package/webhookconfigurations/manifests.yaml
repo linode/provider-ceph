@@ -7,9 +7,10 @@ webhooks:
   - v1
   clientConfig:
     service:
-      name: webhook-service
-      namespace: system
+      name: provider-ceph
+      namespace: crossplane-system
       path: /validate-provider-ceph-ceph-crossplane-io-v1alpha1-bucket
+      port: 9443
   failurePolicy: Fail
   name: bucket-validation.providerceph.crossplane.io
   objectSelector:

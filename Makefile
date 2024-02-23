@@ -17,6 +17,15 @@ REPO ?= provider-ceph
 
 KUTTL_VERSION ?= 0.15.0
 
+CROSSPLANE_VERSION ?= 1.14.6
+
+# For local development, usually IP of docker0.
+WEBHOOK_HOST ?= 172.17.0.1
+# For local development, port of localtunnel.
+WEBHOOK_TUNNEL_PORT ?= 9999
+# For local development, subdomain of locatunnel.
+WEBHOOK_SUBDOMAIN ?= $(PROJECT_NAME)-$(shell git rev-parse --short HEAD)-$(shell date +%s)
+
 # ====================================================================================
 # Setup Output
 
@@ -113,9 +122,7 @@ build.init: $(UP)
 run: go.build
 	@$(INFO) Running Crossplane locally out-of-cluster . . .
 	@# To see other arguments that can be provided, run the command with --help instead
-	@# TODO: Webhooks are not enabled for local run.
-	@# A workaround for tls certs is required.
-	$(GO_OUT_DIR)/provider --zap-devel
+	$(GO_OUT_DIR)/provider --zap-devel --webhook-tls-cert-dir=$(PWD)/bin/certs --webhook-host=$(WEBHOOK_HOST)
 
 # Spin up a Kind cluster and localstack.
 # Create k8s service to allows pods to communicate with
@@ -132,7 +139,7 @@ crossplane-cluster: $(HELM3) cluster
 	@$(INFO) Installing Crossplane
 	@$(HELM3) repo add crossplane-stable https://charts.crossplane.io/stable
 	@$(HELM3) repo update
-	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane
+	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace --version $(CROSSPLANE_VERSION) crossplane-stable/crossplane
 	@$(OK) Installing Crossplane
 
 # Generate the provider-ceph package and webhookconfiguration manifest.
@@ -145,9 +152,9 @@ check-diff-pkg: generate-pkg
 
 # Kustomize the webhookconfiguration manifest that is created by 'generate' target.
 kustomize-webhook: $(KUSTOMIZE)
-	@cp $(XPKG_DIR)/webhookconfigurations/manifests.yaml $(VAL_WBHK_STAGE)
-	@$(KUSTOMIZE) build $(VAL_WBHK_STAGE) -o $(XPKG_DIR)/webhookconfigurations/manifests.yaml
-	@rm $(VAL_WBHK_STAGE)/manifests.yaml
+	@cp -f $(XPKG_DIR)/webhookconfigurations/manifests.yaml $(VAL_WBHK_STAGE)
+	@cp -f $(VAL_WBHK_STAGE)/service-patch-prod.yaml $(VAL_WBHK_STAGE)/service-patch.yaml
+	$(KUSTOMIZE) build $(VAL_WBHK_STAGE) -o $(XPKG_DIR)/webhookconfigurations/manifests.yaml
 
 # Build the controller image and the provider package.
 # Load the controller image to the Kind cluster and add the provider package
@@ -184,25 +191,55 @@ ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
 # containerised Crossplane componenets).
 # Install local provider-ceph CRDs.
 # Create ProviderConfig CR representing localstack.
-dev-cluster: $(KUBECTL) cluster
+dev-cluster: $(KUBECTL) generate-pkg generate-tests cluster
+	@rm -rf $(PWD)/bin/certs ; mkdir $(PWD)/bin/certs
+	@docker cp local-dev-control-plane:/etc/kubernetes/pki/ca.key $(PWD)/bin/certs/ca.key
+	@docker cp local-dev-control-plane:/etc/kubernetes/pki/ca.crt $(PWD)/bin/certs/ca.crt
+	@chmod 400 $(PWD)/bin/certs/ca.crt
+
+	@$(INFO) Generate TLS certificate for webhook.
+	@openssl genrsa \
+		-out $(PWD)/bin/certs/tls.key \
+		1024
+	@openssl req \
+		-new \
+		-key $(PWD)/bin/certs/tls.key \
+		-out $(PWD)/bin/certs/tls.csr \
+		-subj "/CN=linode.com"
+	@openssl x509 \
+		-req \
+		-days 365 \
+		-in $(PWD)/bin/certs/tls.csr \
+		-out $(PWD)/bin/certs/tls.crt \
+		-extfile <(printf "subjectAltName = IP:$(WEBHOOK_HOST)") \
+		-CAcreateserial \
+		-CA $(PWD)/bin/certs/ca.crt \
+		-CAkey $(PWD)/bin/certs/ca.key
+	@$(OK) Generate TLS certificate for webhook.
+
+	@$(INFO) Rendering webhook manifest.
+	@ex $(VAL_WBHK_STAGE)/service-patch-dev.tpl.yaml \
+		-c '%s/#WEBHOOK_HOST#/$(WEBHOOK_SUBDOMAIN).loca.lt/' \
+		-c 'sav! $(VAL_WBHK_STAGE)/service-patch.yaml' \
+		-c 'q' >/dev/null
+	$(KUSTOMIZE) build $(VAL_WBHK_STAGE) -o $(XPKG_DIR)/webhookconfigurations/manifests.yaml
+	@$(OK) Rendering webhook manifest.
+
 	@$(INFO) Installing CRDs, ProviderConfig and Localstack
-	@$(KUBECTL) apply -k https://github.com/crossplane/crossplane//cluster?ref=release-1.14
+	@$(KUBECTL) apply -k https://github.com/crossplane/crossplane/cluster?ref=v$(CROSSPLANE_VERSION)
 	@$(KUBECTL) apply -R -f package/crds
-	@# TODO: apply package/webhookconfigurations when webhooks can be enabled locally.
+	@$(KUBECTL) apply -R -f package/webhookconfigurations
 	@$(KUBECTL) apply -R -f e2e/localstack/localstack-deployment.yaml
 	@$(KUBECTL) apply -R -f e2e/localstack/localstack-provider-cfg-host.yaml
 	@$(OK) Installing CRDs and ProviderConfig
 
+	@$(INFO) Starting webhook tunnel.
+	@WEBHOOK_TUNNEL_PORT=$(WEBHOOK_TUNNEL_PORT) WEBHOOK_HOST=$(WEBHOOK_HOST) WEBHOOK_SUBDOMAIN=$(WEBHOOK_SUBDOMAIN) docker compose -f ./hack/localtunnel.yaml up -d
+	@$(OK) Starting webhook tunnel.
+
 # Best for development - locally run provider-ceph controller.
 # Removes need for Crossplane install via Helm.
 dev: dev-cluster run
-
-# Best for development - locally run provider-ceph controller.
-mirrord: dev-cluster crossplane-cluster load-package
-
-mirrord-run:
-	@$(INFO) Starting mirrord on deployment
-	$(MIRRORD) exec -f .mirrord/mirrord.json make run
 
 # Destroy Kind cluster and localstack.
 cluster-clean: $(KIND) $(KUBECTL)

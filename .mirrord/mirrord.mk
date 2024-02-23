@@ -1,7 +1,14 @@
-MIRRORD_VERSION ?= 3.70.0
+MIRRORD_VERSION ?= 3.88.0
 MIRRORD := $(TOOLS_HOST_DIR)/mirrord-$(MIRRORD_VERSION)
 
-# mirrord download and install
+# Best for development - locally run provider-ceph controller.
+mirrord.cluster: dev-cluster crossplane-cluster load-package
+
+mirrord.run: $(MIRRORD)
+	@$(INFO) Starting mirrord on deployment
+	$(MIRRORD) exec -f .mirrord/mirrord.json make run
+
+# Download mirrord locally if necessary.
 $(MIRRORD):
 	@$(INFO) installing mirrord $(MIRRORD_VERSION)
 	@mkdir -p $(TOOLS_HOST_DIR) || $(FAIL)

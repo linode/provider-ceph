@@ -4,6 +4,8 @@ metadata:
   name: validating-webhook-configuration
 webhooks:
 - name: bucket-validation.providerceph.crossplane.io
-  objectSelector:
-    matchLabels:
-      provider-ceph.crossplane.io/validation-required: "true" 
+  clientConfig:
+    service:
+      name: provider-ceph
+      namespace: crossplane-system
+      port: 9443

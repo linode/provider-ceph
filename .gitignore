@@ -1,7 +1,6 @@
 /bin
 /.cache
 /.work
-/.tmp-earthly*
 /_output
 cover.out
 /vendor

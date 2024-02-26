@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  # Socat proxies localtunnel requests to webhook service
+  provider-ceph-socat:
+    image: nixery.dev/socat
+    command: socat TCP-LISTEN:${WEBHOOK_TUNNEL_PORT},reuseaddr,fork OPENSSL:${WEBHOOK_HOST}:9443,verify=0
+    network_mode: "host"
+    container_name: provider-ceph-socat
+    restart: unless-stopped
+
+  # Localtunnel creates an external domain with valid certificate
+  provider-ceph-localtunnel:
+    image: nixery.dev/nodepackages.localtunnel
+    command: lt --subdomain ${WEBHOOK_SUBDOMAIN} --port ${WEBHOOK_TUNNEL_PORT}
+    network_mode: "host"
+    container_name: provider-ceph-localtunnel
+    restart: unless-stopped

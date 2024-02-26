@@ -1,0 +1,5 @@
+- op: remove
+  path: /webhooks/0/clientConfig/service
+- op: add
+  path: /webhooks/0/clientConfig/url
+  value: https://#WEBHOOK_HOST#/validate-provider-ceph-ceph-crossplane-io-v1alpha1-bucket

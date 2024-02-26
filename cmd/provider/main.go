@@ -101,6 +101,7 @@ func main() {
 
 		assumeRoleArn = app.Flag("assume-role-arn", "Assume role ARN to be used for STS authentication").Default("").Envar("ASSUME_ROLE_ARN").String()
 
+		webhookHost       = app.Flag("webhook-host", "The host of the webhook server.").Default("0.0.0.0").Envar("WEBHOOK_HOST").String()
 		webhookTLSCertDir = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
 		_                 = app.Flag("enable-validation-webhooks", "Enable support for Webhooks. [Deprecated, has no effect]").Default("false").Bool()
 	)
@@ -209,7 +210,6 @@ func main() {
 	kingpin.FatalIfError(err, "Cannot create HTTP client")
 
 	cacheHTTPClient.Timeout = *syncTimeout
-
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		LeaderElection:             *leaderElection,
 		LeaderElectionID:           "crossplane-leader-election-provider-ceph-ibyaiby",
@@ -218,8 +218,11 @@ func main() {
 		RenewDeadline:              leaderRenew,
 		LeaseDuration:              &leaseDuration,
 		RetryPeriod:                &leaderRetryDuration,
-		WebhookServer:              webhook.NewServer(webhook.Options{CertDir: *webhookTLSCertDir}),
-		Scheme:                     providerSCheme,
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Host:    *webhookHost,
+			CertDir: *webhookTLSCertDir,
+		}),
+		Scheme: providerSCheme,
 		Cache: kcache.Options{
 			HTTPClient: cacheHTTPClient,
 			SyncPeriod: syncInterval,

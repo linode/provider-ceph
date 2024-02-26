@@ -10,6 +10,7 @@ with the following features:
 - A controller that observes `Bucket` objects and reconciles these objects with the S3 backends.
 
 ## Developing
+
 Spin up the test environment, but with `provider-ceph` running locally in your terminal:
 
 ```
@@ -21,6 +22,15 @@ After you've made some changes, kill (Ctrl+C) the existing `provider-ceph` and r
 ```
 make run
 ```
+
+### Debugging
+Spin up the test environment, but with `provider-ceph` running locally in your terminal:
+
+```
+make mirrord.cluster mirrord.run
+```
+
+For debugging please install `mirrord` plugin in your IDE of choice.
 
 Refer to Crossplane's [CONTRIBUTING.md] file for more information on how the
 Crossplane community prefers to work. The [Provider Development][provider-dev]

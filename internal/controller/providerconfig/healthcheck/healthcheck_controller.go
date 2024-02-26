@@ -57,6 +57,8 @@ const (
 	errBackendNotStored         = "backend is not stored in backendstore"
 	healthCheckSuffix           = "-health-check"
 	healthCheckFile             = "health-check-file"
+
+	True = "true"
 )
 
 //nolint:gocyclo,cyclop // Function requires multiple checks.
@@ -277,8 +279,8 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 	// Only list Buckets that (a) were created on s3BackendName
 	// and (b) are already paused.
 	listLabels := labels.SelectorFromSet(labels.Set(map[string]string{
-		v1alpha1.BackendLabelPrefix + s3BackendName: "true",
-		meta.AnnotationKeyReconciliationPaused:      "true",
+		v1alpha1.BackendLabelPrefix + s3BackendName: True,
+		meta.AnnotationKeyReconciliationPaused:      True,
 	}))
 
 	buckets := &v1alpha1.BucketList{}
@@ -308,7 +310,7 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 			Jitter:   jitter,
 		}, resource.IsAPIError, func() error {
 			if (c.autoPauseBucket || buckets.Items[i].Spec.AutoPause) &&
-				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] == "true" {
+				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] == True {
 				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] = ""
 
 				return c.kubeClientCached.Update(ctx, &buckets.Items[i])

@@ -164,7 +164,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 				if bucketLatest.ObjectMeta.Labels == nil {
 					bucketLatest.ObjectMeta.Labels = map[string]string{}
 				}
-				bucketLatest.ObjectMeta.Labels[v1alpha1.BackendLabelPrefix+beName] = "true"
+				bucketLatest.ObjectMeta.Labels[v1alpha1.BackendLabelPrefix+beName] = True
 
 				return NeedsObjectUpdate
 			}, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {

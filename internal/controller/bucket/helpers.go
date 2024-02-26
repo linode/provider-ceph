@@ -19,7 +19,7 @@ import (
 
 // isBucketPaused returns true if the bucket has the paused label set.
 func isBucketPaused(bucket *v1alpha1.Bucket) bool {
-	if val, ok := bucket.Labels[meta.AnnotationKeyReconciliationPaused]; ok && val == "true" {
+	if val, ok := bucket.Labels[meta.AnnotationKeyReconciliationPaused]; ok && val == True {
 		return true
 	}
 
@@ -31,7 +31,7 @@ func pauseBucket(bucket *v1alpha1.Bucket) {
 	if bucket.ObjectMeta.Labels == nil {
 		bucket.ObjectMeta.Labels = map[string]string{}
 	}
-	bucket.Labels[meta.AnnotationKeyReconciliationPaused] = "true"
+	bucket.Labels[meta.AnnotationKeyReconciliationPaused] = True
 }
 
 // isPauseRequired determines if the Bucket should be paused.
@@ -90,7 +90,7 @@ func setBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
 
 	labelsToDelete := []string{}
 	for k := range bucket.ObjectMeta.Labels {
-		if strings.HasPrefix(k, v1alpha1.BackendLabelPrefix) {
+		if strings.HasPrefix(k, v1alpha1.BackendLabelPrefix) && bucket.ObjectMeta.Labels[k] == True {
 			labelsToDelete = append(labelsToDelete, k)
 		}
 	}
@@ -104,7 +104,7 @@ func setBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
 			continue
 		}
 
-		bucket.ObjectMeta.Labels[beLabel] = "true"
+		bucket.ObjectMeta.Labels[beLabel] = True
 	}
 }
 

@@ -382,8 +382,8 @@ func TestUpdate(t *testing.T) {
 
 					assert.Equal(t,
 						map[string]string{
-							meta.AnnotationKeyReconciliationPaused: "true",
-							"provider-ceph.backends.s3-backend-1":  "true",
+							meta.AnnotationKeyReconciliationPaused: True,
+							"provider-ceph.backends.s3-backend-1":  True,
 						},
 						bucket.Labels,
 						"unexpected bucket labels",

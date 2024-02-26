@@ -672,7 +672,8 @@ func TestReconcile(t *testing.T) {
 			r := NewController(
 				WithAutoPause(&tc.fields.autopause),
 				WithBackendStore(bs),
-				WithKubeClient(c),
+				WithKubeClientUncached(c),
+				WithKubeClientCached(c),
 				WithLogger(logging.NewNopLogger()))
 
 			got, err := r.Reconcile(context.Background(), tc.args.req)

@@ -49,22 +49,21 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, err
 	}
 
-	if len(bucket.Spec.Providers) == 0 {
-		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
+	providerNames := bucket.Spec.Providers
+	if len(providerNames) == 0 {
+		providerNames = c.backendStore.GetAllActiveBackendNames()
 	}
 
 	// Create the bucket on each backend in a separate go routine
-	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
+	activeBackends := c.backendStore.GetActiveBackends(providerNames)
 	if len(activeBackends) == 0 {
 		err := errors.New(errNoActiveS3Backends)
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalCreation{}, err
-	} else if len(activeBackends) != len(bucket.Spec.Providers) {
-		err := errors.New(errMissingS3Backend)
-		traces.SetAndRecordError(span, err)
-
-		return managed.ExternalCreation{}, err
+	} else if len(activeBackends) != len(providerNames) {
+		c.log.Info("Missing S3 backends", consts.KeyBucketName, bucket.Name, "providers", providerNames, "activeBackends", activeBackends)
+		traces.SetAndRecordError(span, errors.New(errMissingS3Backend))
 	}
 
 	// This value shows a bucket on one backend is already created.
@@ -165,7 +164,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 				if bucketLatest.ObjectMeta.Labels == nil {
 					bucketLatest.ObjectMeta.Labels = map[string]string{}
 				}
-				bucketLatest.ObjectMeta.Labels[v1alpha1.BackendLabelPrefix+beName] = ""
+				bucketLatest.ObjectMeta.Labels[v1alpha1.BackendLabelPrefix+beName] = "true"
 
 				return NeedsObjectUpdate
 			}, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {

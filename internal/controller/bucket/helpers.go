@@ -2,6 +2,7 @@ package bucket
 
 import (
 	"context"
+	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
@@ -59,10 +60,10 @@ func isPauseRequired(b *v1alpha1.Bucket, c map[string]backendstore.S3Client, bb 
 		b.Labels[meta.AnnotationKeyReconciliationPaused] == ""
 }
 
-// isBucketAvailableFromStatus checks the backends listed in Spec.Providers against the
+// isBucketAvailableFromStatus checks the backends listed in providerNames against the
 // backends in Status to ensure buckets are considered Available on all desired backends.
-func isBucketAvailableFromStatus(bucket *v1alpha1.Bucket, backendClients map[string]backendstore.S3Client) bool {
-	for _, backendName := range bucket.Spec.Providers {
+func isBucketAvailableFromStatus(bucket *v1alpha1.Bucket, providerNames []string, backendClients map[string]backendstore.S3Client) bool {
+	for _, backendName := range providerNames {
 		if _, ok := backendClients[backendName]; !ok {
 			// This backend does not exist in the list of available backends.
 			// The backend may be offline, so it is skipped.
@@ -82,24 +83,35 @@ func isBucketAvailableFromStatus(bucket *v1alpha1.Bucket, backendClients map[str
 }
 
 // setBackendLabels adds label "provider-ceph.backends.<backend-name>" to the Bucket for each backend.
-func setBackendLabels(bucket *v1alpha1.Bucket) {
-	for _, beName := range bucket.Spec.Providers {
+func setBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
+	if bucket.ObjectMeta.Labels == nil {
+		bucket.ObjectMeta.Labels = map[string]string{}
+	}
+
+	labelsToDelete := []string{}
+	for k := range bucket.ObjectMeta.Labels {
+		if strings.HasPrefix(k, v1alpha1.BackendLabelPrefix) {
+			labelsToDelete = append(labelsToDelete, k)
+		}
+	}
+	for _, k := range labelsToDelete {
+		delete(bucket.ObjectMeta.Labels, k)
+	}
+
+	for _, beName := range providerNames {
 		beLabel := v1alpha1.BackendLabelPrefix + beName
 		if _, ok := bucket.ObjectMeta.Labels[beLabel]; ok {
 			continue
 		}
 
-		if bucket.ObjectMeta.Labels == nil {
-			bucket.ObjectMeta.Labels = map[string]string{}
-		}
-		bucket.ObjectMeta.Labels[beLabel] = ""
+		bucket.ObjectMeta.Labels[beLabel] = "true"
 	}
 }
 
-func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends) {
+func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends, providerNames []string) {
 	bucket.Status.SetConditions(xpv1.Unavailable())
 
-	backends := bucketBackends.getBackends(bucket.Name, bucket.Spec.Providers)
+	backends := bucketBackends.getBackends(bucket.Name, providerNames)
 	bucket.Status.AtProvider.Backends = backends
 
 	for _, backend := range backends {

@@ -76,47 +76,6 @@ func TestCreateBasicErrors(t *testing.T) {
 				err: errors.New(errNoActiveS3Backends),
 			},
 		},
-		"S3 backend reference inactive": {
-			fields: fields{
-				backendStore: func() *backendstore.BackendStore {
-					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-0", nil, nil, true, apisv1alpha1.HealthStatusUnknown)
-					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, false, apisv1alpha1.HealthStatusUnknown)
-
-					return bs
-				}(),
-			},
-			args: args{
-				mg: &v1alpha1.Bucket{
-					Spec: v1alpha1.BucketSpec{
-						Providers: []string{"s3-backend-0", "s3-backend-1"},
-					},
-				},
-			},
-			want: want{
-				err: errors.New(errMissingS3Backend),
-			},
-		},
-		"S3 backend reference missing": {
-			fields: fields{
-				backendStore: func() *backendstore.BackendStore {
-					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-0", nil, nil, true, apisv1alpha1.HealthStatusUnknown)
-
-					return bs
-				}(),
-			},
-			args: args{
-				mg: &v1alpha1.Bucket{
-					Spec: v1alpha1.BucketSpec{
-						Providers: []string{"s3-backend-0", "s3-backend-1"},
-					},
-				},
-			},
-			want: want{
-				err: errors.New(errMissingS3Backend),
-			},
-		},
 		"S3 backend not referenced and none exist": {
 			fields: fields{
 				backendStore: backendstore.NewBackendStore(),

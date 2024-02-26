@@ -5,6 +5,7 @@
 cover.out
 /vendor
 /.vendor-new
+__debug*
 .vscode
 .idea
 .DS_Store

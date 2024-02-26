@@ -44,33 +44,31 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, c.Delete(ctx, mg)
 	}
 
-	if len(bucket.Spec.Providers) == 0 {
-		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
+	providerNames := bucket.Spec.Providers
+	if len(providerNames) == 0 {
+		providerNames = c.backendStore.GetAllActiveBackendNames()
 	}
 
-	activeBackends := c.backendStore.GetActiveBackends(bucket.Spec.Providers)
+	activeBackends := c.backendStore.GetActiveBackends(providerNames)
 	if len(activeBackends) == 0 {
 		err := errors.New(errNoActiveS3Backends)
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalUpdate{}, err
-	} else if len(activeBackends) != len(bucket.Spec.Providers) {
-		err := errors.New(errMissingS3Backend)
-		traces.SetAndRecordError(span, err)
-
-		return managed.ExternalUpdate{}, err
+	} else if len(activeBackends) != len(providerNames) {
+		c.log.Info("Missing S3 backends", consts.KeyBucketName, bucket.Name, "providers", providerNames, "activeBackends", activeBackends)
+		traces.SetAndRecordError(span, errors.New(errMissingS3Backend))
 	}
 
 	bucketBackends := newBucketBackends()
 
-	updateAllErr := c.updateOnAllBackends(ctx, bucket, bucketBackends)
+	updateAllErr := c.updateOnAllBackends(ctx, bucket, bucketBackends, providerNames)
 
 	// Whether buckets are updated successfully or not on backends, we need to update the
 	// Bucket CR Status in all cases to represent the conditions of each individual bucket.
 	if err := c.updateBucketCR(ctx, bucket,
 		func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-			bucketLatest.Spec.Providers = bucketDeepCopy.Spec.Providers
-			setBucketStatus(bucketLatest, bucketBackends)
+			setBucketStatus(bucketLatest, bucketBackends, providerNames)
 
 			return NeedsStatusUpdate
 		}); err != nil {
@@ -90,17 +88,15 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	// Bucket CR Spec accordingly.
 	err := c.updateBucketCR(ctx, bucket,
 		func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-			bucketLatest.Spec.Providers = bucketDeepCopy.Spec.Providers
-
 			// Auto pause the Bucket CR if required.
-			cls := c.backendStore.GetBackendS3Clients(bucketLatest.Spec.Providers)
+			cls := c.backendStore.GetBackendS3Clients(providerNames)
 			if isPauseRequired(bucketLatest, cls, bucketBackends, c.autoPauseBucket) {
 				c.log.Info("Auto pausing bucket", consts.KeyBucketName, bucket.Name)
 				pauseBucket(bucketLatest)
 			}
 
 			// Add labels for backends if they don't exist.
-			setBackendLabels(bucket)
+			setBackendLabels(bucket, providerNames)
 
 			controllerutil.AddFinalizer(bucketLatest, v1alpha1.InUseFinalizer)
 
@@ -116,15 +112,15 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalUpdate{}, nil
 }
 
-func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Bucket, bb *bucketBackends) error {
+func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Bucket, bb *bucketBackends, providerNames []string) error {
 	ctx, span := otel.Tracer("").Start(ctx, "updateOnAllBackends")
 	defer span.End()
 
-	defer setBucketStatus(bucket, bb)
+	defer setBucketStatus(bucket, bb, providerNames)
 
 	g := new(errgroup.Group)
 
-	for backendName := range c.backendStore.GetActiveBackends(bucket.Spec.Providers) {
+	for backendName := range c.backendStore.GetActiveBackends(providerNames) {
 		if !c.backendStore.IsBackendActive(backendName) {
 			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
@@ -150,9 +146,20 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 				return err
 			}
 			if !bucketExists {
-				bb.deleteBackend(bucket.Name, beName)
+				if !c.recreateMissingBucket {
+					bb.deleteBackend(bucket.Name, beName)
 
-				return nil
+					return nil
+				}
+
+				_, err := rgw.CreateBucket(ctx, cl, rgw.BucketToCreateBucketInput(bucket))
+				if err != nil {
+					c.log.Info("Failed to create bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName, "err", err.Error())
+					traces.SetAndRecordError(span, err)
+
+					return err
+				}
+				c.log.Info("Bucket created on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 			}
 
 			err = c.updateOnBackend(ctx, cl, bucket, beName, bb)
@@ -198,7 +205,6 @@ func (c *external) updateOnBackend(ctx context.Context, cl backendstore.S3Client
 	//TODO: Add functionality for bucket ownership controls, using s3 apis:
 	// - DeleteBucketOwnershipControls
 	// - PutBucketOwnershipControls
-
 	for _, subResourceClient := range c.subresourceClients {
 		err := subResourceClient.Handle(ctx, b, backendName, bb)
 		if err != nil {

@@ -16,17 +16,18 @@ import (
 // A Connector is expected to produce an ExternalClient when its Connect method
 // is called.
 type Connector struct {
-	kube                client.Client
-	autoPauseBucket     bool
-	backendStore        *backendstore.BackendStore
-	subresourceClients  []SubresourceClient
-	s3ClientHandler     *s3clienthandler.Handler
-	log                 logging.Logger
-	operationTimeout    time.Duration
-	creationGracePeriod time.Duration
-	pollInterval        time.Duration
-	usage               resource.Tracker
-	newServiceFn        func(creds []byte) (interface{}, error)
+	kube                  client.Client
+	autoPauseBucket       bool
+	recreateMissingBucket bool
+	backendStore          *backendstore.BackendStore
+	subresourceClients    []SubresourceClient
+	s3ClientHandler       *s3clienthandler.Handler
+	log                   logging.Logger
+	operationTimeout      time.Duration
+	creationGracePeriod   time.Duration
+	pollInterval          time.Duration
+	usage                 resource.Tracker
+	newServiceFn          func(creds []byte) (interface{}, error)
 }
 
 func NewConnector(options ...func(*Connector)) *Connector {
@@ -47,6 +48,12 @@ func WithKubeClient(k client.Client) func(*Connector) {
 func WithAutoPause(a *bool) func(*Connector) {
 	return func(c *Connector) {
 		c.autoPauseBucket = *a
+	}
+}
+
+func WithRecreateMissingBucket(a *bool) func(*Connector) {
+	return func(c *Connector) {
+		c.recreateMissingBucket = *a
 	}
 }
 
@@ -110,24 +117,26 @@ func (c *Connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	return &external{
-			kubeClient:         c.kube,
-			autoPauseBucket:    c.autoPauseBucket,
-			operationTimeout:   c.operationTimeout,
-			backendStore:       c.backendStore,
-			subresourceClients: c.subresourceClients,
-			s3ClientHandler:    c.s3ClientHandler,
-			log:                c.log},
+			kubeClient:            c.kube,
+			autoPauseBucket:       c.autoPauseBucket,
+			recreateMissingBucket: c.recreateMissingBucket,
+			operationTimeout:      c.operationTimeout,
+			backendStore:          c.backendStore,
+			subresourceClients:    c.subresourceClients,
+			s3ClientHandler:       c.s3ClientHandler,
+			log:                   c.log},
 		nil
 }
 
 // external observes, then either creates, updates, or deletes an external
 // resource to ensure it reflects the managed resource's desired state.
 type external struct {
-	kubeClient         client.Client
-	autoPauseBucket    bool
-	operationTimeout   time.Duration
-	backendStore       *backendstore.BackendStore
-	subresourceClients []SubresourceClient
-	s3ClientHandler    *s3clienthandler.Handler
-	log                logging.Logger
+	kubeClient            client.Client
+	autoPauseBucket       bool
+	recreateMissingBucket bool
+	operationTimeout      time.Duration
+	backendStore          *backendstore.BackendStore
+	subresourceClients    []SubresourceClient
+	s3ClientHandler       *s3clienthandler.Handler
+	log                   logging.Logger
 }

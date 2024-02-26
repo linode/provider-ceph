@@ -69,7 +69,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	bucketName := req.Name + healthCheckSuffix
 
 	providerConfig := &apisv1alpha1.ProviderConfig{}
-	if err := c.kubeClient.Get(ctx, req.NamespacedName, providerConfig); err != nil {
+	if err := c.kubeClientCached.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
 			// ProviderConfig has been deleted, perform cleanup.
 			if err := c.cleanup(ctx, req, bucketName); err != nil {
@@ -93,7 +93,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return ctrl.Result{}, nil
 		}
 
-		if err := UpdateProviderConfigStatus(ctx, c.kubeClient, providerConfig, func(_, pcLatest *apisv1alpha1.ProviderConfig) {
+		if err := UpdateProviderConfigStatus(ctx, c.kubeClientCached, providerConfig, func(_, pcLatest *apisv1alpha1.ProviderConfig) {
 			pcLatest.Status.SetConditions(v1alpha1.HealthCheckDisabled())
 		}); err != nil {
 			err = errors.Wrap(err, errUpdateHealthStatus)
@@ -120,7 +120,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return
 		}
 
-		if err := UpdateProviderConfigStatus(ctx, c.kubeClient, providerConfig, func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
+		if err := UpdateProviderConfigStatus(ctx, c.kubeClientCached, providerConfig, func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
 			pcLatest.Status.SetConditions(pcDeepCopy.Status.Conditions...)
 		}); err != nil {
 			err = errors.Wrap(err, errUpdateHealthStatus)
@@ -288,7 +288,9 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 		Factor:   factor,
 		Jitter:   jitter,
 	}, resource.IsAPIError, func() error {
-		return c.kubeClient.List(ctx, buckets, &client.ListOptions{LabelSelector: listLabels})
+		return c.kubeClientUncached.List(ctx, buckets, &client.ListOptions{
+			LabelSelector: listLabels,
+		})
 	})
 	if err != nil {
 		c.log.Info("Error attempting to list Buckets on backend", "error", err.Error(), consts.KeyBackendName, s3BackendName)
@@ -309,7 +311,7 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] == "true" {
 				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] = ""
 
-				return c.kubeClient.Update(ctx, &buckets.Items[i])
+				return c.kubeClientCached.Update(ctx, &buckets.Items[i])
 			}
 
 			return nil

@@ -11,6 +11,7 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
+	"github.com/linode/provider-ceph/internal/utils"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -99,7 +100,7 @@ func setBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
 	}
 
 	for _, beName := range providerNames {
-		beLabel := v1alpha1.BackendLabelPrefix + beName
+		beLabel := utils.GetBackendLabel(beName)
 		if _, ok := bucket.ObjectMeta.Labels[beLabel]; ok {
 			continue
 		}

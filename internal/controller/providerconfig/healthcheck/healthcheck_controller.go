@@ -279,8 +279,8 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 	// Only list Buckets that (a) were created on s3BackendName
 	// and (b) are already paused.
 	listLabels := labels.SelectorFromSet(labels.Set(map[string]string{
-		v1alpha1.BackendLabelPrefix + s3BackendName: True,
-		meta.AnnotationKeyReconciliationPaused:      True,
+		utils.GetBackendLabel(s3BackendName):   True,
+		meta.AnnotationKeyReconciliationPaused: True,
 	}))
 
 	buckets := &v1alpha1.BucketList{}

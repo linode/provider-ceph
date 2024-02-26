@@ -31,6 +31,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -407,8 +408,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-1",
 								Labels: map[string]string{
-									v1alpha1.BackendLabelPrefix + backendName: "true",
-									meta.AnnotationKeyReconciliationPaused:    "true",
+									utils.GetBackendLabel(backendName):     "true",
+									meta.AnnotationKeyReconciliationPaused: "true",
 								},
 							},
 						},
@@ -416,8 +417,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-2",
 								Labels: map[string]string{
-									v1alpha1.BackendLabelPrefix + backendName: "true",
-									meta.AnnotationKeyReconciliationPaused:    "true",
+									utils.GetBackendLabel(backendName):     "true",
+									meta.AnnotationKeyReconciliationPaused: "true",
 								},
 							},
 						},
@@ -425,8 +426,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-3",
 								Labels: map[string]string{
-									v1alpha1.BackendLabelPrefix + backendName: "true",
-									meta.AnnotationKeyReconciliationPaused:    "",
+									utils.GetBackendLabel(backendName):     "true",
+									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
 						},
@@ -474,8 +475,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-1",
 								Labels: map[string]string{
-									v1alpha1.BackendLabelPrefix + backendName: "true",
-									meta.AnnotationKeyReconciliationPaused:    "",
+									utils.GetBackendLabel(backendName):     "true",
+									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
 						},
@@ -483,8 +484,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-2",
 								Labels: map[string]string{
-									v1alpha1.BackendLabelPrefix + backendName: "true",
-									meta.AnnotationKeyReconciliationPaused:    "",
+									utils.GetBackendLabel(backendName):     "true",
+									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
 						},
@@ -492,8 +493,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-3",
 								Labels: map[string]string{
-									v1alpha1.BackendLabelPrefix + backendName: "true",
-									meta.AnnotationKeyReconciliationPaused:    "",
+									utils.GetBackendLabel(backendName):     "true",
+									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
 						},
@@ -535,8 +536,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-1",
 								Labels: map[string]string{
-									v1alpha1.BackendLabelPrefix + backendName: "true",
-									meta.AnnotationKeyReconciliationPaused:    "true",
+									utils.GetBackendLabel(backendName):     "true",
+									meta.AnnotationKeyReconciliationPaused: "true",
 								},
 							},
 						},
@@ -544,8 +545,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-2",
 								Labels: map[string]string{
-									v1alpha1.BackendLabelPrefix + backendName: "true",
-									meta.AnnotationKeyReconciliationPaused:    "true",
+									utils.GetBackendLabel(backendName):     "true",
+									meta.AnnotationKeyReconciliationPaused: "true",
 								},
 							},
 						},
@@ -553,8 +554,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-3",
 								Labels: map[string]string{
-									v1alpha1.BackendLabelPrefix + backendName: "true",
-									meta.AnnotationKeyReconciliationPaused:    "",
+									utils.GetBackendLabel(backendName):     "true",
+									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
 						},
@@ -602,8 +603,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-1",
 								Labels: map[string]string{
-									v1alpha1.BackendLabelPrefix + backendName: "true",
-									meta.AnnotationKeyReconciliationPaused:    "",
+									utils.GetBackendLabel(backendName):     "true",
+									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
 						},
@@ -611,8 +612,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-2",
 								Labels: map[string]string{
-									v1alpha1.BackendLabelPrefix + backendName: "true",
-									meta.AnnotationKeyReconciliationPaused:    "",
+									utils.GetBackendLabel(backendName):     "true",
+									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
 						},
@@ -620,8 +621,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-3",
 								Labels: map[string]string{
-									v1alpha1.BackendLabelPrefix + backendName: "true",
-									meta.AnnotationKeyReconciliationPaused:    "",
+									utils.GetBackendLabel(backendName):     "true",
+									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
 						},

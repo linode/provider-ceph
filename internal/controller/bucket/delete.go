@@ -45,12 +45,17 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 	g := new(errgroup.Group)
 
-	providerNames := bucket.Spec.Providers
-	if len(providerNames) == 0 {
-		providerNames = c.backendStore.GetAllActiveBackendNames()
-	}
+	providerNames := []string{}
+	for backendName, backend := range bucket.Status.AtProvider.Backends {
+		providerNames = append(providerNames, backendName)
 
-	for _, backendName := range providerNames {
+		reason := backend.BucketCondition.Reason
+		if reason != xpv1.ReasonAvailable {
+			c.log.Info("Skipping deletion of bucket on backend, not available", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName, "status", reason)
+
+			continue
+		}
+
 		bucketBackends.setBucketCondition(bucket.Name, backendName, xpv1.Deleting())
 
 		c.log.Info("Deleting bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)

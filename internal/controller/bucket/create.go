@@ -18,6 +18,7 @@ import (
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/rgw"
+	"github.com/linode/provider-ceph/internal/utils"
 )
 
 //nolint:maintidx,gocognit,gocyclo,cyclop,nolintlint // Function requires numerous checks.
@@ -49,10 +50,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, err
 	}
 
-	providerNames := bucket.Spec.Providers
-	if len(providerNames) == 0 {
-		providerNames = c.backendStore.GetAllActiveBackendNames()
-	}
+	providerNames := utils.GetBucketProvidersFilterDisabledLabel(bucket, c.backendStore.GetAllActiveBackendNames())
 
 	// Create the bucket on each backend in a separate go routine
 	activeBackends := c.backendStore.GetActiveBackends(providerNames)

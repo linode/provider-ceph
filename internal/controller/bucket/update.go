@@ -21,6 +21,7 @@ import (
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/rgw"
+	"github.com/linode/provider-ceph/internal/utils"
 )
 
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
@@ -44,10 +45,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, c.Delete(ctx, mg)
 	}
 
-	providerNames := bucket.Spec.Providers
-	if len(providerNames) == 0 {
-		providerNames = c.backendStore.GetAllActiveBackendNames()
-	}
+	providerNames := utils.GetBucketProvidersFilterDisabledLabel(bucket, c.backendStore.GetAllActiveBackendNames())
 
 	activeBackends := c.backendStore.GetActiveBackends(providerNames)
 	if len(activeBackends) == 0 {
@@ -121,12 +119,6 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 	g := new(errgroup.Group)
 
 	for backendName := range c.backendStore.GetActiveBackends(providerNames) {
-		if status, ok := bucket.Labels[v1alpha1.BackendLabelPrefix+backendName]; ok && status != True {
-			c.log.Info("Backend label of bucket is marked false - bucket will not be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
-
-			continue
-		}
-
 		if !c.backendStore.IsBackendActive(backendName) {
 			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 

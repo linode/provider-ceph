@@ -16,6 +16,7 @@ import (
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/rgw"
+	"github.com/linode/provider-ceph/internal/utils"
 )
 
 //nolint:gocyclo,cyclop // Function requires numerous checks.
@@ -67,10 +68,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	// If no Providers are specified in the Bucket Spec, the bucket is to be created on all backends.
-	providerNames := bucket.Spec.Providers
-	if len(providerNames) == 0 {
-		providerNames = c.backendStore.GetAllActiveBackendNames()
-	}
+	providerNames := utils.GetBucketProvidersFilterDisabledLabel(bucket, c.backendStore.GetAllActiveBackendNames())
 	if len(providerNames) == 0 {
 		err := errors.New(errNoActiveS3Backends)
 		traces.SetAndRecordError(span, err)

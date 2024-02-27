@@ -11,10 +11,11 @@ import (
 )
 
 type Controller struct {
-	kubeClient      client.Client
-	backendStore    *backendstore.BackendStore
-	log             logging.Logger
-	autoPauseBucket bool
+	kubeClientUncached client.Client
+	kubeClientCached   client.Client
+	backendStore       *backendstore.BackendStore
+	log                logging.Logger
+	autoPauseBucket    bool
 }
 
 func NewController(options ...func(*Controller)) *Controller {
@@ -26,9 +27,15 @@ func NewController(options ...func(*Controller)) *Controller {
 	return r
 }
 
-func WithKubeClient(k client.Client) func(*Controller) {
+func WithKubeClientUncached(k client.Client) func(*Controller) {
 	return func(r *Controller) {
-		r.kubeClient = k
+		r.kubeClientUncached = k
+	}
+}
+
+func WithKubeClientCached(k client.Client) func(*Controller) {
+	return func(r *Controller) {
+		r.kubeClientCached = k
 	}
 }
 

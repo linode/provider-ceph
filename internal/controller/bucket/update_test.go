@@ -92,36 +92,6 @@ func TestUpdateBasicErrors(t *testing.T) {
 				err: errors.New(errNoActiveS3Backends),
 			},
 		},
-		"Missing backend": {
-			fields: fields{
-				backendStore: func() *backendstore.BackendStore {
-					fake := backendstorefakes.FakeS3Client{
-						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
-							return &s3.HeadBucketOutput{}, nil
-						},
-					}
-
-					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
-
-					return bs
-				}(),
-			},
-			args: args{
-				mg: &v1alpha1.Bucket{
-					Spec: v1alpha1.BucketSpec{
-						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
-						},
-					},
-				},
-			},
-			want: want{
-				o:   managed.ExternalUpdate{},
-				err: errors.New(errMissingS3Backend),
-			},
-		},
 	}
 	for name, tc := range cases {
 		tc := tc
@@ -412,8 +382,8 @@ func TestUpdate(t *testing.T) {
 
 					assert.Equal(t,
 						map[string]string{
-							meta.AnnotationKeyReconciliationPaused: "true",
-							"provider-ceph.backends.s3-backend-1":  "",
+							meta.AnnotationKeyReconciliationPaused: True,
+							"provider-ceph.backends.s3-backend-1":  True,
 						},
 						bucket.Labels,
 						"unexpected bucket labels",

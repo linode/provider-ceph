@@ -19,4 +19,6 @@ const (
 	// Lifecycle configuration error messages.
 	errObserveLifecycleConfig = "failed to observe bucket lifecycle configuration"
 	errHandleLifecycleConfig  = "failed to handle bucket lifecycle configuration"
+
+	True = "true"
 )

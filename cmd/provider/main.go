@@ -97,7 +97,8 @@ func main() {
 		enableExternalSecretStores = app.Flag("enable-external-secret-stores", "Enable support for ExternalSecretStores.").Default("false").Envar("ENABLE_EXTERNAL_SECRET_STORES").Bool()
 		enableManagementPolicies   = app.Flag("enable-management-policies", "Enable support for Management Policies.").Default("false").Envar("ENABLE_MANAGEMENT_POLICIES").Bool()
 
-		autoPauseBucket = app.Flag("auto-pause-bucket", "Enable auto pause of reconciliation of ready buckets").Default("false").Envar("AUTO_PAUSE_BUCKET").Bool()
+		autoPauseBucket       = app.Flag("auto-pause-bucket", "Enable auto pause of reconciliation of ready buckets").Default("false").Envar("AUTO_PAUSE_BUCKET").Bool()
+		recreateMissingBucket = app.Flag("recreate-missing-bucket", "Recreates existing bucket if missing").Default("false").Envar("RECREATE_MISSING_BUCKET").Bool()
 
 		assumeRoleArn = app.Flag("assume-role-arn", "Assume role ARN to be used for STS authentication").Default("").Envar("ASSUME_ROLE_ARN").String()
 
@@ -272,6 +273,11 @@ func main() {
 
 	backendStore := backendstore.NewBackendStore()
 
+	kubeClientUncached, err := client.New(cfg, client.Options{
+		Scheme: providerSCheme,
+	})
+	kingpin.FatalIfError(err, "Cannot create Kube client")
+
 	kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
 		For(&providercephv1alpha1.Bucket{}).
 		WithValidator(bucket.NewBucketValidator(backendStore)).
@@ -286,7 +292,8 @@ func main() {
 		healthcheck.NewController(
 			healthcheck.WithAutoPause(autoPauseBucket),
 			healthcheck.WithBackendStore(backendStore),
-			healthcheck.WithKubeClient(mgr.GetClient()),
+			healthcheck.WithKubeClientUncached(kubeClientUncached),
+			healthcheck.WithKubeClientCached(mgr.GetClient()),
 			healthcheck.WithLogger(o.Logger))),
 		"Cannot setup ProviderConfig controllers")
 
@@ -299,6 +306,7 @@ func main() {
 
 	kingpin.FatalIfError(bucket.Setup(mgr, o, bucket.NewConnector(
 		bucket.WithAutoPause(autoPauseBucket),
+		bucket.WithRecreateMissingBucket(recreateMissingBucket),
 		bucket.WithBackendStore(backendStore),
 		bucket.WithKubeClient(mgr.GetClient()),
 		bucket.WithOperationTimeout(*reconcileTimeout),

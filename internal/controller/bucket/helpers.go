@@ -2,6 +2,7 @@ package bucket
 
 import (
 	"context"
+	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
@@ -10,6 +11,7 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
+	"github.com/linode/provider-ceph/internal/utils"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,7 +20,7 @@ import (
 
 // isBucketPaused returns true if the bucket has the paused label set.
 func isBucketPaused(bucket *v1alpha1.Bucket) bool {
-	if val, ok := bucket.Labels[meta.AnnotationKeyReconciliationPaused]; ok && val == "true" {
+	if val, ok := bucket.Labels[meta.AnnotationKeyReconciliationPaused]; ok && val == True {
 		return true
 	}
 
@@ -30,7 +32,7 @@ func pauseBucket(bucket *v1alpha1.Bucket) {
 	if bucket.ObjectMeta.Labels == nil {
 		bucket.ObjectMeta.Labels = map[string]string{}
 	}
-	bucket.Labels[meta.AnnotationKeyReconciliationPaused] = "true"
+	bucket.Labels[meta.AnnotationKeyReconciliationPaused] = True
 }
 
 // isPauseRequired determines if the Bucket should be paused.
@@ -59,10 +61,10 @@ func isPauseRequired(b *v1alpha1.Bucket, c map[string]backendstore.S3Client, bb 
 		b.Labels[meta.AnnotationKeyReconciliationPaused] == ""
 }
 
-// isBucketAvailableFromStatus checks the backends listed in Spec.Providers against the
+// isBucketAvailableFromStatus checks the backends listed in providerNames against the
 // backends in Status to ensure buckets are considered Available on all desired backends.
-func isBucketAvailableFromStatus(bucket *v1alpha1.Bucket, backendClients map[string]backendstore.S3Client) bool {
-	for _, backendName := range bucket.Spec.Providers {
+func isBucketAvailableFromStatus(bucket *v1alpha1.Bucket, providerNames []string, backendClients map[string]backendstore.S3Client) bool {
+	for _, backendName := range providerNames {
 		if _, ok := backendClients[backendName]; !ok {
 			// This backend does not exist in the list of available backends.
 			// The backend may be offline, so it is skipped.
@@ -82,24 +84,35 @@ func isBucketAvailableFromStatus(bucket *v1alpha1.Bucket, backendClients map[str
 }
 
 // setBackendLabels adds label "provider-ceph.backends.<backend-name>" to the Bucket for each backend.
-func setBackendLabels(bucket *v1alpha1.Bucket) {
-	for _, beName := range bucket.Spec.Providers {
-		beLabel := v1alpha1.BackendLabelPrefix + beName
+func setBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
+	if bucket.ObjectMeta.Labels == nil {
+		bucket.ObjectMeta.Labels = map[string]string{}
+	}
+
+	labelsToDelete := []string{}
+	for k := range bucket.ObjectMeta.Labels {
+		if strings.HasPrefix(k, v1alpha1.BackendLabelPrefix) && bucket.ObjectMeta.Labels[k] == True {
+			labelsToDelete = append(labelsToDelete, k)
+		}
+	}
+	for _, k := range labelsToDelete {
+		delete(bucket.ObjectMeta.Labels, k)
+	}
+
+	for _, beName := range providerNames {
+		beLabel := utils.GetBackendLabel(beName)
 		if _, ok := bucket.ObjectMeta.Labels[beLabel]; ok {
 			continue
 		}
 
-		if bucket.ObjectMeta.Labels == nil {
-			bucket.ObjectMeta.Labels = map[string]string{}
-		}
-		bucket.ObjectMeta.Labels[beLabel] = ""
+		bucket.ObjectMeta.Labels[beLabel] = True
 	}
 }
 
-func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends) {
+func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends, providerNames []string) {
 	bucket.Status.SetConditions(xpv1.Unavailable())
 
-	backends := bucketBackends.getBackends(bucket.Name, bucket.Spec.Providers)
+	backends := bucketBackends.getBackends(bucket.Name, providerNames)
 	bucket.Status.AtProvider.Backends = backends
 
 	for _, backend := range backends {

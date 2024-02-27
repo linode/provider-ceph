@@ -45,12 +45,17 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 	g := new(errgroup.Group)
 
-	activeBackends := bucket.Spec.Providers
-	if len(activeBackends) == 0 {
-		activeBackends = c.backendStore.GetAllActiveBackendNames()
-	}
+	providerNames := []string{}
+	for backendName, backend := range bucket.Status.AtProvider.Backends {
+		providerNames = append(providerNames, backendName)
 
-	for _, backendName := range activeBackends {
+		reason := backend.BucketCondition.Reason
+		if reason != xpv1.ReasonAvailable {
+			c.log.Info("Skipping deletion of bucket on backend, not available", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName, "status", reason)
+
+			continue
+		}
+
 		bucketBackends.setBucketCondition(bucket.Name, backendName, xpv1.Deleting())
 
 		c.log.Info("Deleting bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
@@ -89,8 +94,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	// CR spec. If the deletion is successful or unsuccessful, the bucket CR status must be
 	// updated.
 	if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-		bucketLatest.Spec.Providers = activeBackends
-		setBucketStatus(bucketLatest, bucketBackends)
+		setBucketStatus(bucketLatest, bucketBackends, providerNames)
 
 		return NeedsStatusUpdate
 	}); err != nil {

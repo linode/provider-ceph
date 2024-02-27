@@ -16,6 +16,7 @@ import (
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/rgw"
+	"github.com/linode/provider-ceph/internal/utils"
 )
 
 //nolint:gocyclo,cyclop // Function requires numerous checks.
@@ -67,13 +68,17 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	// If no Providers are specified in the Bucket Spec, the bucket is to be created on all backends.
-	if len(bucket.Spec.Providers) == 0 {
-		bucket.Spec.Providers = c.backendStore.GetAllActiveBackendNames()
+	providerNames := utils.GetBucketProvidersFilterDisabledLabel(bucket, c.backendStore.GetAllActiveBackendNames())
+	if len(providerNames) == 0 {
+		err := errors.New(errNoActiveS3Backends)
+		traces.SetAndRecordError(span, err)
+
+		return managed.ExternalObservation{}, err
 	}
-	backendClients := c.backendStore.GetBackendS3Clients(bucket.Spec.Providers)
+	backendClients := c.backendStore.GetBackendS3Clients(providerNames)
 
 	// Check that the Bucket CR is Available according to its Status backends.
-	if !isBucketAvailableFromStatus(bucket, backendClients) {
+	if !isBucketAvailableFromStatus(bucket, providerNames, backendClients) {
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,
@@ -82,7 +87,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Observe sub-resources for the Bucket to check if they too are up to date.
 	for _, subResourceClient := range c.subresourceClients {
-		obs, err := subResourceClient.Observe(ctx, bucket, bucket.Spec.Providers)
+		obs, err := subResourceClient.Observe(ctx, bucket, providerNames)
 		if err != nil {
 			err := errors.Wrap(err, errObserveSubresource)
 			traces.SetAndRecordError(span, err)

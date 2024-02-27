@@ -164,11 +164,11 @@ func (c *external) updateOnBackend(ctx context.Context, beName string, bucket *v
 
 			_, err := rgw.CreateBucket(ctx, cl, rgw.BucketToCreateBucketInput(bucket))
 			if err != nil {
-				c.log.Info("Failed to create bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName, "err", err.Error())
+				c.log.Info("Failed to recreate missing bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName, "err", err.Error())
 
 				return err
 			}
-			c.log.Info("Bucket created on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+			c.log.Info("Recreated missing bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 		}
 
 		err = c.doUpdateOnBackend(ctx, cl, bucket, beName, bb)

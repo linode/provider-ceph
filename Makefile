@@ -9,15 +9,15 @@ PLATFORMS ?= linux_amd64 linux_arm64
 # Generate kuttl e2e tests for the following kind node versions
 # TEST_KIND_NODES is not intended to be updated manually.
 # Please edit LATEST_KIND_NODE instead and run 'make update-kind-nodes'.
-TEST_KIND_NODES ?= 1.25.11,1.26.6,1.27.3,1.28.0
+TEST_KIND_NODES ?= 1.26.14,1.27.11,1.28.7,1.29.2
 
-LATEST_KUBE_VERSION ?= 1.28
-LATEST_KIND_NODE ?= 1.28.0
+LATEST_KUBE_VERSION ?= 1.29
+LATEST_KIND_NODE ?= 1.29.2
 REPO ?= provider-ceph
 
 KUTTL_VERSION ?= 0.15.0
 
-CROSSPLANE_VERSION ?= 1.14.6
+CROSSPLANE_VERSION ?= 1.15.0
 
 # For local development, usually IP of docker0.
 WEBHOOK_HOST ?= 172.17.0.1
@@ -38,7 +38,7 @@ GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
 GO111MODULE = on
-GOLANGCILINT_VERSION ?= 1.55.2
+GOLANGCILINT_VERSION ?= 1.56.2
 -include build/makelib/golang.mk
 
 # ====================================================================================
@@ -339,7 +339,7 @@ $(NILAWAY):
 	@mv $(TOOLS_HOST_DIR)/nilaway $(NILAWAY)
 	@$(OK) installing nilaway $(NILAWAY_VERSION)
 
-GOVULNCHECK_VERSION ?= v1.0.1
+GOVULNCHECK_VERSION ?= v1.0.4
 GOVULNCHECK := $(TOOLS_HOST_DIR)/govulncheck-$(GOVULNCHECK_VERSION)
 
 .PHONY: vulncheck

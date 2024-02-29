@@ -62,5 +62,116 @@ EOF
 ```
 See [WEBHOOKS.md](docs/WEBHOOKS.md) for instructions on how to enable webhooks.
 
+### Customizing provider deployment
+
+Crossplane uses `DeploymentRuntimeConfig` object to apply customizations on the provider.
+Here are a few examples:
+
+
+```yaml
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: provider-ceph
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          containers:
+          - name: package-runtime
+            args:
+            - --kube-client-rate=80000
+            - --reconcile-timeout=5s
+            - --max-reconcile-rate=600
+            - --reconcile-concurrency=160
+            - --poll=30m
+            - --sync=1h
+            - --assume-role-arn=[ASSUME_ROLE_ARN]
+```
+
+You have to attach `DeploymentRuntimeConfig` to the `Provider` object.
+
+```yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-ceph
+spec:
+  runtimeConfigRef:
+    name: provider-ceph
+```
+
+### Enabling validation webhook
+
+Validation webhook is not registered on the Kubernetes cluster by default. But before you enable it,
+you have to deploy cert manager.
+
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+```
+
+You have to create Issuer and Certificate.
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: crossplane-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: crossplane-provider-provider-ceph
+  namespace: crossplane-system
+spec:
+  commonName: provider-ceph.crossplane-system.svc
+  dnsNames:
+  - provider-ceph.crossplane-system.svc.cluster.local
+  - provider-ceph.crossplane-system.svc
+  - crossplane-provider-provider-ceph.crossplane-system.svc.cluster.local
+  - crossplane-provider-provider-ceph.crossplane-system.svc
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: crossplane-provider-provider-ceph-server-cert
+```
+
+You need a `DeploymentRuntimeConfig` too ([Customizing provider deployment](#customizing-provider-deployment)).
+
+```yaml
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: provider-ceph
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          containers:
+          - name: package-runtime
+            args:
+            - --webhook-tls-cert-dir=/certs
+            volumeMounts:
+            - name: cert-manager-certs
+              mountPath: /certs
+          volumes:
+          - name: cert-manager-certs
+            secret:
+              secretName: crossplane-provider-provider-ceph-server-cert
+```
+
+Finaly, you have to apply `ValidatingWebhookConfiguration`.
+
+```bash
+PROV_CEPH_VER=v0.0.32 kubectl apply -f https://github.com/linode/provider-ceph/blob/release-${PROV_CEPH_VER}/package/webhookconfigurations/manifests.yaml
+```
+
 ## Contact
 - Slack: Join our [#provider-ceph](https://crossplane.slack.com/archives/C05RKQRNDHA) slack channel.

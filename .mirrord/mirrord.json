@@ -14,7 +14,7 @@
             "outgoing": false
         },
         "fs": "local",
-        "env": true
+        "env": false
     },
     "operator": false,
     "pause": true,

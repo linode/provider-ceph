@@ -30,6 +30,7 @@ jobs:
       - name: Run kuttl tests 1.26
         run: make kuttl
         env:
+          WEBHOOK_TYPE: 'cert-manager'
           LATEST_KUBE_VERSION: '1.26'
           AWS_ACCESS_KEY_ID: 'Dummy'
           AWS_SECRET_ACCESS_KEY: 'Dummy'

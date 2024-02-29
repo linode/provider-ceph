@@ -1,0 +1,14 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: crossplane-system/crossplane-provider-provider-ceph
+webhooks:
+- name: bucket-validation.providerceph.crossplane.io
+  clientConfig:
+    caBundle: Cg==
+    service:
+      name: provider-ceph
+      namespace: crossplane-system
+      port: 9443

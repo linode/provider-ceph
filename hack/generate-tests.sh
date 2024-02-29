@@ -120,6 +120,7 @@ jobs:
       - name: Run kuttl tests ${major}
         run: make kuttl
         env:
+          WEBHOOK_TYPE: 'cert-manager'
           LATEST_KUBE_VERSION: '${major}'
           AWS_ACCESS_KEY_ID: 'Dummy'
           AWS_SECRET_ACCESS_KEY: 'Dummy'

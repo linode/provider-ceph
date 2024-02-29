@@ -30,6 +30,8 @@ WEBHOOK_TUNNEL_PORT ?= 9999
 # For local development, subdomain of locatunnel.
 WEBHOOK_SUBDOMAIN ?= $(PROJECT_NAME)-$(shell git rev-parse --short HEAD)-$(shell date +%s)
 
+WEBHOOK_TYPE ?= stock
+
 # ====================================================================================
 # Setup Output
 
@@ -148,6 +150,10 @@ crossplane-cluster: $(HELM3) cluster
 	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace --version $(CROSSPLANE_VERSION) crossplane-stable/crossplane
 	@$(OK) Installing Crossplane
 
+## Deploy cert manager to the K8s cluster specified in ~/.kube/config.
+cert-manager: $(KUBECTL)
+	$(KUBECTL) apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+
 # Generate the provider-ceph package and webhookconfiguration manifest.
 generate-pkg: generate kustomize-webhook
 
@@ -159,7 +165,7 @@ check-diff-pkg: generate-pkg
 # Kustomize the webhookconfiguration manifest that is created by 'generate' target.
 kustomize-webhook: $(KUSTOMIZE)
 	@cp -f $(XPKG_DIR)/webhookconfigurations/manifests.yaml $(VAL_WBHK_STAGE)
-	@cp -f $(VAL_WBHK_STAGE)/service-patch-prod.yaml $(VAL_WBHK_STAGE)/service-patch.yaml
+	@cp -f $(VAL_WBHK_STAGE)/service-patch-$(WEBHOOK_TYPE).yaml $(VAL_WBHK_STAGE)/service-patch.yaml
 	$(KUSTOMIZE) build $(VAL_WBHK_STAGE) -o $(XPKG_DIR)/webhookconfigurations/manifests.yaml
 
 # Build the controller image and the provider package.
@@ -181,7 +187,7 @@ load-package: $(KIND) build kustomize-webhook
 # to the Provider.
 # Run Kuttl test suite on newly built controller image.
 # Destroy Kind and localstack.
-kuttl: $(KUTTL) crossplane-cluster localstack-cluster load-package
+kuttl: $(KUTTL) generate-pkg generate-tests crossplane-cluster localstack-cluster cert-manager load-package
 	@$(INFO) Running kuttl test suite
 	@$(KUTTL) test --config e2e/kuttl/stable/provider-ceph-$(LATEST_KUBE_VERSION).yaml
 	@$(OK) Running kuttl test suite
@@ -197,7 +203,7 @@ ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
 # containerised Crossplane componenets).
 # Install local provider-ceph CRDs.
 # Create ProviderConfig CR representing localstack.
-dev-cluster: $(KUBECTL) generate-pkg generate-tests crossplane-cluster localstack-cluster
+dev-cluster: $(KUBECTL) generate-pkg generate-tests crossplane-cluster localstack-cluster cert-manager
 	@rm -rf $(PWD)/bin/certs ; mkdir $(PWD)/bin/certs
 	@docker cp local-dev-control-plane:/etc/kubernetes/pki/ca.key $(PWD)/bin/certs/ca.key
 	@docker cp local-dev-control-plane:/etc/kubernetes/pki/ca.crt $(PWD)/bin/certs/ca.crt

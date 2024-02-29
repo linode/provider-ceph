@@ -2,7 +2,10 @@ MIRRORD_VERSION ?= 3.88.0
 MIRRORD := $(TOOLS_HOST_DIR)/mirrord-$(MIRRORD_VERSION)
 
 # Best for development - locally run provider-ceph controller.
-mirrord.cluster: dev-cluster crossplane-cluster load-package
+mirrord.cluster: generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
+	@$(KUBECTL) apply -R -f package/crds
+	# @$(KUBECTL) apply -R -f package/webhookconfigurations
+	$(KUBECTL) apply -f $(PROJECT_ROOT)/e2e/localstack/localstack-provider-cfg.yaml
 
 mirrord.run: $(MIRRORD)
 	@$(INFO) Starting mirrord on deployment

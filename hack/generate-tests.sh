@@ -117,11 +117,10 @@ jobs:
           sudo chmod +x \$KUTTL
       - name: Build
         run: make submodules build
-      - name: Create test environment
-        run: make crossplane-cluster load-package
       - name: Run kuttl tests ${major}
-        run: kubectl-kuttl test --config e2e/kuttl/stable/${REPO}-${major}.yaml
+        run: make kuttl
         env:
+          LATEST_KUBE_VERSION: '${major}'
           AWS_ACCESS_KEY_ID: 'Dummy'
           AWS_SECRET_ACCESS_KEY: 'Dummy'
           AWS_DEFAULT_REGION: 'us-east-1'

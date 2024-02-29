@@ -2,6 +2,7 @@
 # Setup Project
 PROJECT_NAME := provider-ceph
 PROJECT_REPO := github.com/linode/$(PROJECT_NAME)
+PROJECT_ROOT = $(shell git rev-parse --show-toplevel)
 
 PLATFORMS ?= linux_amd64 linux_arm64
 -include build/makelib/common.mk
@@ -9,15 +10,18 @@ PLATFORMS ?= linux_amd64 linux_arm64
 # Generate kuttl e2e tests for the following kind node versions
 # TEST_KIND_NODES is not intended to be updated manually.
 # Please edit LATEST_KIND_NODE instead and run 'make update-kind-nodes'.
-TEST_KIND_NODES ?= 1.25.11,1.26.6,1.27.3,1.28.0
+TEST_KIND_NODES ?= 1.26.14,1.27.11,1.28.7,1.29.2
 
-LATEST_KUBE_VERSION ?= 1.28
-LATEST_KIND_NODE ?= 1.28.0
+LATEST_KUBE_VERSION ?= 1.29
+LATEST_KIND_NODE ?= 1.29.2
 REPO ?= provider-ceph
 
 KUTTL_VERSION ?= 0.15.0
 
-CROSSPLANE_VERSION ?= 1.14.6
+CROSSPLANE_VERSION ?= 1.15.0
+
+# For local development
+ASSUME_ROLE_ARN ?= "arn:akamai:sts:::assumed-role/TestRole"
 
 # For local development, usually IP of docker0.
 WEBHOOK_HOST ?= 172.17.0.1
@@ -38,7 +42,7 @@ GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
 GO111MODULE = on
-GOLANGCILINT_VERSION ?= 1.55.2
+GOLANGCILINT_VERSION ?= 1.56.2
 -include build/makelib/golang.mk
 
 # ====================================================================================
@@ -124,17 +128,19 @@ run: go.build
 	@# To see other arguments that can be provided, run the command with --help instead
 	$(GO_OUT_DIR)/provider --zap-devel --webhook-tls-cert-dir=$(PWD)/bin/certs --webhook-host=$(WEBHOOK_HOST)
 
-# Spin up a Kind cluster and localstack.
-# Create k8s service to allows pods to communicate with
-# localstack.
+# Spin up a Kind cluster.
 cluster: $(KIND) $(KUBECTL) cluster-clean
-	docker pull localstack/localstack:2.2
 	@$(INFO) Creating kind cluster
 	@$(KIND) create cluster --name=$(KIND_CLUSTER_NAME) --config e2e/kind/kind-config-$(LATEST_KUBE_VERSION).yaml
-	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) localstack/localstack:2.2
 	@$(OK) Creating kind cluster
 
-# Spin up a Kind cluster and localstack and install Crossplane via Helm.
+# Spin up localstack cluster.
+localstack-cluster: $(KIND) $(KUBECTL)
+	docker pull localstack/localstack:2.2
+	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) localstack/localstack:2.2
+	@$(KUBECTL) apply -R -f e2e/localstack/localstack-deployment.yaml
+
+# Spin up a Kind cluster and install Crossplane via Helm.
 crossplane-cluster: $(HELM3) cluster
 	@$(INFO) Installing Crossplane
 	@$(HELM3) repo add crossplane-stable https://charts.crossplane.io/stable
@@ -175,7 +181,7 @@ load-package: $(KIND) build kustomize-webhook
 # to the Provider.
 # Run Kuttl test suite on newly built controller image.
 # Destroy Kind and localstack.
-kuttl: $(KUTTL) crossplane-cluster load-package
+kuttl: $(KUTTL) crossplane-cluster localstack-cluster load-package
 	@$(INFO) Running kuttl test suite
 	@$(KUTTL) test --config e2e/kuttl/stable/provider-ceph-$(LATEST_KUBE_VERSION).yaml
 	@$(OK) Running kuttl test suite
@@ -191,7 +197,7 @@ ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
 # containerised Crossplane componenets).
 # Install local provider-ceph CRDs.
 # Create ProviderConfig CR representing localstack.
-dev-cluster: $(KUBECTL) generate-pkg generate-tests cluster
+dev-cluster: $(KUBECTL) generate-pkg generate-tests crossplane-cluster localstack-cluster
 	@rm -rf $(PWD)/bin/certs ; mkdir $(PWD)/bin/certs
 	@docker cp local-dev-control-plane:/etc/kubernetes/pki/ca.key $(PWD)/bin/certs/ca.key
 	@docker cp local-dev-control-plane:/etc/kubernetes/pki/ca.crt $(PWD)/bin/certs/ca.crt
@@ -226,10 +232,8 @@ dev-cluster: $(KUBECTL) generate-pkg generate-tests cluster
 	@$(OK) Rendering webhook manifest.
 
 	@$(INFO) Installing CRDs, ProviderConfig and Localstack
-	@$(KUBECTL) apply -k https://github.com/crossplane/crossplane/cluster?ref=v$(CROSSPLANE_VERSION)
 	@$(KUBECTL) apply -R -f package/crds
 	@$(KUBECTL) apply -R -f package/webhookconfigurations
-	@$(KUBECTL) apply -R -f e2e/localstack/localstack-deployment.yaml
 	@$(KUBECTL) apply -R -f e2e/localstack/localstack-provider-cfg-host.yaml
 	@$(OK) Installing CRDs and ProviderConfig
 
@@ -339,7 +343,7 @@ $(NILAWAY):
 	@mv $(TOOLS_HOST_DIR)/nilaway $(NILAWAY)
 	@$(OK) installing nilaway $(NILAWAY_VERSION)
 
-GOVULNCHECK_VERSION ?= v1.0.1
+GOVULNCHECK_VERSION ?= v1.0.4
 GOVULNCHECK := $(TOOLS_HOST_DIR)/govulncheck-$(GOVULNCHECK_VERSION)
 
 .PHONY: vulncheck

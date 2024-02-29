@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/allegro/bigcache/v3"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (

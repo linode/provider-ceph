@@ -205,9 +205,8 @@ func TestDelete(t *testing.T) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					assert.Equal(t,
-						[]string{},
-						bucket.Finalizers,
+					assert.Empty(t,
+						len(bucket.Finalizers),
 						"unexpeceted finalizers",
 					)
 				},
@@ -289,9 +288,8 @@ func TestDelete(t *testing.T) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
-					assert.Equal(t,
-						[]string{},
-						bucket.Finalizers,
+					assert.Empty(t,
+						len(bucket.Finalizers),
 						"unexpeceted finalizers",
 					)
 				},

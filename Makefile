@@ -152,7 +152,13 @@ crossplane-cluster: $(HELM3) cluster
 
 ## Deploy cert manager to the K8s cluster specified in ~/.kube/config.
 cert-manager: $(KUBECTL)
-	$(KUBECTL) apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+	@docker pull quay.io/jetstack/cert-manager-controller:v1.14.0
+	@docker pull quay.io/jetstack/cert-manager-webhook:v1.14.0
+	@docker pull quay.io/jetstack/cert-manager-cainjector:v1.14.0
+	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) quay.io/jetstack/cert-manager-controller:v1.14.0
+	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) quay.io/jetstack/cert-manager-webhook:v1.14.0
+	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) quay.io/jetstack/cert-manager-cainjector:v1.14.0
+	@$(KUBECTL) apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
 
 # Generate the provider-ceph package and webhookconfiguration manifest.
 generate-pkg: generate kustomize-webhook

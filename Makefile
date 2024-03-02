@@ -19,6 +19,7 @@ REPO ?= provider-ceph
 KUTTL_VERSION ?= 0.15.0
 
 CROSSPLANE_VERSION ?= 1.15.0
+CERT_MANAGER_VERSION ?= 1.14.0
 
 # For local development
 ASSUME_ROLE_ARN ?= "arn:akamai:sts:::assumed-role/TestRole"
@@ -152,7 +153,13 @@ crossplane-cluster: $(HELM3) cluster
 
 ## Deploy cert manager to the K8s cluster specified in ~/.kube/config.
 cert-manager: $(KUBECTL)
-	$(KUBECTL) apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+	@docker pull quay.io/jetstack/cert-manager-controller:v$(CERT_MANAGER_VERSION)
+	@docker pull quay.io/jetstack/cert-manager-webhook:v$(CERT_MANAGER_VERSION)
+	@docker pull quay.io/jetstack/cert-manager-cainjector:v$(CERT_MANAGER_VERSION)
+	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) quay.io/jetstack/cert-manager-controller:v$(CERT_MANAGER_VERSION)
+	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) quay.io/jetstack/cert-manager-webhook:v$(CERT_MANAGER_VERSION)
+	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) quay.io/jetstack/cert-manager-cainjector:v$(CERT_MANAGER_VERSION)
+	@$(KUBECTL) apply -f https://github.com/cert-manager/cert-manager/releases/download/v$(CERT_MANAGER_VERSION)/cert-manager.yaml
 
 # Generate the provider-ceph package and webhookconfiguration manifest.
 generate-pkg: generate kustomize-webhook

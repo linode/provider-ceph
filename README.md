@@ -9,36 +9,6 @@ with the following features:
 - A `Bucket` resource type that represents an S3 bucket.
 - A controller that observes `Bucket` objects and reconciles these objects with the S3 backends.
 
-## Developing
-
-Spin up the test environment, but with `provider-ceph` running locally in your terminal:
-
-```
-make dev
-```
-
-After you've made some changes, kill (Ctrl+C) the existing `provider-ceph` and re-run it:
-
-```
-make run
-```
-
-### Debugging
-Spin up the test environment, but with `provider-ceph` running locally in your terminal:
-
-```
-make mirrord.cluster mirrord.run
-```
-
-For debugging please install `mirrord` plugin in your IDE of choice.
-
-Refer to Crossplane's [CONTRIBUTING.md] file for more information on how the
-Crossplane community prefers to work. The [Provider Development][provider-dev]
-guide may also be of use.
-
-[CONTRIBUTING.md]: https://github.com/crossplane/crossplane/blob/master/CONTRIBUTING.md
-[provider-dev]: https://github.com/crossplane/crossplane/blob/master/docs/contributing/provider_development_guide.md
-
 ## Getting Started
 
 [Install Crossplane](https://docs.crossplane.io/v1.11/software/install/#install-crossplane) in you Kubernetes cluster
@@ -103,75 +73,11 @@ spec:
     name: provider-ceph
 ```
 
-### Enabling validation webhook
-
-Validation webhook is not registered on the Kubernetes cluster by default. But before you enable it,
-you have to deploy cert manager.
-
-```bash
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
-```
-
-You have to create Issuer and Certificate.
-
-```yaml
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: selfsigned-issuer
-  namespace: crossplane-system
-spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: crossplane-provider-provider-ceph
-  namespace: crossplane-system
-spec:
-  commonName: provider-ceph.crossplane-system.svc
-  dnsNames:
-  - provider-ceph.crossplane-system.svc.cluster.local
-  - provider-ceph.crossplane-system.svc
-  - crossplane-provider-provider-ceph.crossplane-system.svc.cluster.local
-  - crossplane-provider-provider-ceph.crossplane-system.svc
-  issuerRef:
-    kind: Issuer
-    name: selfsigned-issuer
-  secretName: crossplane-provider-provider-ceph-server-cert
-```
-
-You need a `DeploymentRuntimeConfig` too ([Customizing provider deployment](#customizing-provider-deployment)).
-
-```yaml
-apiVersion: pkg.crossplane.io/v1beta1
-kind: DeploymentRuntimeConfig
-metadata:
-  name: provider-ceph
-spec:
-  deploymentTemplate:
-    spec:
-      selector: {}
-      template:
-        spec:
-          containers:
-          - name: package-runtime
-            args:
-            - --webhook-tls-cert-dir=/certs
-            volumeMounts:
-            - name: cert-manager-certs
-              mountPath: /certs
-          volumes:
-          - name: cert-manager-certs
-            secret:
-              secretName: crossplane-provider-provider-ceph-server-cert
-```
-
-Finaly, you have to apply `ValidatingWebhookConfiguration`.
-
-```bash
-PROV_CEPH_VER=v0.0.32 kubectl apply -f https://github.com/linode/provider-ceph/blob/release-${PROV_CEPH_VER}/package/webhookconfigurations/manifests.yaml
-```
-
 ## Contact
 - Slack: Join our [#provider-ceph](https://crossplane.slack.com/archives/C05RKQRNDHA) slack channel.
+
+## Development
+
+Refer to Crossplane's [CONTRIBUTING.md](https://github.com/crossplane/crossplane/tree/master/contributing) file for more information on how the
+Crossplane community prefers to work. The [guide-provider-development.md](https://github.com/crossplane/crossplane/blob/master/contributing/guide-provider-development.md)
+guide may also be of use. For more information about how to setup your development environment, please follow our [DEVELOPMENT.md](docs/DEVELOPMENT.md) page.

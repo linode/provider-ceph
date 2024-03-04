@@ -25,7 +25,7 @@ Firt of all cluster provisioner script changes `ValidatingWebhookConfiguration`,
 [localtunnel](https://github.com/localtunnel/localtunnel) instance (created by the script).
 This endpoint has a valid TLS certification aprooved by Kubernetes, so validation requests should be served by the local process.
 
-## Debugging locally
+## Debugging Locally
 Spin up the test environment, but with `provider-ceph` running locally in your terminal:
 
 ```

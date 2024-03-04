@@ -34,5 +34,5 @@ make mirrord.cluster mirrord.run
 
 For debugging please install `mirrord` plugin in your IDE of choice.
 
-### Webhook support
+### Webhook Support
 Works out of the box. Validation requests goes to the original instance of the operator, but mirrord sends every network traffic to the local process instead.

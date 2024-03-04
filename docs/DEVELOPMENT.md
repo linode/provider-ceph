@@ -6,7 +6,7 @@ guide may also be of use.
 
 [CONTRIBUTING.md]: https://github.com/crossplane/crossplane/blob/master/CONTRIBUTING.md
 
-## Running locally
+## Running Locally
 Spin up the test environment, but with `provider-ceph` running locally in your terminal:
 
 ```

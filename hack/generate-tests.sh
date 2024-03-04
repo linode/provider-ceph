@@ -2,6 +2,8 @@
 
 : "${TEST_KIND_NODES?= required}"
 : "${REPO?= required}"
+: "${LOCALSTACK_VERSION?= required}"
+: "${CERT_MANAGER_VERSION?= required}"
 
 # This script reads a comma-delimited string TEST_KIND_NODES of kind node versions
 # for kuttl tests to be run on, and generates the relevant files for each version.
@@ -68,7 +70,10 @@ kindConfig: e2e/kind/kind-config-${major}.yaml
 startKIND: false
 kindNodeCache: true
 kindContainers:
-- localstack/localstack:2.2
+- localstack/localstack:${LOCALSTACK_VERSION}
+- quay.io/jetstack/cert-manager-controller:v${CERT_MANAGER_VERSION}
+- quay.io/jetstack/cert-manager-webhook:v${CERT_MANAGER_VERSION}
+- quay.io/jetstack/cert-manager-cainjector:v${CERT_MANAGER_VERSION}
 timeout: 120
 EOF
 

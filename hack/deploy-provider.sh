@@ -48,6 +48,9 @@ spec:
           containers:
           - name: package-runtime
             image: ${BUILD_REGISTRY}/${PROJECT_NAME}-${ARCH}
+            env:
+              - name: RECREATE_MISSING_BUCKET
+                value: "${RECREATE_MISSING_BUCKET}"
             args:
             - --zap-devel
             - --kube-client-rate=80000

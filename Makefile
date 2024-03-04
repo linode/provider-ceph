@@ -19,6 +19,7 @@ REPO ?= provider-ceph
 KUTTL_VERSION ?= 0.15.0
 
 CROSSPLANE_VERSION ?= 1.15.0
+LOCALSTACK_VERSION ?= 2.2
 CERT_MANAGER_VERSION ?= 1.14.0
 
 # For local development
@@ -96,7 +97,7 @@ update-kind-nodes:
 
 # Generate kuttl e2e tests.
 generate-tests:
-	TEST_KIND_NODES=$(TEST_KIND_NODES) REPO=$(REPO) ./hack/generate-tests.sh
+	TEST_KIND_NODES=$(TEST_KIND_NODES) REPO=$(REPO) LOCALSTACK_VERSION=$(LOCALSTACK_VERSION) CERT_MANAGER_VERSION=$(CERT_MANAGER_VERSION) ./hack/generate-tests.sh
 
 # Run integration tests.
 test-integration: $(KIND) $(KUBECTL) $(UP) $(HELM3)
@@ -139,8 +140,8 @@ cluster: $(KIND) $(KUBECTL) cluster-clean
 
 # Spin up localstack cluster.
 localstack-cluster: $(KIND) $(KUBECTL)
-	docker pull localstack/localstack:2.2
-	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) localstack/localstack:2.2
+	docker pull localstack/localstack:$(LOCALSTACK_VERSION)
+	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) localstack/localstack:$(LOCALSTACK_VERSION)
 	@$(KUBECTL) apply -R -f e2e/localstack/localstack-deployment.yaml
 
 # Spin up a Kind cluster and install Crossplane via Helm.

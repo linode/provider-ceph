@@ -109,6 +109,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+      - name: Docker cache
+        uses: ScribeMD/docker-cache@0.3.7
+        with:
+          key: docker-\${{ runner.os }}-\${{ hashFiles('go.sum') }}}
       - name: Install dependencies
         run: |
           sudo curl -Lo \$KUTTL https://github.com/kudobuilder/kuttl/releases/download/v0.13.0/kubectl-kuttl_0.13.0_linux_x86_64

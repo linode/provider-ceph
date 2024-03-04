@@ -20,7 +20,7 @@ make run
 ```
 
 ### Webhook Support
-Running the validation webhook locally is a bit tricky, but working out of the box.
+Running the validation webhook locally is a bit tricky, but it works out of the box.
 Firt of all cluster provisioner script changes `ValidatingWebhookConfiguration`, to point to a
 [localtunnel](https://github.com/localtunnel/localtunnel) instance (created by the script).
 This endpoint has a valid TLS certification aprooved by Kubernetes, so validation requests should be served by the local process.

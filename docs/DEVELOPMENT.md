@@ -19,7 +19,7 @@ After you've made some changes, kill (Ctrl+C) the existing `provider-ceph` and r
 make run
 ```
 
-### Webhook support
+### Webhook Support
 Running the validation webhook locally is a bit tricky, but working out of the box.
 Firt of all cluster provisioner script changes `ValidatingWebhookConfiguration`, to point to a
 [localtunnel](https://github.com/localtunnel/localtunnel) instance (created by the script).

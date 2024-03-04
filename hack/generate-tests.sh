@@ -2,6 +2,8 @@
 
 : "${TEST_KIND_NODES?= required}"
 : "${REPO?= required}"
+: "${LOCALSTACK_VERSION?= required}"
+: "${CERT_MANAGER_VERSION?= required}"
 
 # This script reads a comma-delimited string TEST_KIND_NODES of kind node versions
 # for kuttl tests to be run on, and generates the relevant files for each version.
@@ -66,9 +68,6 @@ testDirs:
 - ./e2e/tests/stable
 kindConfig: e2e/kind/kind-config-${major}.yaml
 startKIND: false
-kindNodeCache: true
-kindContainers:
-- localstack/localstack:2.2
 timeout: 120
 EOF
 
@@ -81,7 +80,6 @@ testDirs:
 - ./e2e/tests/ceph
 kindConfig: e2e/kind/kind-config-${major}.yaml
 startKIND: false
-kindNodeCache: true
 timeout: 120
 EOF
 
@@ -111,6 +109,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+      - name: Docker cache
+        uses: ScribeMD/docker-cache@0.3.7
+        with:
+          key: docker-\${{ runner.os }}-\${{ hashFiles('go.sum') }}}
       - name: Install dependencies
         run: |
           sudo curl -Lo \$KUTTL https://github.com/kudobuilder/kuttl/releases/download/v0.13.0/kubectl-kuttl_0.13.0_linux_x86_64

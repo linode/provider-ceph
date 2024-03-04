@@ -12,7 +12,7 @@ Autopause leverages the existing [Crossplane pause feature](https://docs.crosspl
 ## Deleting a Paused Bucket
 To temporarily "unpause" a Bucket CR to allow Provider Ceph to perform Delete, the Bucket CR must be patched, setting the pause label to `"false"` or some other value that is **not** an empty string `""`.
 ```
-kubectl patch --type=merge <your-bucket-name> -p '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+kubectl patch bucket --type=merge <your-bucket-name> -p '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
 ```
 The Bucket CR can then be deleted as normal:
 ```

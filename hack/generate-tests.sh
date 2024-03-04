@@ -68,12 +68,6 @@ testDirs:
 - ./e2e/tests/stable
 kindConfig: e2e/kind/kind-config-${major}.yaml
 startKIND: false
-kindNodeCache: true
-kindContainers:
-- localstack/localstack:${LOCALSTACK_VERSION}
-- quay.io/jetstack/cert-manager-controller:v${CERT_MANAGER_VERSION}
-- quay.io/jetstack/cert-manager-webhook:v${CERT_MANAGER_VERSION}
-- quay.io/jetstack/cert-manager-cainjector:v${CERT_MANAGER_VERSION}
 timeout: 120
 EOF
 
@@ -86,7 +80,6 @@ testDirs:
 - ./e2e/tests/ceph
 kindConfig: e2e/kind/kind-config-${major}.yaml
 startKIND: false
-kindNodeCache: true
 timeout: 120
 EOF
 

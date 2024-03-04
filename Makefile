@@ -140,8 +140,7 @@ cluster: $(KIND) $(KUBECTL) cluster-clean
 
 # Spin up localstack cluster.
 localstack-cluster: $(KIND) $(KUBECTL)
-	docker pull localstack/localstack:$(LOCALSTACK_VERSION)
-	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) localstack/localstack:$(LOCALSTACK_VERSION)
+	@KIND_CLUSTER_NAME=$(KIND_CLUSTER_NAME) SOURCE="file://$(PWD)/e2e/localstack/localstack-deployment.yaml" ./hack/load-images.sh
 	@$(KUBECTL) apply -R -f e2e/localstack/localstack-deployment.yaml
 
 # Spin up a Kind cluster and install Crossplane via Helm.
@@ -149,17 +148,13 @@ crossplane-cluster: $(HELM3) cluster
 	@$(INFO) Installing Crossplane
 	@$(HELM3) repo add crossplane-stable https://charts.crossplane.io/stable
 	@$(HELM3) repo update
+	@KIND_CLUSTER_NAME=$(KIND_CLUSTER_NAME) SOURCE="helm template crossplane --namespace crossplane-system --version $(CROSSPLANE_VERSION) crossplane-stable/crossplane" ./hack/load-images.sh
 	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace --version $(CROSSPLANE_VERSION) crossplane-stable/crossplane
 	@$(OK) Installing Crossplane
 
 ## Deploy cert manager to the K8s cluster specified in ~/.kube/config.
 cert-manager: $(KUBECTL)
-	@docker pull quay.io/jetstack/cert-manager-controller:v$(CERT_MANAGER_VERSION)
-	@docker pull quay.io/jetstack/cert-manager-webhook:v$(CERT_MANAGER_VERSION)
-	@docker pull quay.io/jetstack/cert-manager-cainjector:v$(CERT_MANAGER_VERSION)
-	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) quay.io/jetstack/cert-manager-controller:v$(CERT_MANAGER_VERSION)
-	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) quay.io/jetstack/cert-manager-webhook:v$(CERT_MANAGER_VERSION)
-	@$(KIND) load docker-image --name=$(KIND_CLUSTER_NAME) quay.io/jetstack/cert-manager-cainjector:v$(CERT_MANAGER_VERSION)
+	@KIND_CLUSTER_NAME=$(KIND_CLUSTER_NAME) SOURCE="https://github.com/cert-manager/cert-manager/releases/download/v$(CERT_MANAGER_VERSION)/cert-manager.yaml" ./hack/load-images.sh
 	@$(KUBECTL) apply -f https://github.com/cert-manager/cert-manager/releases/download/v$(CERT_MANAGER_VERSION)/cert-manager.yaml
 
 # Generate the provider-ceph package and webhookconfiguration manifest.

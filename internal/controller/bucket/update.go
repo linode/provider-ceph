@@ -33,6 +33,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if !ok {
 		err := errors.New(errNotBucket)
 		traces.SetAndRecordError(span, err)
+
 		return managed.ExternalUpdate{}, err
 	}
 	span.SetAttributes(attribute.String("bucket", bucket.Name))

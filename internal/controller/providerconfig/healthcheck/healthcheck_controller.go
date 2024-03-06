@@ -88,7 +88,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if providerConfig.Spec.DisableHealthCheck {
-		c.log.Info("Health check is disabled for s3 backend", consts.KeyBackendName, providerConfig.Name)
+		c.log.Debug("Health check is disabled for s3 backend", consts.KeyBackendName, providerConfig.Name)
 
 		c.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
 		if providerConfig.Status.GetCondition(v1.TypeReady).Equal(v1alpha1.HealthCheckDisabled()) {

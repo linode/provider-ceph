@@ -2,6 +2,7 @@ package bucket
 
 import (
 	"context"
+	"math"
 	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -27,38 +28,30 @@ func isBucketPaused(bucket *v1alpha1.Bucket) bool {
 	return false
 }
 
-// pauseBucket sets the bucket's pause label to true.
-func pauseBucket(bucket *v1alpha1.Bucket) {
-	if bucket.ObjectMeta.Labels == nil {
-		bucket.ObjectMeta.Labels = map[string]string{}
-	}
-	bucket.Labels[meta.AnnotationKeyReconciliationPaused] = True
-}
-
 // isPauseRequired determines if the Bucket should be paused.
-func isPauseRequired(b *v1alpha1.Bucket, c map[string]backendstore.S3Client, bb *bucketBackends, autopauseEnabled bool) bool {
-	if !bb.isBucketAvailableOnBackends(b, c) {
+func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, minReplicas uint, c map[string]backendstore.S3Client, bb *bucketBackends, autopauseEnabled bool) bool {
+	if float64(bb.countBucketsAvailableOnBackends(bucket, providerNames, c)) < math.Min(float64(len(providerNames)), float64(minReplicas)) {
 		return false
 	}
 
 	// If lifecycle config is enabled and is specified in the spec, we should only pause once
 	// the lifecycle config is available on all backends.
-	if !b.Spec.LifecycleConfigurationDisabled && b.Spec.ForProvider.LifecycleConfiguration != nil && !bb.isLifecycleConfigAvailableOnBackends(b, c) {
+	if !bucket.Spec.LifecycleConfigurationDisabled && bucket.Spec.ForProvider.LifecycleConfiguration != nil && !bb.isLifecycleConfigAvailableOnBackends(bucket, c) {
 		return false
 	}
 
 	// If lifecycle config is disabled, we should only pause once the lifecycle config is
 	// removed from all backends.
-	if b.Spec.LifecycleConfigurationDisabled && !bb.isLifecycleConfigRemovedFromBackends(b, c) {
+	if bucket.Spec.LifecycleConfigurationDisabled && !bb.isLifecycleConfigRemovedFromBackends(bucket, c) {
 		return false
 	}
 
-	return (b.Spec.AutoPause || autopauseEnabled) &&
+	return (bucket.Spec.AutoPause || autopauseEnabled) &&
 		// Only return true if this label value is "".
 		// This is to allow the user to delete a paused bucket with autopause enabled.
 		// By setting this value to "false" or some other no-empty-string value, the
 		// Update loop can bypass autopause, subsequently enabling deletion to take place.
-		b.Labels[meta.AnnotationKeyReconciliationPaused] == ""
+		bucket.Labels[meta.AnnotationKeyReconciliationPaused] == ""
 }
 
 // isBucketAvailableFromStatus checks the backends listed in providerNames against the
@@ -83,19 +76,26 @@ func isBucketAvailableFromStatus(bucket *v1alpha1.Bucket, providerNames []string
 	return true
 }
 
-// setBackendLabels adds label "provider-ceph.backends.<backend-name>" to the Bucket for each backend.
-func setBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
+// getAllBackendLabels returns all "provider-ceph.backends.<backend-name>" labels.
+func getAllBackendLabels(bucket *v1alpha1.Bucket) map[string]string {
+	backends := map[string]string{}
+	for k, v := range bucket.ObjectMeta.Labels {
+		if strings.HasPrefix(k, v1alpha1.BackendLabelPrefix) && bucket.ObjectMeta.Labels[k] == True {
+			backends[strings.Replace(k, v1alpha1.BackendLabelPrefix, "", 1)] = v
+		}
+	}
+
+	return backends
+}
+
+// setAllBackendLabels adds label "provider-ceph.backends.<backend-name>" to the Bucket for each backend.
+func setAllBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
 	if bucket.ObjectMeta.Labels == nil {
 		bucket.ObjectMeta.Labels = map[string]string{}
 	}
 
-	labelsToDelete := []string{}
-	for k := range bucket.ObjectMeta.Labels {
-		if strings.HasPrefix(k, v1alpha1.BackendLabelPrefix) && bucket.ObjectMeta.Labels[k] == True {
-			labelsToDelete = append(labelsToDelete, k)
-		}
-	}
-	for _, k := range labelsToDelete {
+	// Delete existing labels except explicitly disableds
+	for k := range getAllBackendLabels(bucket) {
 		delete(bucket.ObjectMeta.Labels, k)
 	}
 
@@ -109,20 +109,40 @@ func setBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
 	}
 }
 
-func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends, providerNames []string) {
+func getBucketProvidersFilterDisabledLabel(bucket *v1alpha1.Bucket, providerNames []string) []string {
+	providers := bucket.Spec.Providers
+	if len(providers) == 0 {
+		providers = providerNames
+	}
+
+	okProviders := []string{}
+	for i := range providers {
+		// Skip explicitly disableds
+		beLabel := utils.GetBackendLabel(providers[i])
+		if status, ok := bucket.Labels[beLabel]; ok && status != True {
+			continue
+		}
+
+		okProviders = append(okProviders, providers[i])
+	}
+
+	return okProviders
+}
+
+func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends, providerNames []string, minReplicas uint) {
 	bucket.Status.SetConditions(xpv1.Unavailable())
 
 	backends := bucketBackends.getBackends(bucket.Name, providerNames)
 	bucket.Status.AtProvider.Backends = backends
 
+	ok := 0
 	for _, backend := range backends {
 		if backend.BucketCondition.Equal(xpv1.Available()) {
-			// If the bucket is Availailable on ANY backend,
-			// the Bucket CR is also considered Available.
-			bucket.Status.SetConditions(xpv1.Available())
-
-			break
+			ok++
 		}
+	}
+	if ok > 0 && float64(ok) >= math.Min(float64(len(providerNames)), float64(minReplicas)) {
+		bucket.Status.SetConditions(xpv1.Available())
 	}
 }
 

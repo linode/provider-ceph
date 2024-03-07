@@ -23,6 +23,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+const (
+	s3Backend1 = "s3-backend-1"
+	s3Backend2 = "s3-backend-2"
+)
+
 func TestDeleteBasicErrors(t *testing.T) {
 	t.Parallel()
 
@@ -64,7 +69,7 @@ func TestDeleteBasicErrors(t *testing.T) {
 					Spec: v1alpha1.BucketSpec{
 						ResourceSpec: xpv1.ResourceSpec{
 							ProviderConfigReference: &xpv1.Reference{
-								Name: "s3-backend-1",
+								Name: s3Backend1,
 							},
 						},
 					},
@@ -144,8 +149,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -155,17 +160,21 @@ func TestDelete(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "test-bucket",
 						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Labels: map[string]string{
+							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
+							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+						},
 					},
 					Spec: v1alpha1.BucketSpec{
-						Providers: []string{"s3-backend-1", "s3-backend-2"},
+						Providers: []string{s3Backend1, s3Backend2},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								s3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								"s3-backend-2": &v1alpha1.BackendInfo{
+								s3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -182,7 +191,7 @@ func TestDelete(t *testing.T) {
 					// s3-backend-1 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b["s3-backend-1"]; ok {
+							if _, ok := b[s3Backend1]; ok {
 								return true
 							}
 
@@ -193,7 +202,7 @@ func TestDelete(t *testing.T) {
 					// s3-backend-2 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b["s3-backend-2"]; ok {
+							if _, ok := b[s3Backend2]; ok {
 								return true
 							}
 
@@ -226,8 +235,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -237,6 +246,10 @@ func TestDelete(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "test-bucket",
 						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Labels: map[string]string{
+							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
+							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						// No backends specified, so delete on all backends.
@@ -245,10 +258,10 @@ func TestDelete(t *testing.T) {
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								s3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								"s3-backend-2": &v1alpha1.BackendInfo{
+								s3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -265,7 +278,7 @@ func TestDelete(t *testing.T) {
 					// s3-backend-1 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b["s3-backend-1"]; ok {
+							if _, ok := b[s3Backend1]; ok {
 								return true
 							}
 
@@ -276,7 +289,7 @@ func TestDelete(t *testing.T) {
 					// s3-backend-2 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b["s3-backend-2"]; ok {
+							if _, ok := b[s3Backend2]; ok {
 								return true
 							}
 
@@ -308,8 +321,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -319,20 +332,24 @@ func TestDelete(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "bucket",
 						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Labels: map[string]string{
+							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
+							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							s3Backend1,
+							s3Backend2,
 						},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								s3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								"s3-backend-2": &v1alpha1.BackendInfo{
+								s3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -347,10 +364,10 @@ func TestDelete(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
 						"unexpected bucket condition on s3-backend-1")
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[s3Backend2].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
 						"unexpected bucket condition on s3-backend-2")
 				},
 				finalizerDiff: func(t *testing.T, mg resource.Managed) {
@@ -378,8 +395,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -389,6 +406,10 @@ func TestDelete(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "bucket",
 						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Labels: map[string]string{
+							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
+							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{},
@@ -396,10 +417,10 @@ func TestDelete(t *testing.T) {
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								s3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								"s3-backend-2": &v1alpha1.BackendInfo{
+								s3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -413,10 +434,10 @@ func TestDelete(t *testing.T) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
 						"unexpected bucket condition on s3-backend-1")
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[s3Backend2].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
 						"unexpected bucket condition on s3-backend-2")
 				},
 				finalizerDiff: func(t *testing.T, mg resource.Managed) {
@@ -442,8 +463,8 @@ func TestDelete(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -454,6 +475,10 @@ func TestDelete(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "bucket",
 						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Labels: map[string]string{
+							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
+							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{},
@@ -461,10 +486,10 @@ func TestDelete(t *testing.T) {
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								s3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								"s3-backend-2": &v1alpha1.BackendInfo{
+								s3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -478,10 +503,10 @@ func TestDelete(t *testing.T) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to assume role"), "Failed to create s3 client via assume role").Error())),
+						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to assume role"), "Failed to create s3 client via assume role").Error())),
 						"unexpected bucket condition on s3-backend-1")
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to assume role"), "Failed to create s3 client via assume role").Error())),
+						bucket.Status.AtProvider.Backends[s3Backend2].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to assume role"), "Failed to create s3 client via assume role").Error())),
 						"unexpected bucket condition on s3-backend-2")
 				},
 				finalizerDiff: func(t *testing.T, mg resource.Managed) {
@@ -520,8 +545,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", fakeClientOK, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClientOK, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -531,20 +556,24 @@ func TestDelete(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "bucket",
 						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Labels: map[string]string{
+							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
+							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							s3Backend1,
+							s3Backend2,
 						},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								s3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								"s3-backend-2": &v1alpha1.BackendInfo{
+								s3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -560,13 +589,13 @@ func TestDelete(t *testing.T) {
 
 					// s3-backend-1 failed so is stuck in Deleting status.
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
 						"unexpected bucket condition on s3-backend-1")
 
 					// s3-backend-2 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b["s3-backend-2"]; ok {
+							if _, ok := b[s3Backend2]; ok {
 								return true
 							}
 

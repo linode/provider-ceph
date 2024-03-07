@@ -177,13 +177,13 @@ func (b *BackendStore) GetActiveBackends(beNames []string) s3Backends {
 	return backends
 }
 
-func (b *BackendStore) GetAllActiveBackendNames() []string {
+func (b *BackendStore) GetAllBackendNames(active bool) []string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
 	backends := make([]string, 0)
 	for k, v := range b.s3Backends {
-		if !v.active || v.health == v1alpha1.HealthStatusUnhealthy {
+		if active && !v.active || v.health == v1alpha1.HealthStatusUnhealthy {
 			continue
 		}
 

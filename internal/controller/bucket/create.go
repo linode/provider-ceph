@@ -50,7 +50,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, err
 	}
 
-	providerNames := utils.GetBucketProvidersFilterDisabledLabel(bucket, c.backendStore.GetAllActiveBackendNames())
+	allBackendNames := c.backendStore.GetAllBackendNames(false)
+	providerNames := getBucketProvidersFilterDisabledLabel(bucket, allBackendNames)
 
 	// Create the bucket on each backend in a separate go routine
 	activeBackends := c.backendStore.GetActiveBackends(providerNames)
@@ -60,7 +61,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 		return managed.ExternalCreation{}, err
 	} else if len(activeBackends) != len(providerNames) {
-		c.log.Info("Missing S3 backends", consts.KeyBucketName, bucket.Name, "providers", providerNames, "activeBackends", activeBackends)
+		c.log.Info("Missing S3 backends", consts.KeyBucketName, bucket.Name, "missing", utils.MissingStrings(providerNames, allBackendNames))
 		traces.SetAndRecordError(span, errors.New(errMissingS3Backend))
 	}
 
@@ -133,13 +134,27 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if backendCount == 0 {
 		c.log.Info("Failed to find any backend for bucket", consts.KeyBucketName, bucket.Name)
 
+		if err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+			setAllBackendLabels(bucket, providerNames)
+
+			bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = True
+
+			return NeedsObjectUpdate
+		}); err != nil {
+			c.log.Info("Failed to update backend labels", consts.KeyBucketName, bucket.Name)
+			err = errors.Wrap(err, errUpdateBucketCR)
+			traces.SetAndRecordError(span, err)
+
+			return managed.ExternalCreation{}, err
+		}
+
 		return managed.ExternalCreation{}, nil
 	}
 
-	return c.waitForCreationAndUpdateBucketCR(ctx, bucket, readyChan, errChan, backendCount)
+	return c.waitForCreationAndUpdateBucketCR(ctx, bucket, providerNames, readyChan, errChan, backendCount)
 }
 
-func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, readyChan <-chan string, errChan <-chan error, backendCount int) (managed.ExternalCreation, error) {
+func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, providerNames []string, readyChan <-chan string, errChan <-chan error, backendCount int) (managed.ExternalCreation, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "waitForCreationAndUpdateBucketCR")
 	defer span.End()
 
@@ -158,11 +173,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 				// Crossplane skips object forever.
 				delete(bucketLatest.ObjectMeta.Annotations, meta.AnnotationKeyExternalCreatePending)
 
-				// Add labels for the backend
-				if bucketLatest.ObjectMeta.Labels == nil {
-					bucketLatest.ObjectMeta.Labels = map[string]string{}
-				}
-				bucketLatest.ObjectMeta.Labels[v1alpha1.BackendLabelPrefix+beName] = True
+				setAllBackendLabels(bucket, providerNames)
 
 				return NeedsObjectUpdate
 			}, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {

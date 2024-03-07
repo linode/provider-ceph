@@ -116,10 +116,10 @@ func (b *bucketBackends) getBackends(bucketName string, beNames []string) v1alph
 	return be
 }
 
-// isBucketAvailableOnBackends checks the backends listed in Spec.Providers against
-// bucketBackends to ensure buckets are considered Available on all desired backends.
-func (b *bucketBackends) isBucketAvailableOnBackends(bucket *v1alpha1.Bucket, c map[string]backendstore.S3Client) bool {
-	for _, backendName := range bucket.Spec.Providers {
+// countBucketsAvailableOnBackends counts the backends listed in providerNames.
+func (b *bucketBackends) countBucketsAvailableOnBackends(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client) uint {
+	i := uint(0)
+	for _, backendName := range providerNames {
 		if _, ok := c[backendName]; !ok {
 			// This backend does not exist in the list of available backends.
 			// The backend may be offline, so it is skipped.
@@ -129,16 +129,18 @@ func (b *bucketBackends) isBucketAvailableOnBackends(bucket *v1alpha1.Bucket, c 
 		bucketCondition := b.getBucketCondition(bucket.Name, backendName)
 		if bucketCondition == nil {
 			// The bucket has not been created on this backend.
-			return false
+			continue
 		}
 
 		if !bucketCondition.Equal(xpv1.Available()) {
 			// The bucket is not Available on this backend.
-			return false
+			continue
 		}
+
+		i++
 	}
 
-	return true
+	return i
 }
 
 // isLifecycleConfigAvailableOnBackends checks the backends listed in Spec.Providers against

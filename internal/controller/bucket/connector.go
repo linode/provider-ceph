@@ -18,6 +18,7 @@ import (
 type Connector struct {
 	kube                  client.Client
 	autoPauseBucket       bool
+	minReplicas           uint
 	recreateMissingBucket bool
 	backendStore          *backendstore.BackendStore
 	subresourceClients    []SubresourceClient
@@ -48,6 +49,12 @@ func WithKubeClient(k client.Client) func(*Connector) {
 func WithAutoPause(a *bool) func(*Connector) {
 	return func(c *Connector) {
 		c.autoPauseBucket = *a
+	}
+}
+
+func WithMinimumReplicas(m *uint) func(*Connector) {
+	return func(c *Connector) {
+		c.minReplicas = *m
 	}
 }
 
@@ -119,6 +126,7 @@ func (c *Connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	return &external{
 			kubeClient:            c.kube,
 			autoPauseBucket:       c.autoPauseBucket,
+			minReplicas:           c.minReplicas,
 			recreateMissingBucket: c.recreateMissingBucket,
 			operationTimeout:      c.operationTimeout,
 			backendStore:          c.backendStore,
@@ -133,6 +141,7 @@ func (c *Connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 type external struct {
 	kubeClient            client.Client
 	autoPauseBucket       bool
+	minReplicas           uint
 	recreateMissingBucket bool
 	operationTimeout      time.Duration
 	backendStore          *backendstore.BackendStore

@@ -39,7 +39,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
@@ -102,9 +101,9 @@ func main() {
 
 		assumeRoleArn = app.Flag("assume-role-arn", "Assume role ARN to be used for STS authentication").Default("").Envar("ASSUME_ROLE_ARN").String()
 
-		webhookHost       = app.Flag("webhook-host", "The host of the webhook server.").Default("0.0.0.0").Envar("WEBHOOK_HOST").String()
-		webhookTLSCertDir = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
-		_                 = app.Flag("enable-validation-webhooks", "Enable support for Webhooks. [Deprecated, has no effect]").Default("false").Bool()
+		// webhookHost       = app.Flag("webhook-host", "The host of the webhook server.").Default("0.0.0.0").Envar("WEBHOOK_HOST").String()
+		// webhookTLSCertDir = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
+		_ = app.Flag("enable-validation-webhooks", "Enable support for Webhooks. [Deprecated, has no effect]").Default("false").Bool()
 	)
 
 	var zo zap.Options
@@ -219,10 +218,10 @@ func main() {
 		RenewDeadline:              leaderRenew,
 		LeaseDuration:              &leaseDuration,
 		RetryPeriod:                &leaderRetryDuration,
-		WebhookServer: webhook.NewServer(webhook.Options{
-			Host:    *webhookHost,
-			CertDir: *webhookTLSCertDir,
-		}),
+		// WebhookServer: webhook.NewServer(webhook.Options{
+		// 	Host:    *webhookHost,
+		// 	CertDir: *webhookTLSCertDir,
+		// }),
 		Scheme: providerSCheme,
 		Cache: kcache.Options{
 			HTTPClient: cacheHTTPClient,
@@ -278,10 +277,10 @@ func main() {
 	})
 	kingpin.FatalIfError(err, "Cannot create Kube client")
 
-	kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
-		For(&providercephv1alpha1.Bucket{}).
-		WithValidator(bucket.NewBucketValidator(backendStore)).
-		Complete(), "Cannot setup bucket validating webhook")
+	// kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
+	// 	For(&providercephv1alpha1.Bucket{}).
+	// 	WithValidator(bucket.NewBucketValidator(backendStore)).
+	// 	Complete(), "Cannot setup bucket validating webhook")
 
 	kingpin.FatalIfError(providerconfig.Setup(mgr, o,
 		backendmonitor.NewController(

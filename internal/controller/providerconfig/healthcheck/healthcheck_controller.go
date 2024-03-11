@@ -212,7 +212,7 @@ func (c *Controller) cleanup(ctx context.Context, req ctrl.Request, bucketName s
 	g := new(errgroup.Group)
 	g.Go(func() error {
 		c.log.Info("Deleting health check bucket", consts.KeyBucketName, bucketName, consts.KeyBackendName, req.Name)
-		if err := rgw.DeleteBucket(ctx, backendClient, aws.String(bucketName)); err != nil {
+		if err := rgw.DeleteBucket(ctx, backendClient, aws.String(bucketName), true); err != nil {
 			return errors.Wrap(err, errDeleteHealthCheckBucket)
 		}
 
@@ -221,7 +221,7 @@ func (c *Controller) cleanup(ctx context.Context, req ctrl.Request, bucketName s
 
 	g.Go(func() error {
 		c.log.Info("Deleting lifecycle configuration validation bucket", consts.KeyBucketName, v1alpha1.LifecycleConfigValidationBucketName, consts.KeyBackendName, req.Name)
-		if err := rgw.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName)); err != nil {
+		if err := rgw.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName), true); err != nil {
 			return errors.Wrap(err, errDeleteLCValidationBucket)
 		}
 

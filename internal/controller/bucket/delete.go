@@ -80,7 +80,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 				return err
 			}
 
-			if err := rgw.DeleteBucket(ctx, cl, aws.String(bucket.Name)); err != nil {
+			if err := rgw.DeleteBucket(ctx, cl, aws.String(bucket.Name), false); err != nil {
 				bucketBackends.setBucketCondition(bucket.Name, beName, xpv1.Deleting().WithMessage(err.Error()))
 
 				return err

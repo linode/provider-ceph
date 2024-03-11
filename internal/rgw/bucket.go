@@ -61,7 +61,7 @@ func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 	return true, nil
 }
 
-func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, o ...func(*awss3.Options)) error {
+func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, healthCheck bool, o ...func(*awss3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "DeleteBucket")
 	defer span.End()
 
@@ -73,27 +73,28 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 		return nil
 	}
 
-	g := new(errgroup.Group)
+	if healthCheck {
+		g := new(errgroup.Group)
 
-	// Delete all objects from the bucket. This is sufficient for unversioned buckets.
-	g.Go(func() error {
-		return deleteBucketObjects(ctx, s3Backend, bucketName, o...)
-	})
+		// Delete all objects from the bucket. This is sufficient for unversioned buckets.
+		g.Go(func() error {
+			return deleteBucketObjects(ctx, s3Backend, bucketName, o...)
+		})
 
-	// Delete all object versions (required for versioned buckets).
-	g.Go(func() error {
-		return deleteBucketObjectVersions(ctx, s3Backend, bucketName, o...)
-	})
+		// Delete all object versions (required for versioned buckets).
+		g.Go(func() error {
+			return deleteBucketObjectVersions(ctx, s3Backend, bucketName, o...)
+		})
 
-	if err := g.Wait(); err != nil {
-		if NoSuchBucket(err) {
-			return nil
+		if err := g.Wait(); err != nil {
+			if NoSuchBucket(err) {
+				return nil
+			}
+			traces.SetAndRecordError(span, err)
+
+			return errors.Wrap(err, errDeleteBucket)
 		}
-		traces.SetAndRecordError(span, err)
-
-		return errors.Wrap(err, errDeleteBucket)
 	}
-
 	_, err = s3Backend.DeleteBucket(ctx, &awss3.DeleteBucketInput{Bucket: bucketName}, o...)
 	if resource.Ignore(IsNotFound, err) != nil {
 		traces.SetAndRecordError(span, err)

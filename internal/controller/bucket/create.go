@@ -135,6 +135,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		c.log.Info("Failed to find any backend for bucket", consts.KeyBucketName, bucket.Name)
 
 		if err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+                        // Although no backends were found for the bucket, we still apply the backend
+                        // label to the Bucket CR for each backend that the bucket was intended to be
+                        // created on. This is to ensure the bucket will eventually be created on these
+                        // backends whenever they become active again.
 			setAllBackendLabels(bucket, providerNames)
 
 			bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = True

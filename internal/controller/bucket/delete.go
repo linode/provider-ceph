@@ -106,7 +106,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	// CR spec. If the deletion is successful or unsuccessful, the bucket CR status must be
 	// updated.
 	if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-		// Bucket status would be unavailable from this point
+		// Bucket status is unavailable at this point. Use math.MaxUint as minReplicas is irrelevant in this scenario.
 		setBucketStatus(bucketLatest, bucketBackends, providerNames, math.MaxUint)
 
 		return NeedsStatusUpdate

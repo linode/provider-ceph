@@ -95,7 +95,7 @@ func setAllBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
 		bucket.ObjectMeta.Labels = map[string]string{}
 	}
 
-	// Delete existing labels except explicitly disableds
+	// Delete existing labels except explicitly disabled backend labels.
 	for k := range getAllBackendLabels(bucket) {
 		delete(bucket.ObjectMeta.Labels, k)
 	}

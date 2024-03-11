@@ -116,7 +116,7 @@ func (b *bucketBackends) getBackends(bucketName string, beNames []string) v1alph
 	return be
 }
 
-// countBucketsAvailableOnBackends counts the backends listed in providerNames.
+// countBucketsAvailableOnBackends counts the backends listed in providerNames which are considered Available on the backends provided.
 func (b *bucketBackends) countBucketsAvailableOnBackends(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client) uint {
 	i := uint(0)
 	for _, backendName := range providerNames {

@@ -110,6 +110,9 @@ func setAllBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
 	}
 }
 
+
+// getBucketProvidersFilterDisabledLabel returns the specified providers or default providers,
+// and filters out providers disabled by label.
 func getBucketProvidersFilterDisabledLabel(bucket *v1alpha1.Bucket, providerNames []string) []string {
 	providers := bucket.Spec.Providers
 	if len(providers) == 0 {

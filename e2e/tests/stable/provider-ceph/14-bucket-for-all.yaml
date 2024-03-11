@@ -1,0 +1,20 @@
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: bucket-for-all-prov-empty
+  labels:
+    provider-ceph.crossplane.io/validation-required: "true"
+spec:
+  autoPause: true
+  forProvider: {}
+---
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: bucket-for-all-prov-c-disabled
+  labels:
+    provider-ceph.crossplane.io/validation-required: "true"
+    provider-ceph.backends.localstack-c: "false"
+spec:
+  autoPause: true
+  forProvider: {}

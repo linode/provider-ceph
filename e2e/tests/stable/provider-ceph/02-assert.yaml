@@ -5,6 +5,11 @@ metadata:
   finalizers:
   - "finalizer.managedresource.crossplane.io"
   - "bucket-in-use.provider-ceph.crossplane.io"
+  labels:
+    provider-ceph.backends.localstack-a: "true"
+    provider-ceph.backends.localstack-b: "true"
+    provider-ceph.backends.localstack-c: "true"
+
 status:
   atProvider:
     backends:
@@ -52,6 +57,9 @@ metadata:
   - "bucket-in-use.provider-ceph.crossplane.io"
   labels:
     crossplane.io/paused: "true"
+    provider-ceph.backends.localstack-a: "true"
+    provider-ceph.backends.localstack-b: "true"
+    provider-ceph.backends.localstack-c: "true"
 status:
   atProvider:
     backends:

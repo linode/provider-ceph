@@ -13,6 +13,7 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
@@ -36,6 +37,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 		return managed.ExternalUpdate{}, err
 	}
+
 	span.SetAttributes(attribute.String("bucket", bucket.Name))
 
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
@@ -47,7 +49,8 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, c.Delete(ctx, mg)
 	}
 
-	providerNames := utils.GetBucketProvidersFilterDisabledLabel(bucket, c.backendStore.GetAllActiveBackendNames())
+	allBackendNames := c.backendStore.GetAllBackendNames(false)
+	providerNames := getBucketProvidersFilterDisabledLabel(bucket, allBackendNames)
 
 	activeBackends := c.backendStore.GetActiveBackends(providerNames)
 	if len(activeBackends) == 0 {
@@ -55,20 +58,21 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalUpdate{}, err
-	} else if len(activeBackends) != len(providerNames) {
-		c.log.Info("Missing S3 backends", consts.KeyBucketName, bucket.Name, "providers", providerNames, "activeBackends", activeBackends)
-		traces.SetAndRecordError(span, errors.New(errMissingS3Backend))
 	}
 
 	bucketBackends := newBucketBackends()
 
 	updateAllErr := c.updateOnAllBackends(ctx, bucket, bucketBackends, providerNames)
+	if updateAllErr != nil {
+		c.log.Info("Failed to update on all bckends", consts.KeyBucketName, bucket.Name, "error", updateAllErr.Error())
+		traces.SetAndRecordError(span, updateAllErr)
+	}
 
 	// Whether buckets are updated successfully or not on backends, we need to update the
 	// Bucket CR Status in all cases to represent the conditions of each individual bucket.
 	if err := c.updateBucketCR(ctx, bucket,
 		func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-			setBucketStatus(bucketLatest, bucketBackends, providerNames)
+			setBucketStatus(bucketLatest, bucketBackends, providerNames, c.minReplicas)
 
 			return NeedsStatusUpdate
 		}); err != nil {
@@ -78,25 +82,26 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
-	if updateAllErr != nil {
-		traces.SetAndRecordError(span, updateAllErr)
-
-		return managed.ExternalUpdate{}, updateAllErr
-	}
-
 	// The buckets have been updated successfully on all backends, so we need to update the
 	// Bucket CR Spec accordingly.
 	err := c.updateBucketCR(ctx, bucket,
 		func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-			// Auto pause the Bucket CR if required.
-			cls := c.backendStore.GetBackendS3Clients(providerNames)
-			if isPauseRequired(bucketLatest, cls, bucketBackends, c.autoPauseBucket) {
-				c.log.Info("Auto pausing bucket", consts.KeyBucketName, bucket.Name)
-				pauseBucket(bucketLatest)
+			if bucketLatest.ObjectMeta.Labels == nil {
+				bucketLatest.ObjectMeta.Labels = map[string]string{}
 			}
 
-			// Add labels for backends if they don't exist.
-			setBackendLabels(bucket, providerNames)
+			// Auto pause the Bucket CR if required.
+			cls := c.backendStore.GetBackendS3Clients(providerNames)
+			if isPauseRequired(bucketLatest, providerNames, c.minReplicas, cls, bucketBackends, c.autoPauseBucket) {
+				c.log.Info("Auto pausing bucket", consts.KeyBucketName, bucket.Name)
+				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = True
+			} else if updateAllErr == nil && len(activeBackends) != len(providerNames) {
+				updateAllErr = errors.New(errMissingS3Backend)
+				c.log.Info("Missing S3 backends", consts.KeyBucketName, bucket.Name, "missing", utils.MissingStrings(providerNames, allBackendNames))
+				traces.SetAndRecordError(span, updateAllErr)
+			}
+
+			setAllBackendLabels(bucketLatest, providerNames)
 
 			controllerutil.AddFinalizer(bucketLatest, v1alpha1.InUseFinalizer)
 
@@ -109,14 +114,14 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
-	return managed.ExternalUpdate{}, nil
+	return managed.ExternalUpdate{}, updateAllErr
 }
 
 func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Bucket, bb *bucketBackends, providerNames []string) error {
 	ctx, span := otel.Tracer("").Start(ctx, "updateOnAllBackends")
 	defer span.End()
 
-	defer setBucketStatus(bucket, bb, providerNames)
+	defer setBucketStatus(bucket, bb, providerNames, c.minReplicas)
 
 	g := new(errgroup.Group)
 

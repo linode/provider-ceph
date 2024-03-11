@@ -73,7 +73,7 @@ func (b *BucketValidator) ValidateDelete(ctx context.Context, obj runtime.Object
 
 func (b *BucketValidator) validateCreateOrUpdate(ctx context.Context, bucket *v1alpha1.Bucket) error {
 	if len(bucket.Spec.Providers) != 0 {
-		missingProviders := utils.MissingStrings(bucket.Spec.Providers, b.backendStore.GetAllActiveBackendNames())
+		missingProviders := utils.MissingStrings(bucket.Spec.Providers, b.backendStore.GetAllBackendNames(false))
 		if len(missingProviders) != 0 {
 			return errors.New(fmt.Sprintf("providers %v listed in bucket.Spec.Providers cannot be found", missingProviders))
 		}
@@ -89,7 +89,7 @@ func (b *BucketValidator) validateCreateOrUpdate(ctx context.Context, bucket *v1
 }
 
 func (b *BucketValidator) validateLifecycleConfiguration(ctx context.Context, bucket *v1alpha1.Bucket) error {
-	s3Client := b.backendStore.GetActiveBackends(b.backendStore.GetAllActiveBackendNames()).GetFirst()
+	s3Client := b.backendStore.GetActiveBackends(b.backendStore.GetAllBackendNames(true)).GetFirst()
 	if s3Client == nil {
 		return errors.New(errNoS3BackendsStored)
 	}

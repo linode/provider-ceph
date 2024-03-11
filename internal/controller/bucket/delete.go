@@ -2,6 +2,7 @@ package bucket
 
 import (
 	"context"
+	"math"
 
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
@@ -19,6 +20,7 @@ import (
 	"github.com/linode/provider-ceph/internal/rgw"
 )
 
+//nolint:gocyclo,cyclop // Function requires numerous checks.
 func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.Delete")
 	defer span.End()
@@ -46,12 +48,22 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	g := new(errgroup.Group)
 
 	providerNames := []string{}
-	for backendName, backend := range bucket.Status.AtProvider.Backends {
+	for backendName, value := range getAllBackendLabels(bucket, true) {
+		// Skip disabled backends
+		if value != True {
+			c.log.Info("Skipping deletion of bucket on backend, disabled", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+
+			continue
+		}
+
 		providerNames = append(providerNames, backendName)
 
-		reason := backend.BucketCondition.Reason
-		if reason != xpv1.ReasonAvailable {
-			c.log.Info("Skipping deletion of bucket on backend, not available", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName, "status", reason)
+		if backend, ok := bucket.Status.AtProvider.Backends[backendName]; !ok || backend == nil {
+			c.log.Info("Skipping deletion of bucket on backend, missing status", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+
+			continue
+		} else if reason := backend.BucketCondition.Reason; reason != xpv1.ReasonAvailable {
+			c.log.Info("Skipping deletion of bucket on backend, not available", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			continue
 		}
@@ -94,7 +106,8 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	// CR spec. If the deletion is successful or unsuccessful, the bucket CR status must be
 	// updated.
 	if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-		setBucketStatus(bucketLatest, bucketBackends, providerNames)
+		// Bucket status is unavailable at this point. Use math.MaxUint as minReplicas is irrelevant in this scenario.
+		setBucketStatus(bucketLatest, bucketBackends, providerNames, math.MaxUint)
 
 		return NeedsStatusUpdate
 	}); err != nil {

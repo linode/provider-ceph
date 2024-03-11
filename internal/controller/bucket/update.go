@@ -101,7 +101,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 				traces.SetAndRecordError(span, updateAllErr)
 			}
 
-			setAllBackendLabels(bucket, providerNames)
+			setAllBackendLabels(bucketLatest, providerNames)
 
 			controllerutil.AddFinalizer(bucketLatest, v1alpha1.InUseFinalizer)
 

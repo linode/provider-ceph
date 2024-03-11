@@ -30,7 +30,7 @@ func isBucketPaused(bucket *v1alpha1.Bucket) bool {
 
 // isPauseRequired determines if the Bucket should be paused.
 func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, minReplicas uint, c map[string]backendstore.S3Client, bb *bucketBackends, autopauseEnabled bool) bool {
-        // If the number of backends on which the bucket is available is less than the number of providerNames or minReplicas, then the bucket must not be paused.
+	// If the number of backends on which the bucket is available is less than the number of providerNames or minReplicas, then the bucket must not be paused.
 	if float64(bb.countBucketsAvailableOnBackends(bucket, providerNames, c)) < math.Min(float64(len(providerNames)), float64(minReplicas)) {
 		return false
 	}
@@ -78,10 +78,10 @@ func isBucketAvailableFromStatus(bucket *v1alpha1.Bucket, providerNames []string
 }
 
 // getAllBackendLabels returns all "provider-ceph.backends.<backend-name>" labels.
-func getAllBackendLabels(bucket *v1alpha1.Bucket) map[string]string {
+func getAllBackendLabels(bucket *v1alpha1.Bucket, enabledOnly bool) map[string]string {
 	backends := map[string]string{}
 	for k, v := range bucket.ObjectMeta.Labels {
-		if strings.HasPrefix(k, v1alpha1.BackendLabelPrefix) && bucket.ObjectMeta.Labels[k] == True {
+		if !enabledOnly || strings.HasPrefix(k, v1alpha1.BackendLabelPrefix) && bucket.ObjectMeta.Labels[k] == True {
 			backends[strings.Replace(k, v1alpha1.BackendLabelPrefix, "", 1)] = v
 		}
 	}
@@ -96,7 +96,7 @@ func setAllBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
 	}
 
 	// Delete existing labels except explicitly disabled backend labels.
-	for k := range getAllBackendLabels(bucket) {
+	for k := range getAllBackendLabels(bucket, true) {
 		delete(bucket.ObjectMeta.Labels, k)
 	}
 
@@ -109,7 +109,6 @@ func setAllBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
 		bucket.ObjectMeta.Labels[beLabel] = True
 	}
 }
-
 
 // getBucketProvidersFilterDisabledLabel returns the specified providers or default providers,
 // and filters out providers disabled by label.

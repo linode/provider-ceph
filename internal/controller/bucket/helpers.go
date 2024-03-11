@@ -129,6 +129,8 @@ func getBucketProvidersFilterDisabledLabel(bucket *v1alpha1.Bucket, providerName
 	return okProviders
 }
 
+// setBucketStatus sets the Bucket CR Status to Available if a bucket is Available on all providers in providerNames
+// or if the minReplicas quota has been reached. Otherwise, the Bucket CR Status is set as Unavailable.
 func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends, providerNames []string, minReplicas uint) {
 	bucket.Status.SetConditions(xpv1.Unavailable())
 

@@ -2,6 +2,7 @@ package rgw
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
@@ -21,6 +22,11 @@ const (
 	errUpdateBucket = "failed to update bucket"
 	errDeleteBucket = "failed to delete bucket"
 	errHeadBucket   = "failed to perform head bucket"
+)
+
+var (
+	// Define this error as an error type because bucket controller checks it
+	ErrBucketNotEmpty = errors.New("bucket is not empty")
 )
 
 func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *awss3.CreateBucketInput, o ...func(*awss3.Options)) (*awss3.CreateBucketOutput, error) {
@@ -98,6 +104,9 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 	_, err = s3Backend.DeleteBucket(ctx, &awss3.DeleteBucketInput{Bucket: bucketName}, o...)
 	if resource.Ignore(IsNotFound, err) != nil {
 		traces.SetAndRecordError(span, err)
+		if IsNotEmpty(err) {
+			return fmt.Errorf("%w: %w", ErrBucketNotEmpty, err)
+		}
 
 		return errors.Wrap(err, errDeleteBucket)
 	}

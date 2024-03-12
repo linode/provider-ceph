@@ -123,6 +123,24 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		c.log.Info("Failed to delete bucket on one or more backends", "error", deleteErr.Error())
 		traces.SetAndRecordError(span, deleteErr)
 
+		// If the error is BucketNotEmpty error, the DeleteBucket operation should be failed
+		// and the client should be able to use the bucket with non-empty buckends.
+		if errors.Is(deleteErr, rgw.ErrBucketNotEmpty) {
+			if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+				c.log.Info("Change 'disabled' flag to false", consts.KeyBucketName, bucket.Name)
+
+				bucketLatest.Spec.Disabled = false
+
+				return NeedsObjectUpdate
+			}); err != nil {
+				err = errors.Wrap(err, errUpdateBucketCR)
+				c.log.Info("Failed to change 'disabled' flag to false", consts.KeyBackendName, bucket.Name, "error", err.Error())
+				traces.SetAndRecordError(span, err)
+
+				return err
+			}
+		}
+
 		return deleteErr
 	}
 

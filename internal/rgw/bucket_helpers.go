@@ -4,6 +4,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 )
@@ -81,4 +82,10 @@ func NoSuchBucket(err error) bool {
 	var noSuchBucketError *s3types.NoSuchBucket
 
 	return errors.As(err, &noSuchBucketError)
+}
+
+func IsNotEmpty(err error) bool {
+	var ae smithy.APIError
+
+	return errors.As(err, &ae) && ae.ErrorCode() == "BucketNotEmpty"
 }

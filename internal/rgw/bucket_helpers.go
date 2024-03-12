@@ -86,6 +86,9 @@ func NoSuchBucket(err error) bool {
 
 func IsNotEmpty(err error) bool {
 	var ae smithy.APIError
+	if errors.As(err, &ae) {
+		return false
+	}
 
-	return errors.As(err, &ae) && ae.ErrorCode() == "BucketNotEmpty"
+	return ae != nil && ae.ErrorCode() == "BucketNotEmpty"
 }

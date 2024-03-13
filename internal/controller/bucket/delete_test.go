@@ -646,8 +646,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", fakeClientOK, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClientOK, nil, true, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -657,20 +657,24 @@ func TestDelete(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:       "bucket",
 						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Labels: map[string]string{
+							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
+							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							s3Backend1,
+							s3Backend2,
 						},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								s3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								"s3-backend-2": &v1alpha1.BackendInfo{
+								s3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -686,13 +690,13 @@ func TestDelete(t *testing.T) {
 
 					// s3-backend-1 failed so is stuck in Deleting status.
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(xpv1.Deleting().WithMessage(fmt.Errorf("%w: %w", rgw.ErrBucketNotEmpty, bucketNotEmptyError{}).Error())),
+						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(fmt.Errorf("%w: %w", rgw.ErrBucketNotEmpty, bucketNotEmptyError{}).Error())),
 						"unexpected bucket condition on s3-backend-1")
 
 					// s3-backend-2 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b["s3-backend-2"]; ok {
+							if _, ok := b[s3Backend2]; ok {
 								return true
 							}
 

@@ -701,8 +701,8 @@ func TestDelete(t *testing.T) {
 						"s3-backend-2 should not exist in backends")
 
 					// If backend deletion fails due to BucketNotEmpty error, Disabled flag should be false.
-					assert.True(t,
-						!bucket.Spec.Disabled,
+					assert.False(t,
+						bucket.Spec.Disabled,
 						"Disabled flag should be false",
 					)
 				},

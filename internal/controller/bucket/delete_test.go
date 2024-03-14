@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/aws/smithy-go"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
@@ -632,7 +631,7 @@ func TestDelete(t *testing.T) {
 					)
 					fakeClient.DeleteBucketReturns(
 						nil,
-						bucketNotEmptyError{},
+						rgw.BucketNotEmptyError{},
 					)
 
 					// DeleteBucket first calls HeadBucket to establish
@@ -690,7 +689,7 @@ func TestDelete(t *testing.T) {
 
 					// s3-backend-1 failed so is stuck in Deleting status.
 					assert.True(t,
-						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(fmt.Errorf("%w: %w", rgw.ErrBucketNotEmpty, bucketNotEmptyError{}).Error())),
+						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(fmt.Errorf("%w: %w", rgw.ErrBucketNotEmpty, rgw.BucketNotEmptyError{}).Error())),
 						"unexpected bucket condition on s3-backend-1")
 
 					// s3-backend-2 was successfully deleted so was removed from status.
@@ -756,24 +755,4 @@ func TestDelete(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Unlike NoSuchBucket error or others, aws-sdk-go-v2 doesn't have a specific struct definition for BucketNotEmpty error.
-// So we should define ourselves for testing.
-type bucketNotEmptyError struct{}
-
-func (e bucketNotEmptyError) Error() string {
-	return "BucketNotEmpty: some error"
-}
-
-func (e bucketNotEmptyError) ErrorCode() string {
-	return "BucketNotEmpty"
-}
-
-func (e bucketNotEmptyError) ErrorMessage() string {
-	return "some error"
-}
-
-func (e bucketNotEmptyError) ErrorFault() smithy.ErrorFault {
-	return smithy.FaultUnknown
 }

@@ -92,3 +92,23 @@ func IsNotEmpty(err error) bool {
 
 	return ae != nil && ae.ErrorCode() == "BucketNotEmpty"
 }
+
+// Unlike NoSuchBucket error or others, aws-sdk-go-v2 doesn't have a specific struct definition for BucketNotEmpty error.
+// So we should define ourselves. This is currently only for testing.
+type BucketNotEmptyError struct{}
+
+func (e BucketNotEmptyError) Error() string {
+	return "BucketNotEmpty: some error"
+}
+
+func (e BucketNotEmptyError) ErrorCode() string {
+	return "BucketNotEmpty"
+}
+
+func (e BucketNotEmptyError) ErrorMessage() string {
+	return "some error"
+}
+
+func (e BucketNotEmptyError) ErrorFault() smithy.ErrorFault {
+	return smithy.FaultUnknown
+}

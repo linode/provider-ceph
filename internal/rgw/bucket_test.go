@@ -94,7 +94,7 @@ func TestDeleteBucket(t *testing.T) {
 				fake := &backendstorefakes.FakeS3Client{}
 				fake.HeadBucketReturns(nil, nil)
 
-				fake.DeleteBucketReturns(nil, bucketNotEmptyError{})
+				fake.DeleteBucketReturns(nil, BucketNotEmptyError{})
 
 				return fake
 			},

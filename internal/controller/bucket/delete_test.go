@@ -2,6 +2,7 @@ package bucket
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -16,6 +17,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
+	"github.com/linode/provider-ceph/internal/rgw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -602,6 +604,110 @@ func TestDelete(t *testing.T) {
 							return false
 						}(bucket.Status.AtProvider.Backends),
 						"s3-backend-2 should not exist in backends")
+				},
+				finalizerDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.Equal(t,
+						[]string{v1alpha1.InUseFinalizer},
+						bucket.Finalizers,
+						"unexpeceted finalizers",
+					)
+				},
+			},
+		},
+
+		"Error deleting bucket because one specified bucket is not empty": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					// DeleteBucket first calls HeadBucket to establish
+					// if a bucket exists, so return a random error
+					// to mimic a failed delete.
+					fakeClient := &backendstorefakes.FakeS3Client{}
+					fakeClient.HeadBucketReturns(
+						&s3.HeadBucketOutput{},
+						nil,
+					)
+					fakeClient.DeleteBucketReturns(
+						nil,
+						rgw.BucketNotEmptyError{},
+					)
+
+					// DeleteBucket first calls HeadBucket to establish
+					// if a bucket exists, so return not found
+					// error to short circuit a successful delete.
+					var notFoundError *s3types.NotFound
+					fakeClientOK := &backendstorefakes.FakeS3Client{}
+					fakeClientOK.HeadBucketReturns(
+						&s3.HeadBucketOutput{},
+						notFoundError,
+					)
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClientOK, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:       "bucket",
+						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Labels: map[string]string{
+							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
+							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+						},
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							s3Backend1,
+							s3Backend2,
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						AtProvider: v1alpha1.BucketObservation{
+							Backends: v1alpha1.Backends{
+								s3Backend1: &v1alpha1.BackendInfo{
+									BucketCondition: xpv1.Available(),
+								},
+								s3Backend2: &v1alpha1.BackendInfo{
+									BucketCondition: xpv1.Available(),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				err: rgw.ErrBucketNotEmpty,
+				statusDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					// s3-backend-1 failed so is stuck in Deleting status.
+					assert.True(t,
+						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(fmt.Errorf("%w: %w", rgw.ErrBucketNotEmpty, rgw.BucketNotEmptyError{}).Error())),
+						"unexpected bucket condition on s3-backend-1")
+
+					// s3-backend-2 was successfully deleted so was removed from status.
+					assert.False(t,
+						func(b v1alpha1.Backends) bool {
+							if _, ok := b[s3Backend2]; ok {
+								return true
+							}
+
+							return false
+						}(bucket.Status.AtProvider.Backends),
+						"s3-backend-2 should not exist in backends")
+
+					// If backend deletion fails due to BucketNotEmpty error, Disabled flag should be false.
+					assert.False(t,
+						bucket.Spec.Disabled,
+						"Disabled flag should be false",
+					)
 				},
 				finalizerDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()

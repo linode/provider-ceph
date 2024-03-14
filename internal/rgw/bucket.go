@@ -2,6 +2,7 @@ package rgw
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
@@ -21,6 +22,11 @@ const (
 	errUpdateBucket = "failed to update bucket"
 	errDeleteBucket = "failed to delete bucket"
 	errHeadBucket   = "failed to perform head bucket"
+)
+
+var (
+	// Define this error as an error type because bucket controller checks it
+	ErrBucketNotEmpty = errors.New("bucket is not empty")
 )
 
 func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *awss3.CreateBucketInput, o ...func(*awss3.Options)) (*awss3.CreateBucketOutput, error) {
@@ -61,7 +67,7 @@ func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 	return true, nil
 }
 
-func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, o ...func(*awss3.Options)) error {
+func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, healthCheck bool, o ...func(*awss3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "DeleteBucket")
 	defer span.End()
 
@@ -73,30 +79,34 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 		return nil
 	}
 
-	g := new(errgroup.Group)
+	if healthCheck {
+		g := new(errgroup.Group)
 
-	// Delete all objects from the bucket. This is sufficient for unversioned buckets.
-	g.Go(func() error {
-		return deleteBucketObjects(ctx, s3Backend, bucketName, o...)
-	})
+		// Delete all objects from the bucket. This is sufficient for unversioned buckets.
+		g.Go(func() error {
+			return deleteBucketObjects(ctx, s3Backend, bucketName, o...)
+		})
 
-	// Delete all object versions (required for versioned buckets).
-	g.Go(func() error {
-		return deleteBucketObjectVersions(ctx, s3Backend, bucketName, o...)
-	})
+		// Delete all object versions (required for versioned buckets).
+		g.Go(func() error {
+			return deleteBucketObjectVersions(ctx, s3Backend, bucketName, o...)
+		})
 
-	if err := g.Wait(); err != nil {
-		if NoSuchBucket(err) {
-			return nil
+		if err := g.Wait(); err != nil {
+			if NoSuchBucket(err) {
+				return nil
+			}
+			traces.SetAndRecordError(span, err)
+
+			return errors.Wrap(err, errDeleteBucket)
 		}
-		traces.SetAndRecordError(span, err)
-
-		return errors.Wrap(err, errDeleteBucket)
 	}
-
 	_, err = s3Backend.DeleteBucket(ctx, &awss3.DeleteBucketInput{Bucket: bucketName}, o...)
 	if resource.Ignore(IsNotFound, err) != nil {
 		traces.SetAndRecordError(span, err)
+		if IsNotEmpty(err) {
+			return fmt.Errorf("%w: %w", ErrBucketNotEmpty, err)
+		}
 
 		return errors.Wrap(err, errDeleteBucket)
 	}

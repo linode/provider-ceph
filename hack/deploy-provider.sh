@@ -5,34 +5,6 @@
 : "${ARCH?= required}"
 : "${VERSION?= required}"
 
-# Apply cert-manager Issuer and Certificate
-kubectl apply -f - <<EOF
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: selfsigned-issuer
-  namespace: crossplane-system
-spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: crossplane-provider-provider-ceph
-  namespace: crossplane-system
-spec:
-  commonName: provider-ceph.crossplane-system.svc
-  dnsNames:
-  - provider-ceph.crossplane-system.svc.cluster.local
-  - provider-ceph.crossplane-system.svc
-  - crossplane-provider-provider-ceph.crossplane-system.svc.cluster.local
-  - crossplane-provider-provider-ceph.crossplane-system.svc
-  issuerRef:
-    kind: Issuer
-    name: selfsigned-issuer
-  secretName: crossplane-provider-provider-ceph-server-cert
-EOF
-
 # Apply a configuration for the provider deployment.
 kubectl apply -f - <<EOF
 apiVersion: pkg.crossplane.io/v1beta1
@@ -60,14 +32,6 @@ spec:
             - --poll=30m
             - --sync=1h
             - --assume-role-arn=${ASSUME_ROLE_ARN}
-            - --webhook-tls-cert-dir=/certs
-            volumeMounts:
-            - name: cert-manager-certs
-              mountPath: /certs
-          volumes:
-          - name: cert-manager-certs
-            secret:
-              secretName: crossplane-provider-provider-ceph-server-cert
 EOF
 
 # Apply the provider.

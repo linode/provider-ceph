@@ -190,7 +190,7 @@ load-package: $(KIND) build kustomize-webhook
 # to the Provider.
 # Run Kuttl test suite on newly built controller image.
 # Destroy Kind and localstack.
-kuttl: $(KUTTL) generate-pkg generate-tests crossplane-cluster localstack-cluster cert-manager load-package
+kuttl: $(KUTTL) generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
 	@$(INFO) Running kuttl test suite
 	@$(KUTTL) test --config e2e/kuttl/stable/provider-ceph-$(LATEST_KUBE_VERSION).yaml
 	@$(OK) Running kuttl test suite

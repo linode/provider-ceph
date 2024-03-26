@@ -21,12 +21,14 @@ package main
 import (
 	"context"
 	"flag"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/linode/provider-ceph/internal/otel/traces"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap/zapcore"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -276,6 +278,9 @@ func main() {
 
 	kubeClientUncached, err := client.New(cfg, client.Options{
 		Scheme: providerSCheme,
+		HTTPClient: &http.Client{
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
 	})
 	kingpin.FatalIfError(err, "Cannot create Kube client")
 

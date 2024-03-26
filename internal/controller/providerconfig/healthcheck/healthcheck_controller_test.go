@@ -18,6 +18,8 @@ package healthcheck
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -33,7 +35,6 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	"github.com/linode/provider-ceph/internal/utils"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -41,21 +42,29 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+var errRandom = errors.New("random error")
+
+type RoundTripFunc func(req *http.Request) (*http.Response, error)
+
+func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+// NewTestClient returns *http.Client with Transport replaced to avoid making real calls
+func NewTestClient(fn RoundTripFunc) *http.Client {
+	return &http.Client{
+		Transport: RoundTripFunc(fn),
+	}
+}
+
 //nolint:maintidx // Function requires numerous checks.
 func TestReconcile(t *testing.T) {
 	t.Parallel()
 	backendName := "test-backend"
-	lowerPutObjErr := errors.New("some put err")
-	putObjErr := errors.New("failed to put object")
-	lowerGetObjErr := errors.New("some get err")
-	getObjErr := errors.New("failed to get object")
-	lowerHeadBucketErr := errors.New("some head bucket err")
-	headBucketErr := errors.New("failed to perform head bucket")
-	lowerCreateBucketErr := errors.New("some create bucket err")
-	createBucketErr := errors.New("failed to create bucket")
 
 	type fields struct {
 		fakeS3Client   func(*backendstorefakes.FakeS3Client)
+		testHttpClient *http.Client
 		providerConfig *apisv1alpha1.ProviderConfig
 		bucketList     *v1alpha1.BucketList
 		autopause      bool
@@ -80,6 +89,12 @@ func TestReconcile(t *testing.T) {
 	}{
 		"ProviderConfig has been deleted": {
 			fields: fields{
+				testHttpClient: NewTestClient(func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Status:     http.StatusText(http.StatusOK),
+					}, nil
+				}),
 				fakeS3Client: func(fake *backendstorefakes.FakeS3Client) {
 					// cleanup calls HeadBucket
 					var notFoundError *s3types.NotFound
@@ -147,15 +162,14 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 		},
-		"ProviderConfig goes from healthy to unhealthy due to failed head bucket": {
+		"ProviderConfig goes from healthy to unhealthy with bad request": {
 			fields: fields{
-				fakeS3Client: func(fake *backendstorefakes.FakeS3Client) {
-					// fail the health check with a HeadBucket error
-					fake.HeadBucketReturns(
-						&s3.HeadBucketOutput{},
-						lowerHeadBucketErr,
-					)
-				},
+				testHttpClient: NewTestClient(func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusBadRequest,
+						Status:     http.StatusText(http.StatusBadRequest),
+					}, nil
+				}),
 				providerConfig: &apisv1alpha1.ProviderConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: backendName,
@@ -183,7 +197,7 @@ func TestReconcile(t *testing.T) {
 			},
 			want: want{
 				res: ctrl.Result{},
-				err: lowerHeadBucketErr,
+				err: errors.New(fmt.Sprintf(errUnexpectedResp, http.StatusText(http.StatusBadRequest))),
 				pc: &apisv1alpha1.ProviderConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: backendName,
@@ -196,185 +210,7 @@ func TestReconcile(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									v1alpha1.HealthCheckFail().
-										WithMessage(errors.Wrap(lowerHeadBucketErr, headBucketErr.Error()).Error()),
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		"ProviderConfig goes from healthy to unhealthy due to failed create bucket": {
-			fields: fields{
-				fakeS3Client: func(fake *backendstorefakes.FakeS3Client) {
-					// HeadBucket returns not found so the bucket
-					// does not exist and must be created.
-					var notFoundError *s3types.NotFound
-					fake.HeadBucketReturns(
-						&s3.HeadBucketOutput{},
-						notFoundError,
-					)
-					// fail the health check with a CreateBucket error
-					fake.CreateBucketReturns(
-						&s3.CreateBucketOutput{},
-						lowerCreateBucketErr,
-					)
-				},
-				providerConfig: &apisv1alpha1.ProviderConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: backendName,
-					},
-					Spec: apisv1alpha1.ProviderConfigSpec{
-						DisableHealthCheck: false,
-					},
-					Status: apisv1alpha1.ProviderConfigStatus{
-						ProviderConfigStatus: xpv1.ProviderConfigStatus{
-							ConditionedStatus: xpv1.ConditionedStatus{
-								Conditions: []xpv1.Condition{
-									v1alpha1.HealthCheckSuccess(),
-								},
-							},
-						},
-					},
-				},
-			},
-			args: args{
-				req: ctrl.Request{
-					NamespacedName: types.NamespacedName{
-						Name: backendName,
-					},
-				},
-			},
-			want: want{
-				res: ctrl.Result{},
-				err: lowerCreateBucketErr,
-				pc: &apisv1alpha1.ProviderConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: backendName,
-					},
-					Spec: apisv1alpha1.ProviderConfigSpec{
-						DisableHealthCheck: false,
-					},
-					Status: apisv1alpha1.ProviderConfigStatus{
-						ProviderConfigStatus: xpv1.ProviderConfigStatus{
-							ConditionedStatus: xpv1.ConditionedStatus{
-								Conditions: []xpv1.Condition{
-									v1alpha1.HealthCheckFail().
-										WithMessage(errors.Wrap(errors.Wrap(lowerCreateBucketErr, createBucketErr.Error()), errCreateHealthCheckBucket).Error()),
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		"ProviderConfig goes from healthy to unhealthy due to failed put object": {
-			fields: fields{
-				fakeS3Client: func(fake *backendstorefakes.FakeS3Client) {
-					// fail the health check with a PutObject error
-					fake.PutObjectReturns(
-						&s3.PutObjectOutput{},
-						lowerPutObjErr,
-					)
-				},
-				providerConfig: &apisv1alpha1.ProviderConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: backendName,
-					},
-					Spec: apisv1alpha1.ProviderConfigSpec{
-						DisableHealthCheck: false,
-					},
-					Status: apisv1alpha1.ProviderConfigStatus{
-						ProviderConfigStatus: xpv1.ProviderConfigStatus{
-							ConditionedStatus: xpv1.ConditionedStatus{
-								Conditions: []xpv1.Condition{
-									v1alpha1.HealthCheckSuccess(),
-								},
-							},
-						},
-					},
-				},
-			},
-			args: args{
-				req: ctrl.Request{
-					NamespacedName: types.NamespacedName{
-						Name: backendName,
-					},
-				},
-			},
-			want: want{
-				res: ctrl.Result{},
-				err: lowerPutObjErr,
-				pc: &apisv1alpha1.ProviderConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: backendName,
-					},
-					Spec: apisv1alpha1.ProviderConfigSpec{
-						DisableHealthCheck: false,
-					},
-					Status: apisv1alpha1.ProviderConfigStatus{
-						ProviderConfigStatus: xpv1.ProviderConfigStatus{
-							ConditionedStatus: xpv1.ConditionedStatus{
-								Conditions: []xpv1.Condition{
-									v1alpha1.HealthCheckFail().
-										WithMessage(errors.Wrap(errors.Wrap(lowerPutObjErr, putObjErr.Error()), errPutHealthCheckFile).Error()),
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		"ProviderConfig goes from healthy to unhealthy due to failed get object": {
-			fields: fields{
-				fakeS3Client: func(fake *backendstorefakes.FakeS3Client) {
-					// fail the health check with a GetObject error
-					fake.GetObjectReturns(
-						&s3.GetObjectOutput{},
-						lowerGetObjErr,
-					)
-				},
-				providerConfig: &apisv1alpha1.ProviderConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: backendName,
-					},
-					Spec: apisv1alpha1.ProviderConfigSpec{
-						DisableHealthCheck: false,
-					},
-					Status: apisv1alpha1.ProviderConfigStatus{
-						ProviderConfigStatus: xpv1.ProviderConfigStatus{
-							ConditionedStatus: xpv1.ConditionedStatus{
-								Conditions: []xpv1.Condition{
-									v1alpha1.HealthCheckSuccess(),
-								},
-							},
-						},
-					},
-				},
-			},
-			args: args{
-				req: ctrl.Request{
-					NamespacedName: types.NamespacedName{
-						Name: backendName,
-					},
-				},
-			},
-			want: want{
-				res: ctrl.Result{},
-				err: lowerGetObjErr,
-				pc: &apisv1alpha1.ProviderConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: backendName,
-					},
-					Spec: apisv1alpha1.ProviderConfigSpec{
-						DisableHealthCheck: false,
-					},
-					Status: apisv1alpha1.ProviderConfigStatus{
-						ProviderConfigStatus: xpv1.ProviderConfigStatus{
-							ConditionedStatus: xpv1.ConditionedStatus{
-								Conditions: []xpv1.Condition{
-									v1alpha1.HealthCheckFail().
-										WithMessage(errors.Wrap(errors.Wrap(lowerGetObjErr, getObjErr.Error()), errGetHealthCheckFile).Error()),
+										WithMessage(fmt.Sprintf(errUnexpectedResp, http.StatusText(http.StatusBadRequest))),
 								},
 							},
 						},
@@ -384,6 +220,12 @@ func TestReconcile(t *testing.T) {
 		},
 		"ProviderConfig goes from unhealthy to healthy so its buckets should be unpaused": {
 			fields: fields{
+				testHttpClient: NewTestClient(func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Status:     http.StatusText(http.StatusOK),
+					}, nil
+				}),
 				providerConfig: &apisv1alpha1.ProviderConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: backendName,
@@ -512,6 +354,12 @@ func TestReconcile(t *testing.T) {
 		},
 		"ProviderConfig goes from health check disabled to healthy so its buckets should be unpaused": {
 			fields: fields{
+				testHttpClient: NewTestClient(func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Status:     http.StatusText(http.StatusOK),
+					}, nil
+				}),
 				providerConfig: &apisv1alpha1.ProviderConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: backendName,
@@ -675,11 +523,12 @@ func TestReconcile(t *testing.T) {
 				WithBackendStore(bs),
 				WithKubeClientUncached(c),
 				WithKubeClientCached(c),
+				WithHttpClient(tc.fields.testHttpClient),
 				WithLogger(logging.NewNopLogger()))
 
 			got, err := r.Reconcile(context.Background(), tc.args.req)
 			assert.Equal(t, tc.want.res, got, "unexpected result")
-			require.ErrorIs(t, err, tc.want.err, "unexpected error")
+			assert.Equal(t, tc.want.err, err, "unexpected error")
 
 			// Now check that the reconciled ProviderConfig was updated correctly.
 			if tc.want.pc == nil {

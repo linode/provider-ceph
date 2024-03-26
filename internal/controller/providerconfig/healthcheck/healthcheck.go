@@ -1,6 +1,8 @@
 package healthcheck
 
 import (
+	"net/http"
+
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
@@ -14,6 +16,7 @@ type Controller struct {
 	kubeClientUncached client.Client
 	kubeClientCached   client.Client
 	backendStore       *backendstore.BackendStore
+	httpClient         *http.Client
 	log                logging.Logger
 	autoPauseBucket    bool
 }
@@ -54,6 +57,12 @@ func WithBackendStore(b *backendstore.BackendStore) func(*Controller) {
 func WithAutoPause(autoPause *bool) func(*Controller) {
 	return func(r *Controller) {
 		r.autoPauseBucket = *autoPause
+	}
+}
+
+func WithHttpClient(httpClient *http.Client) func(*Controller) {
+	return func(r *Controller) {
+		r.httpClient = httpClient
 	}
 }
 

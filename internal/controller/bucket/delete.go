@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -32,6 +33,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 		return err
 	}
+	span.SetAttributes(attribute.String("bucket", bucket.Name))
 
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()

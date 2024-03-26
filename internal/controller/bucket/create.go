@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"k8s.io/apimachinery/pkg/types"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -33,6 +34,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 		return managed.ExternalCreation{}, err
 	}
+
+	span.SetAttributes(attribute.String("bucket", bucket.Name))
 
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()

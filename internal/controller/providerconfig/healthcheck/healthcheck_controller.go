@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"go.opentelemetry.io/otel"
@@ -58,7 +57,6 @@ const (
 	True = "true"
 )
 
-//nolint:gocyclo,cyclop // Function requires multiple checks.
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "healthcheck.Controller.Reconcile")
 	defer span.End()
@@ -71,7 +69,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if err := c.kubeClientCached.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
 			// ProviderConfig has been deleted, perform cleanup.
-			if err := c.cleanup(ctx, req, bucketName); err != nil {
+			if err := c.cleanup(ctx, req); err != nil {
 				err = errors.Wrap(err, errHealthCheckCleanup)
 				traces.SetAndRecordError(span, err)
 
@@ -133,7 +131,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Perform the health check. By calling this function, we are implicitly updating
 	// the health status of the ProviderConfig with whatever the health check reports.
-	if err := c.doHealthCheck(ctx, providerConfig, bucketName); err != nil {
+	if err := c.doHealthCheck(ctx, providerConfig); err != nil {
 		c.log.Info("Failed to do health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
 		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(errNoRequestID(err)))
@@ -162,7 +160,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 // cleanup deletes the lifecycle configuration validation bucket from the backend.
 // This function is only called when a ProviderConfig has been deleted.
-func (c *Controller) cleanup(ctx context.Context, req ctrl.Request, bucketName string) error {
+func (c *Controller) cleanup(ctx context.Context, req ctrl.Request) error {
 	backendClient := c.backendStore.GetBackendS3Client(req.Name)
 	if backendClient == nil {
 		c.log.Info("Backend client not found during validation bucket cleanup - aborting cleanup", consts.KeyBackendName, req.Name)
@@ -179,7 +177,7 @@ func (c *Controller) cleanup(ctx context.Context, req ctrl.Request, bucketName s
 }
 
 // doHealthCheck performs a basic http request to the hostbase address.
-func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig, bucketName string, o ...func(*s3.Options)) error {
+func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1alpha1.ProviderConfig) error {
 	ctx, span := otel.Tracer("").Start(ctx, "Controller.doHealthCheck")
 	defer span.End()
 

@@ -21,17 +21,17 @@ package main
 import (
 	"context"
 	"flag"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/linode/provider-ceph/internal/otel/traces"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap/zapcore"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -45,7 +45,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
@@ -61,7 +60,6 @@ import (
 
 	"github.com/linode/provider-ceph/internal/features"
 	"github.com/linode/provider-ceph/internal/rgw/cache"
-	kcache "sigs.k8s.io/controller-runtime/pkg/cache"
 )
 
 var defaultZapConfig = map[string]string{
@@ -77,7 +75,7 @@ func main() {
 		leaderElection = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()
 		leaderRenew    = app.Flag("leader-renew", "Set leader election renewal.").Short('r').Default("10s").OverrideDefaultFromEnvar("LEADER_ELECTION_RENEW").Duration()
 
-		syncInterval         = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
+		// syncInterval         = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
 		syncTimeout          = app.Flag("sync-timeout", "Cache sync timeout.").Default("10s").Duration()
 		pollInterval         = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("30m").Duration()
 		bucketExistsCache    = app.Flag("bucket-exists-cache", "How long the provider caches bucket exists result").Short('c').Default("5s").Duration()
@@ -202,7 +200,7 @@ func main() {
 	leaseDuration := time.Duration(int(oneDotTwo*float64(*leaderRenew))) * time.Second
 	leaderRetryDuration := *leaderRenew / two
 
-	pausedSelector, err := labels.NewRequirement(meta.AnnotationKeyReconciliationPaused, selection.NotIn, []string{"true"})
+	// pausedSelector, err := labels.NewRequirement(meta.AnnotationKeyReconciliationPaused, selection.NotIn, []string{"true"})
 	kingpin.FatalIfError(err, "Cannot create label selector")
 
 	providerSCheme := scheme.Scheme
@@ -210,6 +208,7 @@ func main() {
 
 	cacheHTTPClient, err := rest.HTTPClientFor(cfg)
 	kingpin.FatalIfError(err, "Cannot create HTTP client")
+	cacheHTTPClient.Transport = otelhttp.NewTransport(cacheHTTPClient.Transport)
 
 	cacheHTTPClient.Timeout = *syncTimeout
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
@@ -225,18 +224,18 @@ func main() {
 			CertDir: *webhookTLSCertDir,
 		}),
 		Scheme: providerSCheme,
-		Cache: kcache.Options{
-			HTTPClient: cacheHTTPClient,
-			SyncPeriod: syncInterval,
-			Scheme:     providerSCheme,
-			ByObject: map[client.Object]kcache.ByObject{
-				&providercephv1alpha1.Bucket{}: {
-					Label: labels.NewSelector().Add(*pausedSelector),
-				},
-				&v1alpha1.ProviderConfig{}: {},
-			},
-		},
-		NewCache: kcache.New,
+		// Cache: kcache.Options{
+		// 	HTTPClient: cacheHTTPClient,
+		// 	SyncPeriod: syncInterval,
+		// 	Scheme:     providerSCheme,
+		// 	ByObject: map[client.Object]kcache.ByObject{
+		// 		&providercephv1alpha1.Bucket{}: {
+		// 			Label: labels.NewSelector().Add(*pausedSelector),
+		// 		},
+		// 		&v1alpha1.ProviderConfig{}: {},
+		// 	},
+		// },
+		// NewCache: kcache.New,
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 
@@ -276,6 +275,9 @@ func main() {
 
 	kubeClientUncached, err := client.New(cfg, client.Options{
 		Scheme: providerSCheme,
+		HTTPClient: &http.Client{
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
 	})
 	kingpin.FatalIfError(err, "Cannot create Kube client")
 

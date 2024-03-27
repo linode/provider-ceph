@@ -3,7 +3,6 @@
 : "${TEST_KIND_NODES?= required}"
 : "${REPO?= required}"
 : "${LOCALSTACK_VERSION?= required}"
-: "${CERT_MANAGER_VERSION?= required}"
 
 # This script reads a comma-delimited string TEST_KIND_NODES of kind node versions
 # for kuttl tests to be run on, and generates the relevant files for each version.
@@ -122,7 +121,6 @@ jobs:
       - name: Run kuttl tests ${major}
         run: make kuttl
         env:
-          WEBHOOK_TYPE: 'cert-manager'
           LATEST_KUBE_VERSION: '${major}'
           AWS_ACCESS_KEY_ID: 'Dummy'
           AWS_SECRET_ACCESS_KEY: 'Dummy'

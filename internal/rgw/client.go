@@ -3,7 +3,6 @@ package rgw
 import (
 	"context"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -19,6 +18,7 @@ import (
 
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/consts"
+	"github.com/linode/provider-ceph/internal/utils"
 )
 
 const (
@@ -31,7 +31,7 @@ func NewS3Client(ctx context.Context, data map[string][]byte, pcSpec *apisv1alph
 		return nil, err
 	}
 
-	resolvedAddress := resolveHostBase(pcSpec.HostBase, pcSpec.UseHTTPS)
+	resolvedAddress := utils.ResolveHostBase(pcSpec.HostBase, pcSpec.UseHTTPS)
 
 	return s3.NewFromConfig(sessionConfig, func(o *s3.Options) {
 		o.UsePathStyle = true
@@ -59,7 +59,7 @@ func NewSTSClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alp
 		return nil, err
 	}
 
-	resolvedAddress := resolveHostBase(*stsAddress, pcSpec.UseHTTPS)
+	resolvedAddress := utils.ResolveHostBase(*stsAddress, pcSpec.UseHTTPS)
 
 	return sts.NewFromConfig(sessionConfig, func(o *sts.Options) {
 		o.HTTPClient = &http.Client{Timeout: s3Timeout}
@@ -77,19 +77,4 @@ func buildSessionConfig(ctx context.Context, data map[string][]byte) (aws.Config
 			string(data[consts.KeySecretKey]),
 			"",
 		)))
-}
-
-func resolveHostBase(hostBase string, useHTTPS bool) string {
-	httpsPrefix := "https://"
-	httpPrefix := "http://"
-	// Remove prefix in either case if it has been specified.
-	// Let useHTTPS option take precedence.
-	hostBase = strings.TrimPrefix(hostBase, httpPrefix)
-	hostBase = strings.TrimPrefix(hostBase, httpsPrefix)
-
-	if useHTTPS {
-		return httpsPrefix + hostBase
-	}
-
-	return httpPrefix + hostBase
 }

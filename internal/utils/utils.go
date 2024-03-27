@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"strings"
+
 	commonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
@@ -31,4 +33,20 @@ func MapConditionToHealthStatus(condition commonv1.Condition) apisv1alpha1.Healt
 // GetBackendLabel renders label key for provider.
 func GetBackendLabel(provider string) string {
 	return v1alpha1.BackendLabelPrefix + provider
+}
+
+// ResolveHostBase returns the hostbase address with the appropriate http(s) prefix.
+func ResolveHostBase(hostBase string, useHTTPS bool) string {
+	httpsPrefix := "https://"
+	httpPrefix := "http://"
+	// Remove prefix in either case if it has been specified.
+	// Let useHTTPS option take precedence.
+	hostBase = strings.TrimPrefix(hostBase, httpPrefix)
+	hostBase = strings.TrimPrefix(hostBase, httpsPrefix)
+
+	if useHTTPS {
+		return httpsPrefix + hostBase
+	}
+
+	return httpPrefix + hostBase
 }

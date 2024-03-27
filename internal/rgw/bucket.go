@@ -67,7 +67,7 @@ func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 	return true, nil
 }
 
-func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, healthCheck bool, o ...func(*awss3.Options)) error {
+func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string, forceDelete bool, o ...func(*awss3.Options)) error {
 	ctx, span := otel.Tracer("").Start(ctx, "DeleteBucket")
 	defer span.End()
 
@@ -79,7 +79,7 @@ func DeleteBucket(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 		return nil
 	}
 
-	if healthCheck {
+	if forceDelete {
 		g := new(errgroup.Group)
 
 		// Delete all objects from the bucket. This is sufficient for unversioned buckets.

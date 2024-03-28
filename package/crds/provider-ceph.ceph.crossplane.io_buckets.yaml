@@ -90,6 +90,66 @@ spec:
               forProvider:
                 description: BucketParameters are the configurable fields of a Bucket.
                 properties:
+                  accessControlPolicy:
+                    description: Contains the elements that set the ACL permissions
+                      for an object per grantee.
+                    properties:
+                      grants:
+                        description: A list of grants.
+                        items:
+                          description: Container for grant information.
+                          properties:
+                            grantee:
+                              description: The person being granted permissions.
+                              properties:
+                                displayName:
+                                  description: Screen name of the grantee.
+                                  type: string
+                                emailAddress:
+                                  description: Email address of the grantee.
+                                  type: string
+                                id:
+                                  description: The canonical user ID of the grantee.
+                                  type: string
+                                type:
+                                  description: |-
+                                    Type of grantee.
+                                    Type is a required field.
+                                  enum:
+                                  - CanonicalUser
+                                  - Email
+                                  - Group
+                                  type: string
+                                uri:
+                                  description: URI of the grantee group.
+                                  type: string
+                              required:
+                              - type
+                              type: object
+                            permission:
+                              description: Specifies the permission given to the grantee.
+                              enum:
+                              - FULL_CONTROL
+                              - WRITE
+                              - WRITE
+                              - WRITE_ACP
+                              - READ
+                              - READ_ACP
+                              type: string
+                          type: object
+                        type: array
+                      owner:
+                        description: Container for the bucket owner's display name
+                          and ID.
+                        properties:
+                          displayName:
+                            description: Container for the display name of the owner.
+                            type: string
+                          id:
+                            description: Container for the ID of the owner.
+                            type: string
+                        type: object
+                    type: object
                   acl:
                     description: The canned ACL to apply to the bucket.
                     type: string

@@ -31,18 +31,6 @@ func BucketToCreateBucketInput(bucket *v1alpha1.Bucket) *s3.CreateBucketInput {
 	return createBucketInput
 }
 
-func BucketToPutBucketACLInput(bucket *v1alpha1.Bucket) *s3.PutBucketAclInput {
-	return &s3.PutBucketAclInput{
-		ACL:              s3types.BucketCannedACL(aws.ToString(bucket.Spec.ForProvider.ACL)),
-		Bucket:           aws.String(bucket.Name),
-		GrantFullControl: bucket.Spec.ForProvider.GrantFullControl,
-		GrantRead:        bucket.Spec.ForProvider.GrantRead,
-		GrantReadACP:     bucket.Spec.ForProvider.GrantReadACP,
-		GrantWrite:       bucket.Spec.ForProvider.GrantWrite,
-		GrantWriteACP:    bucket.Spec.ForProvider.GrantWriteACP,
-	}
-}
-
 func BucketToPutBucketOwnershipControlsInput(bucket *v1alpha1.Bucket) *s3.PutBucketOwnershipControlsInput {
 	return &s3.PutBucketOwnershipControlsInput{
 		Bucket: aws.String(bucket.Name),

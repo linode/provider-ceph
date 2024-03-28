@@ -8,9 +8,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
@@ -204,16 +201,6 @@ func (c *external) updateOnBackend(ctx context.Context, beName string, bucket *v
 }
 
 func (c *external) doUpdateOnBackend(ctx context.Context, cl backendstore.S3Client, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
-	if s3types.ObjectOwnership(aws.ToString(b.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
-		_, err := cl.PutBucketAcl(ctx, rgw.BucketToPutBucketACLInput(b))
-		if err != nil {
-			return err
-		}
-	}
-
-	//TODO: Add functionality for bucket ownership controls, using s3 apis:
-	// - DeleteBucketOwnershipControls
-	// - PutBucketOwnershipControls
 	for _, subResourceClient := range c.subresourceClients {
 		err := subResourceClient.Handle(ctx, b, backendName, bb)
 		if err != nil {

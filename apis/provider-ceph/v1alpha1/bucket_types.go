@@ -30,6 +30,9 @@ type BucketParameters struct {
 	// The canned ACL to apply to the bucket.
 	ACL *string `json:"acl,omitempty"`
 
+	// Contains the elements that set the ACL permissions for an object per grantee.
+	AccessControlPolicy *AccessControlPolicy `json:"accessControlPolicy,omitempty"`
+
 	// Allows grantee the read, write, read ACP, and write ACP permissions on the
 	// bucket.
 	GrantFullControl *string `json:"grantFullControl,omitempty"`

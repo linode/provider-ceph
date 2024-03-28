@@ -20,5 +20,9 @@ const (
 	errObserveLifecycleConfig = "failed to observe bucket lifecycle configuration"
 	errHandleLifecycleConfig  = "failed to handle bucket lifecycle configuration"
 
+	// ACL error messages.
+	errObserveAcl = "failed to observe bucket acl"
+	errHandleAcl  = "failed to handle bucket acl"
+
 	True = "true"
 )

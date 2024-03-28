@@ -32,11 +32,14 @@ import (
 	"go.uber.org/zap/zapcore"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	kcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -45,6 +48,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
@@ -75,7 +79,7 @@ func main() {
 		leaderElection = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()
 		leaderRenew    = app.Flag("leader-renew", "Set leader election renewal.").Short('r').Default("10s").OverrideDefaultFromEnvar("LEADER_ELECTION_RENEW").Duration()
 
-		// syncInterval         = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
+		syncInterval         = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
 		syncTimeout          = app.Flag("sync-timeout", "Cache sync timeout.").Default("10s").Duration()
 		pollInterval         = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("30m").Duration()
 		bucketExistsCache    = app.Flag("bucket-exists-cache", "How long the provider caches bucket exists result").Short('c').Default("5s").Duration()
@@ -200,7 +204,7 @@ func main() {
 	leaseDuration := time.Duration(int(oneDotTwo*float64(*leaderRenew))) * time.Second
 	leaderRetryDuration := *leaderRenew / two
 
-	// pausedSelector, err := labels.NewRequirement(meta.AnnotationKeyReconciliationPaused, selection.NotIn, []string{"true"})
+	pausedSelector, err := labels.NewRequirement(meta.AnnotationKeyReconciliationPaused, selection.NotIn, []string{"true"})
 	kingpin.FatalIfError(err, "Cannot create label selector")
 
 	providerSCheme := scheme.Scheme
@@ -224,18 +228,18 @@ func main() {
 			CertDir: *webhookTLSCertDir,
 		}),
 		Scheme: providerSCheme,
-		// Cache: kcache.Options{
-		// 	HTTPClient: cacheHTTPClient,
-		// 	SyncPeriod: syncInterval,
-		// 	Scheme:     providerSCheme,
-		// 	ByObject: map[client.Object]kcache.ByObject{
-		// 		&providercephv1alpha1.Bucket{}: {
-		// 			Label: labels.NewSelector().Add(*pausedSelector),
-		// 		},
-		// 		&v1alpha1.ProviderConfig{}: {},
-		// 	},
-		// },
-		// NewCache: kcache.New,
+		Cache: kcache.Options{
+			HTTPClient: cacheHTTPClient,
+			SyncPeriod: syncInterval,
+			Scheme:     providerSCheme,
+			ByObject: map[client.Object]kcache.ByObject{
+				&providercephv1alpha1.Bucket{}: {
+					Label: labels.NewSelector().Add(*pausedSelector),
+				},
+				&v1alpha1.ProviderConfig{}: {},
+			},
+		},
+		NewCache: kcache.New,
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 

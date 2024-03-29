@@ -98,7 +98,7 @@ func main() {
 		enableManagementPolicies   = app.Flag("enable-management-policies", "Enable support for Management Policies.").Default("false").Envar("ENABLE_MANAGEMENT_POLICIES").Bool()
 
 		autoPauseBucket       = app.Flag("auto-pause-bucket", "Enable auto pause of reconciliation of ready buckets").Default("false").Envar("AUTO_PAUSE_BUCKET").Bool()
-		minReplicas           = app.Flag("minimum-replicas", "Minimum number of replicas of a bucket").Default("2").Envar("MINIMUM_REPLICAS").Uint()
+		minReplicas           = app.Flag("minimum-replicas", "Minimum number of replicas of a bucket before it is considered synced").Default("2").Envar("MINIMUM_REPLICAS").Uint()
 		recreateMissingBucket = app.Flag("recreate-missing-bucket", "Recreates existing bucket if missing").Default("true").Envar("RECREATE_MISSING_BUCKET").Bool()
 
 		assumeRoleArn = app.Flag("assume-role-arn", "Assume role ARN to be used for STS authentication").Default("").Envar("ASSUME_ROLE_ARN").String()

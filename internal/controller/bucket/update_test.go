@@ -2,6 +2,9 @@ package bucket
 
 import (
 	"context"
+	"fmt"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -172,7 +175,11 @@ func TestUpdate(t *testing.T) {
 
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Available()),
-						"unexpected bucket condition")
+						"unexpected bucket ready condition")
+
+					assert.True(t,
+						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
+						"unexpected bucket synced condition")
 
 					assert.True(t,
 						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
@@ -219,9 +226,22 @@ func TestUpdate(t *testing.T) {
 
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Unavailable()),
-						"unexpected bucket condition")
+						"unexpected bucket ready condition")
 
-					assert.True(t, (len(bucket.Status.AtProvider.Backends) == 0), "backends should not exist in status")
+					unavailableBackends := []string{"s3-backend-1", "s3-backend-2"}
+					slices.Sort(unavailableBackends)
+					assert.True(t,
+						bucket.Status.Conditions[1].Equal(v1.ReconcileError(errors.New(
+							fmt.Sprintf(errUnavailableBackends, strings.Join(unavailableBackends, ", "))))),
+						"unexpected bucket synced condition")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Unavailable().
+							WithMessage(errors.Wrap(errors.Wrap(someError, "failed to assume role"), "Failed to create s3 client via assume role").Error())), "unexpected bucket condition for s3-backend-1")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(v1.Unavailable().
+							WithMessage(errors.Wrap(errors.Wrap(someError, "failed to assume role"), "Failed to create s3 client via assume role").Error())), "unexpected bucket condition for s3-backend-2")
 				},
 			},
 		},
@@ -257,10 +277,16 @@ func TestUpdate(t *testing.T) {
 				specificDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
-
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Unavailable()),
-						"unexpected bucket condition")
+						"unexpected bucket ready condition")
+
+					unavailableBackends := []string{"s3-backend-1", "s3-backend-2"}
+					slices.Sort(unavailableBackends)
+					assert.True(t,
+						bucket.Status.Conditions[1].Equal(v1.ReconcileError(errors.New(
+							fmt.Sprintf(errUnavailableBackends, strings.Join(unavailableBackends, ", "))))),
+						"unexpected bucket synced condition")
 
 					assert.True(t,
 						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Unavailable().WithMessage(errors.Wrap(someError, "failed to perform head bucket").Error())),
@@ -314,7 +340,12 @@ func TestUpdate(t *testing.T) {
 					// buckets on backends are Available.
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Available()),
-						"unexpected bucket condition")
+						"unexpected bucket ready condition")
+
+					assert.True(t,
+						bucket.Status.Conditions[1].Equal(v1.ReconcileError(errors.New(
+							fmt.Sprintf(errUnavailableBackends, strings.Join([]string{"s3-backend-2"}, ", "))))),
+						"unexpected bucket synced condition")
 
 					assert.True(t,
 						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
@@ -374,7 +405,11 @@ func TestUpdate(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Available()),
-						"unexpected bucket condition")
+						"unexpected bucket ready condition")
+
+					assert.True(t,
+						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
+						"unexpected bucket synced condition")
 
 					assert.True(t,
 						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
@@ -416,6 +451,7 @@ func TestUpdate(t *testing.T) {
 					s3clienthandler.WithBackendStore(tc.fields.backendStore),
 					s3clienthandler.WithKubeClient(cl)),
 				autoPauseBucket: tc.fields.autoPauseBucket,
+				minReplicas:     2,
 				log:             logging.NewNopLogger(),
 			}
 

@@ -296,7 +296,7 @@ func main() {
 			healthcheck.WithBackendStore(backendStore),
 			healthcheck.WithKubeClientUncached(kubeClientUncached),
 			healthcheck.WithKubeClientCached(mgr.GetClient()),
-			healthcheck.WithHttpClient(&http.Client{}),
+			healthcheck.WithHttpClient(&http.Client{Timeout: *s3Timeout}),
 			healthcheck.WithLogger(o.Logger))),
 		"Cannot setup ProviderConfig controllers")
 

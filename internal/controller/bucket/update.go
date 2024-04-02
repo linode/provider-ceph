@@ -128,6 +128,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 	for backendName := range c.backendStore.GetActiveBackends(providerNames) {
 		if !c.backendStore.IsBackendActive(backendName) {
 			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			bb.setBucketCondition(bucket.Name, backendName, xpv1.Unavailable().WithMessage("Backend is marked inactive"))
 
 			continue
 		}
@@ -136,6 +137,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 		if err != nil {
 			traces.SetAndRecordError(span, err)
 			c.log.Info("Failed to get client for backend - bucket cannot be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName, "error", err.Error())
+			bb.setBucketCondition(bucket.Name, backendName, xpv1.Unavailable().WithMessage(err.Error()))
 
 			continue
 		}

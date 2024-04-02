@@ -51,8 +51,8 @@ status:
           status: "True"
           type: Ready
   conditions:
-  - reason: Unavailable
-    status: "False"
+  - reason: Available
+    status: "True"
     type: Ready
   - reason: ReconcileError
     status: "False"

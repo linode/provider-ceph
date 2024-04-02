@@ -2,7 +2,9 @@ package bucket
 
 import (
 	"context"
+	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -19,6 +21,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 )
+
+const errUnavailableBackends = "Bucket is unavailable on the following backends: %s"
 
 // isBucketPaused returns true if the bucket has the paused label set.
 func isBucketPaused(bucket *v1alpha1.Bucket) bool {
@@ -142,14 +146,30 @@ func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends, pr
 	bucket.Status.AtProvider.Backends = backends
 
 	ok := 0
-	for _, backend := range backends {
+	unavailableBackends := make([]string, 0)
+	for backendName, backend := range backends {
 		if backend.BucketCondition.Equal(xpv1.Available()) {
 			ok++
+
+			continue
 		}
+		unavailableBackends = append(unavailableBackends, backendName)
 	}
-	if ok > 0 && float64(ok) >= math.Min(float64(len(providerNames)), float64(minReplicas)) {
+	// The Bucket CR is considered Available if the bucket is available on any backend.
+	if ok > 0 {
 		bucket.Status.SetConditions(xpv1.Available())
 	}
+	// The Bucket CR is considered Synced (ReconcileSuccess) once the bucket is available
+	// on the lesser of all backends or minimum replicas.
+	if float64(ok) >= math.Min(float64(len(providerNames)), float64(minReplicas)) {
+		bucket.Status.SetConditions(xpv1.ReconcileSuccess())
+
+		return
+	}
+	// The Bucket CR cannot be considered Synced.
+	slices.Sort(unavailableBackends)
+	err := errors.New(fmt.Sprintf(errUnavailableBackends, strings.Join(unavailableBackends, ", ")))
+	bucket.Status.SetConditions(xpv1.ReconcileError(err))
 }
 
 type UpdateRequired int

@@ -120,3 +120,57 @@ func TestMapConditionToHealthStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveHostBase(t *testing.T) {
+	t.Parallel()
+
+	type args struct {
+		hostBase string
+		useHTTPS bool
+	}
+
+	cases := map[string]struct {
+		args args
+		want string
+	}{
+		"Use https without prefix": {
+			args: args{
+				hostBase: "localhost",
+				useHTTPS: true,
+			},
+			want: "https://localhost",
+		},
+		"Use http without prefix": {
+			args: args{
+				hostBase: "localhost",
+				useHTTPS: false,
+			},
+			want: "http://localhost",
+		},
+		"Use https with prefix": {
+			args: args{
+				hostBase: "http://localhost",
+				useHTTPS: true,
+			},
+			want: "https://localhost",
+		},
+		"Use http with prefix": {
+			args: args{
+				hostBase: "http://localhost",
+				useHTTPS: false,
+			},
+			want: "http://localhost",
+		},
+	}
+	for name, tc := range cases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := ResolveHostBase(tc.args.hostBase, tc.args.useHTTPS)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("\n%s\nresolveHostBase(...): -want, +got:\n%s\n", tc.want, diff)
+			}
+		})
+	}
+}

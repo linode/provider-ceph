@@ -33,7 +33,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 		return err
 	}
-	span.SetAttributes(attribute.String("bucket", bucket.Name))
+	span.SetAttributes(attribute.String(consts.KeyBucketName, bucket.Name))
 
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()

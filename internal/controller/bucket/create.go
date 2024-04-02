@@ -35,7 +35,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, err
 	}
 
-	span.SetAttributes(attribute.String("bucket", bucket.Name))
+	span.SetAttributes(attribute.String(consts.KeyBucketName, bucket.Name))
 
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()

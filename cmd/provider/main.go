@@ -28,6 +28,7 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/linode/provider-ceph/internal/otel/traces"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap/zapcore"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,6 +39,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	kcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -62,7 +64,6 @@ import (
 
 	"github.com/linode/provider-ceph/internal/features"
 	"github.com/linode/provider-ceph/internal/rgw/cache"
-	kcache "sigs.k8s.io/controller-runtime/pkg/cache"
 )
 
 var defaultZapConfig = map[string]string{
@@ -206,13 +207,15 @@ func main() {
 	pausedSelector, err := labels.NewRequirement(meta.AnnotationKeyReconciliationPaused, selection.NotIn, []string{"true"})
 	kingpin.FatalIfError(err, "Cannot create label selector")
 
-	providerSCheme := scheme.Scheme
-	kingpin.FatalIfError(apis.AddToScheme(providerSCheme), "Cannot add Ceph APIs to scheme")
+	providerScheme := scheme.Scheme
+	kingpin.FatalIfError(apis.AddToScheme(providerScheme), "Cannot add Ceph APIs to scheme")
 
-	cacheHTTPClient, err := rest.HTTPClientFor(cfg)
+	httpClient, err := rest.HTTPClientFor(cfg)
 	kingpin.FatalIfError(err, "Cannot create HTTP client")
 
-	cacheHTTPClient.Timeout = *syncTimeout
+	httpClient.Transport = otelhttp.NewTransport(httpClient.Transport)
+	httpClient.Timeout = *syncTimeout
+
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		LeaderElection:             *leaderElection,
 		LeaderElectionID:           "crossplane-leader-election-provider-ceph-ibyaiby",
@@ -225,11 +228,11 @@ func main() {
 			Host:    *webhookHost,
 			CertDir: *webhookTLSCertDir,
 		}),
-		Scheme: providerSCheme,
+		Scheme: providerScheme,
 		Cache: kcache.Options{
-			HTTPClient: cacheHTTPClient,
+			HTTPClient: httpClient,
 			SyncPeriod: syncInterval,
-			Scheme:     providerSCheme,
+			Scheme:     providerScheme,
 			ByObject: map[client.Object]kcache.ByObject{
 				&providercephv1alpha1.Bucket{}: {
 					Label: labels.NewSelector().Add(*pausedSelector),
@@ -276,7 +279,10 @@ func main() {
 	backendStore := backendstore.NewBackendStore()
 
 	kubeClientUncached, err := client.New(cfg, client.Options{
-		Scheme: providerSCheme,
+		Scheme: providerScheme,
+		HTTPClient: &http.Client{
+			Transport: httpClient.Transport,
+		},
 	})
 	kingpin.FatalIfError(err, "Cannot create Kube client")
 

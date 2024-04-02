@@ -13,6 +13,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/utils"
+	"go.opentelemetry.io/otel"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -211,6 +212,9 @@ const (
 //		  // Handle error
 //		}
 func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, callbacks ...func(*v1alpha1.Bucket, *v1alpha1.Bucket) UpdateRequired) error {
+	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.updateBucketCR")
+	defer span.End()
+
 	bucketDeepCopy := bucket.DeepCopy()
 
 	nn := types.NamespacedName{Name: bucket.GetName()}

@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"k8s.io/client-go/util/retry"
 
@@ -62,7 +63,10 @@ func NewSTSClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alp
 	resolvedAddress := utils.ResolveHostBase(*stsAddress, pcSpec.UseHTTPS)
 
 	return sts.NewFromConfig(sessionConfig, func(o *sts.Options) {
-		o.HTTPClient = &http.Client{Timeout: s3Timeout}
+		o.HTTPClient = &http.Client{
+			Timeout:   s3Timeout,
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		}
 		o.BaseEndpoint = &resolvedAddress
 	}), nil
 }

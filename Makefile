@@ -208,6 +208,29 @@ ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
 # Create ProviderConfig CR representing localstack.
 dev-cluster: $(KUBECTL) generate-pkg generate-tests crossplane-cluster localstack-cluster cert-manager
 	@$(INFO) Rendering webhook manifest.
+	@$(MAKE) render-webhook
+	@$(INFO) Installing CRDs, ProviderConfig and Localstack
+	@$(KUBECTL) apply -R -f package/crds
+	@$(KUBECTL) apply -R -f package/webhookconfigurations
+	@$(KUBECTL) apply -R -f e2e/localstack/localstack-provider-cfg-host.yaml
+	@$(OK) Installing CRDs and ProviderConfig
+	@$(MAKE) webhook-tunnel
+
+# Spin up a Kind cluster install Crossplane CRDs (not containerised Crossplane componenets).
+# Install local provider-ceph CRDs.
+# Create ProviderConfig CR representing your own Ceph cluster.
+dev-cluster-ceph: $(KUBECTL) generate-pkg generate-tests crossplane-cluster localstack-cluster cert-manager
+	@$(INFO) Rendering webhook manifest.
+	@$(MAKE) render-webhook
+	@$(INFO) Installing CRDs, ProviderConfig and Localstack
+	@$(KUBECTL) apply -R -f package/crds
+	@$(KUBECTL) apply -R -f package/webhookconfigurations
+	@$(OK) Installing CRDs and ProviderConfig
+	@$(MAKE) webhook-tunnel
+	@AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY) CEPH_ADDRESS=$(CEPH_ADDRESS) ./hack/install-pc-ceph-cluster.sh
+
+render-webhook:
+	@$(INFO) Rendering webhook manifest.
 	@ex $(VAL_WBHK_STAGE)/service-patch-dev.tpl.yaml \
 		-c '%s/#WEBHOOK_HOST#/$(WEBHOOK_SUBDOMAIN).loca.lt/' \
 		-c 'sav! $(VAL_WBHK_STAGE)/service-patch.yaml' \
@@ -215,12 +238,7 @@ dev-cluster: $(KUBECTL) generate-pkg generate-tests crossplane-cluster localstac
 	$(KUSTOMIZE) build $(VAL_WBHK_STAGE) -o $(XPKG_DIR)/webhookconfigurations/manifests.yaml
 	@$(OK) Rendering webhook manifest.
 
-	@$(INFO) Installing CRDs, ProviderConfig and Localstack
-	@$(KUBECTL) apply -R -f package/crds
-	@$(KUBECTL) apply -R -f package/webhookconfigurations
-	@$(KUBECTL) apply -R -f e2e/localstack/localstack-provider-cfg-host.yaml
-	@$(OK) Installing CRDs and ProviderConfig
-
+webhook-tunnel:
 	@$(INFO) Starting webhook tunnel.
 	@WEBHOOK_TUNNEL_PORT=$(WEBHOOK_TUNNEL_PORT) WEBHOOK_HOST=$(WEBHOOK_HOST) WEBHOOK_SUBDOMAIN=$(WEBHOOK_SUBDOMAIN) docker compose -f ./hack/localtunnel.yaml up -d
 	@$(OK) Starting webhook tunnel.
@@ -246,6 +264,7 @@ dev-cluster: $(KUBECTL) generate-pkg generate-tests crossplane-cluster localstac
 		-CAkey $(PWD)/bin/certs/ca.key
 	@$(OK) Generate TLS certificate for webhook.
 
+
 dev-cluster-cacert: $(KUBECTL)
 	@rm -rf $(PWD)/bin/certs ; mkdir $(PWD)/bin/certs
 	@docker cp local-dev-control-plane:/etc/kubernetes/pki/ca.key $(PWD)/bin/certs/ca.key
@@ -255,6 +274,10 @@ dev-cluster-cacert: $(KUBECTL)
 # Best for development - locally run provider-ceph controller.
 # Removes need for Crossplane install via Helm.
 dev: dev-cluster run
+
+# Locally run provider-ceph controller against your own Ceph Cluster.
+# Removes need for Crossplane install via Helm.
+dev: dev-cluster-ceph run
 
 # Destroy Kind cluster and localstack.
 cluster-clean: $(KIND) $(KUBECTL)

@@ -1,0 +1,69 @@
+name: Release Canddate PR
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: tag-${{ github.ref }}-1
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-rc-pr:
+    if: "!startsWith(github.event.pull_request.head.ref, 'release-candidate-')"
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Pull main
+      run: |
+        git fetch origin main
+        git pull origin main
+
+    - name: Get Version
+      run: |
+          make submodules
+          version=$(make common.buildvars | grep "^VERSION=" | cut -d '=' -f 2)
+          echo "VERSION=$version" >> $GITHUB_ENV
+          echo "version is $VERSION"
+          branch=release-candidate-$version
+          echo "BRANCH=$branch" >> $GITHUB_ENV
+          echo "branch is $BRANCH"
+
+
+    - name: Set git config
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "<>"
+
+    - name: Create a new branch
+      run: |
+        git checkout -b $BRANCH
+
+    - name: Update image tag
+      run: /bin/bash ./hack/update-image-tag.sh $VERSION
+
+    - name: Commit
+      run: |
+        git add .
+        git commit -m "Bump version: ${VERSION}"
+        git push --set-upstream origin $BRANCH
+
+    - name: Create a PR
+      run: |
+        gh pr create \
+          --base ${GITHUB_REF#refs/heads/} \
+          --head $BRANCH \
+          --title "Bump version: ${VERSION}" \
+          --body "This PR is created by GitHub Actions."
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

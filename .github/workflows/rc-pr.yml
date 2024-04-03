@@ -27,6 +27,7 @@ jobs:
     - name: Pull main
       run: |
         git fetch origin main
+        git fetch --tags
         git pull origin main
 
     - name: Get Version

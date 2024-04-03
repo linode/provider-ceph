@@ -74,6 +74,7 @@ var defaultZapConfig = map[string]string{
 
 //nolint:maintidx // Function requires a lot of setup operations.
 func main() {
+	// Test.
 	var (
 		app            = kingpin.New(filepath.Base(os.Args[0]), "Ceph support for Crossplane.").DefaultEnvars()
 		leaderElection = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()

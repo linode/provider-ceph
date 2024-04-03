@@ -168,7 +168,8 @@ jobs:
   publish-artifacts:
     runs-on: ubuntu-22.04
     needs: detect-noop
-    if: needs.detect-noop.outputs.noop != 'true'
+    if: needs.detect-noop.outputs.noop != 'true' && "!startsWith(github.event.pull_request.head.ref, 'release-candidate-')"
+
 
     steps:
       - name: Setup QEMU

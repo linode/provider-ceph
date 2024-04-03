@@ -1,12 +1,14 @@
 name: Auto approve
 
-on: pull_request_target
+on: 
+  pull_request:
+    branches:
+      - 'release-candidate-'
 
 jobs:
   auto-approve:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-    if: startsWith(github.ref, 'refs/heads/release-candidate-')
     steps:
       - uses: hmarr/auto-approve-action@v4

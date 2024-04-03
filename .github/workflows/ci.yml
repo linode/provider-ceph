@@ -222,3 +222,29 @@ jobs:
       - name: Publish Artifacts
         if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != ''
         run: make publish BRANCH_NAME=${GITHUB_REF##*/}
+  commit-version:
+    runs-on: ubuntu-22.04
+    needs: detect-noop
+    if: needs.detect-noop.outputs.noop != 'true'
+    env:
+      VERSION: ${{GITHUB_REF##*/}}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set git config
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "<>"
+
+    - name: Update image tag
+      run: /bin/bash ./hack/update-image-tag.sh $VERSION
+
+    - name: Commit
+      run: |
+        git add .
+        git commit -m "Bump version: ${VERSION}"
+        git push origin main
+
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

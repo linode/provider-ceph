@@ -237,8 +237,8 @@ jobs:
 
     - name: Set git config
       run: |
-        git config user.name "GitHub Actions"
-        git config user.email "<>"
+        git config user.name "nolacon"
+        git config user.email "cmsnolan@gmail.com"
 
     - name: Update image tag
       run: /bin/bash ./hack/update-image-tag.sh $VERSION

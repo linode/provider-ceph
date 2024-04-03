@@ -176,20 +176,21 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-
-    - name: Set git config
-      run: |
-        git config user.name "nolancon"
-        git config user.email "cmsnolan@gmail.com"
+      with:
+        persist-credentials: false
+        fetch-depth: 0
 
     - name: Update image tag
       run: /bin/bash ./hack/update-image-tag.sh $VERSION
 
     - name: Commit
       run: |
-        git add .
-        git commit -m "Bump version: ${VERSION}"
-        git push origin main
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git commit -a -m "Bump version: ${VERSION}"
 
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}

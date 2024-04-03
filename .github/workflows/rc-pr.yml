@@ -1,0 +1,64 @@
+name: Release Canddate PR
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: tag-${{ github.ref }}-1
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-rc-pr:
+    # We don't want to run this on main upon merging the PR we are creating.
+    if: "!startsWith(github.event.pull_request.head.ref, 'release-candidate-')"
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with: 
+        fetch-depth: 0
+
+    - name: Get Version
+      run: |
+          make submodules
+          version=$(make common.buildvars | grep "^VERSION=" | cut -d '=' -f 2)
+          echo "VERSION=$version" >> $GITHUB_ENV
+          branch=release-candidate-$version
+          echo "BRANCH=$branch" >> $GITHUB_ENV
+
+    - name: Set git config
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "<>"
+
+    - name: Create a new branch
+      run: |
+        git checkout -b $BRANCH
+
+    - name: Update image tag
+      run: /bin/bash ./hack/update-image-tag.sh $VERSION
+
+    - name: Commit
+      run: |
+        git add .
+        git commit -m "Set release candidate version: ${VERSION}"
+        git push --set-upstream origin $BRANCH
+
+    - name: Create a PR
+      run: |
+        gh pr create \
+          --base ${GITHUB_REF#refs/heads/} \
+          --head $BRANCH \
+          --title "Release Candidate: ${VERSION}" \
+          --body "This PR is created by GitHub Actions."
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

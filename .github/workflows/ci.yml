@@ -165,7 +165,8 @@ jobs:
           flags: unittests
           file: _output/tests/linux_amd64/coverage.txt
 
-  commit-version:
+  create-rc-pr:
+    if: "!startsWith(github.event.pull_request.head.ref, 'release-candidate-')"
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -173,24 +174,35 @@ jobs:
     if: needs.detect-noop.outputs.noop != 'true'
     env:
       VERSION: ${GITHUB_REF##*/}
+      BRANCH: "release-candidate-${VERSION}"
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        persist-credentials: false
-        fetch-depth: 0
+
+    - name: Set git config
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "<>"
+
+    - name: Create a new branch
+      run: |
+        git checkout -b $BRANCH
 
     - name: Update image tag
       run: /bin/bash ./hack/update-image-tag.sh $VERSION
 
     - name: Commit
       run: |
-        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git commit -a -m "Bump version: ${VERSION}"
+        git add .
+        git commit -m "Bump version: ${VERSION}"
+        git push --set-upstream origin $BRANCH
 
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        branch: ${{ github.ref }}
+    - name: Create a PR
+      run: |
+        gh pr create \
+          --base ${GITHUB_REF#refs/heads/} \
+          --head $BRANCH \
+          --title "Bump version: ${VERSION}" \
+          --body "This PR is created by GitHub Actions."
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

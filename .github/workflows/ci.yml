@@ -222,8 +222,11 @@ jobs:
       - name: Publish Artifacts
         if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != ''
         run: make publish BRANCH_NAME=${GITHUB_REF##*/}
+
   commit-version:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
     env:

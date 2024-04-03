@@ -26,6 +26,7 @@ jobs:
 
     - name: Get Version
       run: |
+          make submodules
           version=$(make common.buildvars | grep "^VERSION=" | cut -d '=' -f 2)
           echo "VERSION=$version" >> $GITHUB_ENV
           echo "version is $VERSION"

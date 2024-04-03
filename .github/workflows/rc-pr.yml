@@ -25,7 +25,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Get Version
-        run: |
+      run: |
           version=$(make common.buildvars | grep "^VERSION=" | cut -d '=' -f 2)
           echo "VERSION=$version" >> $GITHUB_ENV
           echo "version is $VERSION"

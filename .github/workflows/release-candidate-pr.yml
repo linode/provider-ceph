@@ -16,8 +16,6 @@ permissions:
 
 jobs:
   create-rc-pr:
-    # We don't want to run this on main upon merging the PR we are creating.
-    if: ${{ !contains(github.event.head_commit.message, '[ignore ci]') }}
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -51,7 +49,7 @@ jobs:
     - name: Commit
       run: |
         git add .
-        git commit -m "Set release candidate version [ignore ci]: ${VERSION}"
+        git commit -m "Set release candidate version [skip ci]: ${VERSION}"
         git push --set-upstream origin $BRANCH
 
     - name: Create a PR
@@ -62,4 +60,4 @@ jobs:
           --title "Release Candidate: ${VERSION}" \
           --body "This PR is created by GitHub Actions."
       env:
-        GITHUB_TOKEN: ${{ secrets.UPDATE_VERSION }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

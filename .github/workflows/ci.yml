@@ -168,7 +168,7 @@ jobs:
   publish-artifacts:
     runs-on: ubuntu-22.04
     needs: detect-noop
-    if: needs.detect-noop.outputs.noop != 'true' || ${{ !contains(github.event.head_commit.message, '[ignore ci]') }}
+    if: needs.detect-noop.outputs.noop != 'true'
 
     steps:
       - name: Setup QEMU

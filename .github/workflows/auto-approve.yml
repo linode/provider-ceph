@@ -1,7 +1,8 @@
 name: Auto approve
 
-pull_request_target:
-  types: [opened]
+on:
+  pull_request_target:
+    types: [opened]
 
 jobs:
   auto-approve:

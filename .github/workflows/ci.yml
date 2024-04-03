@@ -168,10 +168,6 @@ jobs:
   create-rc-pr:
     if: "!startsWith(github.event.pull_request.head.ref, 'release-candidate-')"
     runs-on: ubuntu-22.04
-    permissions:
-      contents: write
-    needs: detect-noop
-    if: needs.detect-noop.outputs.noop != 'true'
     env:
       VERSION: ${GITHUB_REF##*/}
       BRANCH: "release-candidate-${VERSION}"

@@ -3,7 +3,7 @@ name: Auto approve
 on: 
   pull_request:
     branches:
-      - 'release-candidate-'
+      - 'release-candidate-*'
 
 jobs:
   auto-approve:

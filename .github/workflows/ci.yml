@@ -227,7 +227,7 @@ jobs:
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
     env:
-      VERSION: ${{GITHUB_REF##*/}}
+      VERSION: ${GITHUB_REF##*/}
     steps:
     - name: Checkout
       uses: actions/checkout@v4

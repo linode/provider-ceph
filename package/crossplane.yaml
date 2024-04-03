@@ -10,6 +10,3 @@ metadata:
     meta.crossplane.io/readme: |
       A Crossplane provider that performs CRUD operations on s3 buckets.
     friendly-name.meta.crossplane.io: Provider Ceph
-spec:
-  controller:
-    image: xpkg.upbound.io/linode/provider-ceph:v0.0.43

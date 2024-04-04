@@ -32,49 +32,29 @@ func NewACLClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l lo
 }
 
 func (l *ACLClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
-	ctx, span := otel.Tracer("").Start(ctx, "bucket.ACLClient.Observe")
+	_, span := otel.Tracer("").Start(ctx, "bucket.ACLClient.Observe")
 	defer span.End()
 
 	observationChan := make(chan ResourceStatus)
-	errChan := make(chan error)
 
 	for _, backendName := range backendNames {
 		beName := backendName
 		go func() {
-			observation, err := l.observeBackend(ctx, bucket, beName)
-			if err != nil {
-				errChan <- err
-
-				return
-			}
-			observationChan <- observation
+			observationChan <- l.observeBackend(bucket, beName)
 		}()
 	}
 
 	for i := 0; i < len(backendNames); i++ {
-		select {
-		case <-ctx.Done():
-			l.log.Info("Context timeout during bucket acl observation", consts.KeyBucketName, bucket.Name)
-			err := errors.Wrap(ctx.Err(), errObserveAcl)
-			traces.SetAndRecordError(span, err)
-
-			return NeedsUpdate, err
-		case observation := <-observationChan:
-			if observation != Updated {
-				return observation, nil
-			}
-		case err := <-errChan:
-			err = errors.Wrap(err, errObserveAcl)
-			traces.SetAndRecordError(span, err)
-
-			return NeedsUpdate, err
+		observation := <-observationChan
+		if observation != Updated {
+			return observation, nil
 		}
 	}
 
 	return Updated, nil
 }
 
-func (l *ACLClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
+func (l *ACLClient) observeBackend(bucket *v1alpha1.Bucket, backendName string) ResourceStatus {
 	l.log.Info("Observing subresource acl on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
@@ -82,7 +62,7 @@ func (l *ACLClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket,
 		// The backend may be down for some time and we do not want to block Create/Update/Delete
 		// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
 		// phase until the backend becomes Healthy or Disabled.
-		return Updated, nil
+		return Updated
 	}
 
 	// If your bucket uses the bucket owner enforced setting for S3 Object
@@ -90,7 +70,7 @@ func (l *ACLClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket,
 	if s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
 		l.log.Info("Access control limits are disabled - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
-		return Updated, nil
+		return Updated
 	}
 
 	if bucket.Spec.ForProvider.AccessControlPolicy == nil &&
@@ -101,26 +81,17 @@ func (l *ACLClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket,
 		bucket.Spec.ForProvider.GrantReadACP == nil {
 		l.log.Info("No access control policy or grants requested - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
-		return Updated, nil
-
+		return Updated
 	}
 
-	return NeedsUpdate, nil
+	return NeedsUpdate
 }
 
 func (l *ACLClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.ACLClient.Handle")
 	defer span.End()
 
-	observation, err := l.observeBackend(ctx, b, backendName)
-	if err != nil {
-		err = errors.Wrap(err, errHandleAcl)
-		traces.SetAndRecordError(span, err)
-
-		return err
-	}
-
-	switch observation {
+	switch l.observeBackend(b, backendName) {
 	case Updated:
 		return nil
 

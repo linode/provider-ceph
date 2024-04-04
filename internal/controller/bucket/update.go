@@ -177,7 +177,7 @@ func (c *external) updateOnBackend(ctx context.Context, beName string, bucket *v
 			c.log.Info("Recreated missing bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 		}
 
-		err = c.doUpdateOnBackend(ctx, cl, bucket, beName, bb)
+		err = c.doUpdateOnBackend(ctx, bucket, beName, bb)
 		if err != nil {
 			c.log.Info("Error occurred attempting to update bucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 			bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
@@ -200,7 +200,7 @@ func (c *external) updateOnBackend(ctx context.Context, beName string, bucket *v
 	}
 }
 
-func (c *external) doUpdateOnBackend(ctx context.Context, cl backendstore.S3Client, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+func (c *external) doUpdateOnBackend(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	for _, subResourceClient := range c.subresourceClients {
 		err := subResourceClient.Handle(ctx, b, backendName, bb)
 		if err != nil {

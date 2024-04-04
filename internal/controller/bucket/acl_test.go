@@ -17,13 +17,11 @@ limitations under the License.
 package bucket
 
 import (
-	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
@@ -49,7 +47,6 @@ func TestACLObserveBackend(t *testing.T) {
 
 	type want struct {
 		status ResourceStatus
-		err    error
 	}
 
 	cases := map[string]struct {
@@ -79,7 +76,6 @@ func TestACLObserveBackend(t *testing.T) {
 			},
 			want: want{
 				status: Updated,
-				err:    nil,
 			},
 		},
 		"Object ownership is enforced for the bucket": {
@@ -108,7 +104,6 @@ func TestACLObserveBackend(t *testing.T) {
 			},
 			want: want{
 				status: Updated,
-				err:    nil,
 			},
 		},
 		"No policy or grants specified for the bucket": {
@@ -135,7 +130,6 @@ func TestACLObserveBackend(t *testing.T) {
 			},
 			want: want{
 				status: Updated,
-				err:    nil,
 			},
 		},
 		"Policy specified for the bucket": {
@@ -173,7 +167,6 @@ func TestACLObserveBackend(t *testing.T) {
 			},
 			want: want{
 				status: NeedsUpdate,
-				err:    nil,
 			},
 		},
 		"Grant specified for the bucket": {
@@ -202,7 +195,6 @@ func TestACLObserveBackend(t *testing.T) {
 			},
 			want: want{
 				status: NeedsUpdate,
-				err:    nil,
 			},
 		},
 	}
@@ -218,8 +210,7 @@ func TestACLObserveBackend(t *testing.T) {
 					s3clienthandler.WithBackendStore(tc.fields.backendStore)),
 				logging.NewNopLogger())
 
-			got, err := c.observeBackend(context.Background(), tc.args.bucket, tc.args.backendName)
-			require.ErrorIs(t, err, tc.want.err, "unexpected error")
+			got := c.observeBackend(tc.args.bucket, tc.args.backendName)
 			assert.Equal(t, tc.want.status, got, "unexpected status")
 		})
 	}

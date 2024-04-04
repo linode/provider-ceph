@@ -3,7 +3,6 @@ package rgw
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 )
@@ -19,7 +18,7 @@ func BucketToPutBucketACLInput(bucket *v1alpha1.Bucket) *s3.PutBucketAclInput {
 	putBucketAclInput.GrantWriteACP = bucket.Spec.ForProvider.GrantWriteACP
 
 	if bucket.Spec.ForProvider.AccessControlPolicy != nil {
-		aclPolicy := &types.AccessControlPolicy{}
+		aclPolicy := &s3types.AccessControlPolicy{}
 		if bucket.Spec.ForProvider.AccessControlPolicy.Grants != nil {
 			aclPolicy.Grants = GenerateGrants(bucket.Spec.ForProvider.AccessControlPolicy.Grants)
 		}
@@ -33,20 +32,20 @@ func BucketToPutBucketACLInput(bucket *v1alpha1.Bucket) *s3.PutBucketAclInput {
 	return putBucketAclInput
 }
 
-func GenerateAccessControlPolicy(policyIn *v1alpha1.AccessControlPolicy) *types.AccessControlPolicy {
-	return &types.AccessControlPolicy{
+func GenerateAccessControlPolicy(policyIn *v1alpha1.AccessControlPolicy) *s3types.AccessControlPolicy {
+	return &s3types.AccessControlPolicy{
 		Grants: GenerateGrants(policyIn.Grants),
 		Owner:  GenerateOwner(policyIn.Owner),
 	}
 }
 
-func GenerateGrants(grantsIn []v1alpha1.Grant) []types.Grant {
-	grantsOut := make([]types.Grant, 0)
+func GenerateGrants(grantsIn []v1alpha1.Grant) []s3types.Grant {
+	grantsOut := make([]s3types.Grant, 0)
 
 	for _, grantIn := range grantsIn {
-		localGrant := types.Grant{}
+		localGrant := s3types.Grant{}
 		if grantIn.Grantee != nil {
-			localGrant.Grantee = &types.Grantee{}
+			localGrant.Grantee = &s3types.Grantee{}
 			if grantIn.Grantee.DisplayName != nil {
 				localGrant.Grantee.DisplayName = grantIn.Grantee.DisplayName
 			}
@@ -59,9 +58,9 @@ func GenerateGrants(grantsIn []v1alpha1.Grant) []types.Grant {
 			if grantIn.Grantee.URI != nil {
 				localGrant.Grantee.URI = grantIn.Grantee.URI
 			}
-			localGrant.Permission = types.Permission(grantIn.Permission)
+			localGrant.Permission = s3types.Permission(grantIn.Permission)
 			// Type is required.
-			localGrant.Grantee.Type = types.Type(grantIn.Grantee.Type)
+			localGrant.Grantee.Type = s3types.Type(grantIn.Grantee.Type)
 		}
 		grantsOut = append(grantsOut, localGrant)
 	}
@@ -69,8 +68,8 @@ func GenerateGrants(grantsIn []v1alpha1.Grant) []types.Grant {
 	return grantsOut
 }
 
-func GenerateOwner(ownerIn *v1alpha1.Owner) *types.Owner {
-	ownerOut := &types.Owner{}
+func GenerateOwner(ownerIn *v1alpha1.Owner) *s3types.Owner {
+	ownerOut := &s3types.Owner{}
 	if ownerIn.DisplayName != nil {
 		ownerOut.DisplayName = ownerIn.DisplayName
 	}

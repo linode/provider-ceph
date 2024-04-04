@@ -152,6 +152,11 @@ spec:
                     type: object
                   acl:
                     description: The canned ACL to apply to the bucket.
+                    enum:
+                    - private
+                    - public-read
+                    - public-read-write
+                    - authenticated-read
                     type: string
                   assumeRoleTags:
                     description: AssumeRoleTags may be used to add custom values to

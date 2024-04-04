@@ -61,7 +61,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	updateAllErr := c.updateOnAllBackends(ctx, bucket, bucketBackends, providerNames)
 	if updateAllErr != nil {
-		c.log.Info("Failed to update on all bckends", consts.KeyBucketName, bucket.Name, "error", updateAllErr.Error())
+		c.log.Info("Failed to update on all backends", consts.KeyBucketName, bucket.Name, "error", updateAllErr.Error())
 		traces.SetAndRecordError(span, updateAllErr)
 	}
 

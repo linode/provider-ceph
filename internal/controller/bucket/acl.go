@@ -88,15 +88,21 @@ func (l *ACLClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket,
 	// If your bucket uses the bucket owner enforced setting for S3 Object
 	// Ownership, ACLs are disabled and no longer affect permissions.
 	if s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
-		l.log.Info("access control limits are disabled - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+		l.log.Info("Access control limits are disabled - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return Updated, nil
 	}
 
-	if bucket.Spec.ForProvider.AccessControlPolicy == nil {
-		l.log.Info("no acl defined in bucket spec - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+	if bucket.Spec.ForProvider.AccessControlPolicy == nil &&
+		bucket.Spec.ForProvider.GrantFullControl == nil &&
+		bucket.Spec.ForProvider.GrantWrite == nil &&
+		bucket.Spec.ForProvider.GrantWriteACP == nil &&
+		bucket.Spec.ForProvider.GrantRead == nil &&
+		bucket.Spec.ForProvider.GrantReadACP == nil {
+		l.log.Info("No access control policy or grants requested - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return Updated, nil
+
 	}
 
 	return NeedsUpdate, nil

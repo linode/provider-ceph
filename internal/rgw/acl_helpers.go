@@ -12,6 +12,11 @@ func BucketToPutBucketACLInput(bucket *v1alpha1.Bucket) *s3.PutBucketAclInput {
 	putBucketAclInput := &s3.PutBucketAclInput{}
 	putBucketAclInput.ACL = s3types.BucketCannedACL(aws.ToString(bucket.Spec.ForProvider.ACL))
 	putBucketAclInput.Bucket = aws.String(bucket.Name)
+	putBucketAclInput.GrantFullControl = bucket.Spec.ForProvider.GrantFullControl
+	putBucketAclInput.GrantRead = bucket.Spec.ForProvider.GrantRead
+	putBucketAclInput.GrantReadACP = bucket.Spec.ForProvider.GrantReadACP
+	putBucketAclInput.GrantWrite = bucket.Spec.ForProvider.GrantWrite
+	putBucketAclInput.GrantWriteACP = bucket.Spec.ForProvider.GrantWriteACP
 
 	if bucket.Spec.ForProvider.AccessControlPolicy != nil {
 		aclPolicy := &types.AccessControlPolicy{}

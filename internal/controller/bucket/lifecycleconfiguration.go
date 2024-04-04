@@ -106,11 +106,11 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 		// Either way, it should not exist on any backend.
 		if response == nil || len(response.Rules) == 0 {
 			// No lifecycle config found on this backend.
-			l.log.Info("no lifecycle configuration found on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			l.log.Info("No lifecycle configuration found on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return Updated, nil
 		} else {
-			l.log.Info("lifecycle configuration found on backend - requires deletion", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			l.log.Info("Lifecycle configuration found on backend - requires deletion", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return NeedsDeletion, nil
 		}
@@ -137,7 +137,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	// is almost never expected.
 	if !cmp.Equal(external, rgw.GenerateLifecycleRules(local),
 		cmpopts.IgnoreFields(s3types.LifecycleRule{}, "ID"), cmpopts.IgnoreTypes(document.NoSerde{})) {
-		l.log.Info("lifecycle configuration requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+		l.log.Info("Lifecycle configuration requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return NeedsUpdate, nil
 	}

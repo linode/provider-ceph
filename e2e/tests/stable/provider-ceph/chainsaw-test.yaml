@@ -1,0 +1,355 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: provider-ceph
+spec:
+  steps:
+  - name: step-00
+    try:
+    - assert:
+        file: 00-assert.yaml
+  - name: step-01
+    try:
+    - command:
+        args:
+        - apply
+        - -f
+        - ../../../localstack/localstack-provider-cfg.yaml
+        entrypoint: kubectl
+    - assert:
+        file: 01-assert.yaml
+  - name: step-02
+    try:
+    - apply:
+        file: 02-bucket-for-all.yaml
+    - assert:
+        file: 02-assert.yaml
+  - name: step-03
+    try:
+    - apply:
+        file: 03-disable-lc-config.yaml
+    - assert:
+        file: 03-assert.yaml
+  - name: step-04
+    try:
+    - command:
+        args:
+        - bucket_exists
+        - bucket-for-all-prov-set
+        - local-dev-control-plane:32566
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_exists
+        - bucket-for-all-prov-set
+        - local-dev-control-plane:32567
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_exists
+        - bucket-for-all-prov-set
+        - local-dev-control-plane:32568
+        entrypoint: ../../../../hack/expect_bucket.sh
+  - name: step-05
+    try:
+    - apply:
+        file: 05-bucket-for-localstack-b.yaml
+    - assert:
+        file: 05-assert.yaml
+  - name: step-06
+    try:
+    - command:
+        args:
+        - bucket_exists
+        - bucket-for-all-prov-set
+        - local-dev-control-plane:32566
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-localstack-b
+        - local-dev-control-plane:32566
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_exists
+        - bucket-for-all-prov-set
+        - local-dev-control-plane:32567
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_exists
+        - bucket-for-localstack-b
+        - local-dev-control-plane:32567
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_exists
+        - bucket-for-all-prov-set
+        - local-dev-control-plane:32568
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-localstack-b
+        - local-dev-control-plane:32568
+        entrypoint: ../../../../hack/expect_bucket.sh
+  - name: step-07
+    try:
+    - command:
+        args:
+        - delete
+        - bucket
+        - bucket-for-all-prov-set
+        entrypoint: kubectl
+    - command:
+        args:
+        - patch
+        - --type=merge
+        - buckets
+        - bucket-for-all-prov-empty
+        - -p
+        - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - delete
+        - bucket
+        - bucket-for-all-prov-empty
+        entrypoint: kubectl
+    - error:
+        file: 07-errors.yaml
+  - name: step-08
+    try:
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-all-prov-set
+        - local-dev-control-plane:32566
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-localstack-b
+        - local-dev-control-plane:32566
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-all-prov-set
+        - local-dev-control-plane:32567
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_exists
+        - bucket-for-localstack-b
+        - local-dev-control-plane:32567
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-all-prov-set
+        - local-dev-control-plane:32568
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-localstack-b
+        - local-dev-control-plane:32568
+        entrypoint: ../../../../hack/expect_bucket.sh
+  - name: step-09
+    try:
+    - apply:
+        file: 09-disable-bucket.yaml
+    - assert:
+        file: 09-assert.yaml
+  - name: step-10
+    try:
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-all-prov-set
+        - local-dev-control-plane:32566
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-localstack-b
+        - local-dev-control-plane:32566
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-all-prov-set
+        - local-dev-control-plane:32567
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-localstack-b
+        - local-dev-control-plane:32567
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-all-prov-set
+        - local-dev-control-plane:32568
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-localstack-b
+        - local-dev-control-plane:32568
+        entrypoint: ../../../../hack/expect_bucket.sh
+  - name: step-11
+    try:
+    - command:
+        args:
+        - patch
+        - service
+        - localstack-a
+        - -n
+        - crossplane-system
+        - --type=merge
+        - -p
+        - '{"spec":{"selector":{"io.kompose.service":"not-exists"}}}'
+        entrypoint: kubectl
+    - assert:
+        file: 11-assert.yaml
+  - name: step-12
+    try:
+    - command:
+        args:
+        - patch
+        - service
+        - localstack-a
+        - -n
+        - crossplane-system
+        - --type=merge
+        - -p
+        - '{"spec":{"selector":{"io.kompose.service":"localstack-a"}}}'
+        entrypoint: kubectl
+    - assert:
+        file: 12-assert.yaml
+  - name: step-13
+    try:
+    - command:
+        args:
+        - scale
+        - -n
+        - crossplane-system
+        - deploy/localstack-a
+        - --replicas=0
+        entrypoint: kubectl
+    - assert:
+        file: 13-assert.yaml
+  - name: step-14
+    try:
+    - apply:
+        file: 14-bucket-for-all.yaml
+    - assert:
+        file: 14-assert.yaml
+  - name: step-15
+    try:
+    - command:
+        args:
+        - scale
+        - -n
+        - crossplane-system
+        - deploy/localstack-a
+        - --replicas=1
+        entrypoint: kubectl
+    - assert:
+        file: 15-assert.yaml
+  - name: step-16
+    try:
+    - assert:
+        file: 16-assert.yaml
+  - name: step-17
+    try:
+    - command:
+        args:
+        - patch
+        - --type=merge
+        - buckets
+        - bucket-for-all-prov-empty
+        - -p
+        - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - delete
+        - bucket
+        - bucket-for-all-prov-empty
+        entrypoint: kubectl
+    - command:
+        args:
+        - patch
+        - --type=merge
+        - buckets
+        - bucket-for-all-prov-c-disabled
+        - -p
+        - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - delete
+        - bucket
+        - bucket-for-all-prov-c-disabled
+        entrypoint: kubectl
+    - error:
+        file: 17-errors.yaml
+  - name: step-98
+    try:
+    - command:
+        args:
+        - delete
+        - providerconfig
+        - --all
+        entrypoint: kubectl
+    - error:
+        file: 98-errors.yaml
+  - name: step-99
+    try:
+    - command:
+        args:
+        - "8"
+        entrypoint: sleep
+    - command:
+        args:
+        - bucket_does_not_exist
+        - localstack-a-health-check
+        - local-dev-control-plane:32566
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - localstack-b-health-check
+        - local-dev-control-plane:32567
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - localstack-c-health-check
+        - local-dev-control-plane:32568
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - lifecycle-config-validation-bucket
+        - local-dev-control-plane:32566
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - lifecycle-config-validation-bucket
+        - local-dev-control-plane:32567
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - lifecycle-config-validation-bucket
+        - local-dev-control-plane:32568
+        entrypoint: ../../../../hack/expect_bucket.sh

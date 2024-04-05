@@ -1,4 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-  - command: kubectl patch service localstack-a -n crossplane-system --type='merge' -p '{"spec":{"selector":{"io.kompose.service":"not-exists"}}}'

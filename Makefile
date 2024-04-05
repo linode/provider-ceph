@@ -188,12 +188,13 @@ load-package: $(KIND) build kustomize-webhook
 # Build the controller image and the provider package.
 # Load the controller image to the Kind cluster and add the provider package
 # to the Provider.
-# Run Kuttl test suite on newly built controller image.
+# Run Chainsaw test suite on newly built controller image.
 # Destroy Kind and localstack.
-kuttl: $(KUTTL) generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
-	@$(INFO) Running kuttl test suite
-	@$(KUTTL) test --config e2e/kuttl/stable/provider-ceph-$(LATEST_KUBE_VERSION).yaml
-	@$(OK) Running kuttl test suite
+.PHONY: chainsaw
+chainsaw: $(CHAINSAW) generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
+	@$(INFO) Running chainsaw test suite
+	$(CHAINSAW) test e2e/tests/stable --config e2e/tests/stable/.chainsaw.yaml
+	@$(OK) Running chainsaw test suite
 	@$(MAKE) cluster-clean
 
 ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
@@ -391,3 +392,14 @@ $(GOVULNCHECK):
 	@GOBIN=$(TOOLS_HOST_DIR) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
 	@mv $(TOOLS_HOST_DIR)/govulncheck $(GOVULNCHECK)
 	@$(OK) installing govulncheck $(GOVULNCHECK_VERSION)
+
+CHAINSAW_VERSION ?= v0.1.9
+CHAINSAW := $(TOOLS_HOST_DIR)/chainsaw-$(CHAINSAW_VERSION)
+
+# chainsaw download and install.
+$(CHAINSAW):
+	@$(INFO) installing chainsaw $(CHAINSAW_VERSION)
+	@mkdir -p $(TOOLS_HOST_DIR)
+	@GOBIN=$(TOOLS_HOST_DIR) go install github.com/kyverno/chainsaw@$(CHAINSAW_VERSION)
+	@mv $(TOOLS_HOST_DIR)/chainsaw $(CHAINSAW)
+	@$(OK) installing chainsaw $(CHAINSAW_VERSION)

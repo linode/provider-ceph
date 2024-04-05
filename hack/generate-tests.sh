@@ -52,23 +52,7 @@ EOF
 		mkdir -p ./e2e/kuttl/ceph
     fi
 
-    if [ ! -d "./e2e/kuttl/stable" ]; then
-		mkdir -p ./e2e/kuttl/stable
-	fi
-	file=./e2e/kuttl/stable/${REPO}-${major}.yaml
     file_ceph=./e2e/kuttl/ceph/${REPO}-${major}.yaml
-
-	# tests use 'stable' testDir in CI
-	cat <<EOF > "${file}"
-${HEADER}
-apiVersion: kuttl.dev/v1beta1
-kind: TestSuite
-testDirs:
-- ./e2e/tests/stable
-kindConfig: e2e/kind/kind-config-${major}.yaml
-startKIND: false
-timeout: 120
-EOF
 
 	# tests use 'ceph' testDir for manual tests
 	cat <<EOF > "${file_ceph}"
@@ -82,20 +66,20 @@ startKIND: false
 timeout: 120
 EOF
 
-file=./.github/workflows/kuttl-e2e-test-${major}.yaml
+file=./.github/workflows/chainsaw-e2e-test-${major}.yaml
 
 	cat <<EOF > "${file}"
 ${HEADER}
-name: kuttl e2e test ${major}
+name: chainsaw e2e test ${major}
 on: [push]
 concurrency:
-  group: kuttl-${major}-\${{ github.ref }}-1
+  group: chainsaw-${major}-\${{ github.ref }}-1
   cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   test:
-    name: kuttl e2e test ${major}
+    name: chainsaw e2e test ${major}
     runs-on: ubuntu-latest
     env:
       KUTTL: /usr/local/bin/kubectl-kuttl
@@ -112,14 +96,10 @@ jobs:
         uses: ScribeMD/docker-cache@0.3.7
         with:
           key: docker-\${{ runner.os }}-\${{ hashFiles('go.sum') }}}
-      - name: Install dependencies
-        run: |
-          sudo curl -Lo \$KUTTL https://github.com/kudobuilder/kuttl/releases/download/v0.13.0/kubectl-kuttl_0.13.0_linux_x86_64
-          sudo chmod +x \$KUTTL
       - name: Build
         run: make submodules build
-      - name: Run kuttl tests ${major}
-        run: make kuttl
+      - name: Run chainsaw tests ${major}
+        run: make chainsaw
         env:
           LATEST_KUBE_VERSION: '${major}'
           AWS_ACCESS_KEY_ID: 'Dummy'

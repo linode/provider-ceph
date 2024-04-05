@@ -861,7 +861,7 @@ spec:
           metadata:
             name: localstack-c
 
-  - name: Check that LC config validation  buckets have been removed from backends.
+  - name: Check that LC config validation buckets have been removed from backends.
     try:
     - sleep:
         duration: 8s

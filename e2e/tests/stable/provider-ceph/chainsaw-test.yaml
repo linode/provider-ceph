@@ -435,8 +435,9 @@ spec:
           metadata:
             name: bucket-for-all-prov-empty
 
-  - name: Check bucket-for-all-prov-set and bucket-for-localstack-b FIXME checking for wrong bucket.
+  - name: Check for bucket-for-all-prov-set and bucket-for-all-prov-empty on backends.
     try:
+    # Check for bucket-for-all-prov-set on all backends.
     - command:
         args:
         - bucket_does_not_exist
@@ -446,19 +447,7 @@ spec:
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-localstack-b
-        - local-dev-control-plane:32566
-        entrypoint: ../../../../hack/expect_bucket.sh
-    - command:
-        args:
-        - bucket_does_not_exist
         - bucket-for-all-prov-set
-        - local-dev-control-plane:32567
-        entrypoint: ../../../../hack/expect_bucket.sh
-    - command:
-        args:
-        - bucket_exists
-        - bucket-for-localstack-b
         - local-dev-control-plane:32567
         entrypoint: ../../../../hack/expect_bucket.sh
     - command:
@@ -467,14 +456,27 @@ spec:
         - bucket-for-all-prov-set
         - local-dev-control-plane:32568
         entrypoint: ../../../../hack/expect_bucket.sh
+    # Check for bucket-for-all-prov-empty on all backends.
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-localstack-b
+        - bucket-for-all-prov-empty
+        - local-dev-control-plane:32566
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-all-prov-empty
+        - local-dev-control-plane:32567
+        entrypoint: ../../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - bucket-for-all-prov-empty
         - local-dev-control-plane:32568
         entrypoint: ../../../../hack/expect_bucket.sh
 
-  - name: Disable bucket-for-localstack-b FIXME the assertion should be an error.
+  - name: Disable bucket-for-localstack-b and assert that there are no backend in the Bucket Status.
     try:
     - apply:
         resource:
@@ -494,42 +496,26 @@ spec:
           metadata:
             name: bucket-for-localstack-b
           spec:
+            providers:
+            - localstack-b
             disabled: true
           status:
             atProvider:
               configurableField: ""
 
-  - name: Check that bucket-for-all-prov-set and bucket-for-localstack-b do not exist on any backends FIXME already checked for bucket-for-all-prov-set.
+  - name: Check that bucket-for-localstack-b does not exist on any backends after being disabled.
     try:
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-all-prov-set
-        - local-dev-control-plane:32566
-        entrypoint: ../../../../hack/expect_bucket.sh
-    - command:
-        args:
-        - bucket_does_not_exist
         - bucket-for-localstack-b
         - local-dev-control-plane:32566
         entrypoint: ../../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-all-prov-set
-        - local-dev-control-plane:32567
-        entrypoint: ../../../../hack/expect_bucket.sh
-    - command:
-        args:
-        - bucket_does_not_exist
         - bucket-for-localstack-b
         - local-dev-control-plane:32567
-        entrypoint: ../../../../hack/expect_bucket.sh
-    - command:
-        args:
-        - bucket_does_not_exist
-        - bucket-for-all-prov-set
-        - local-dev-control-plane:32568
         entrypoint: ../../../../hack/expect_bucket.sh
     - command:
         args:

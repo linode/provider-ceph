@@ -313,10 +313,8 @@ spec:
         file: 98-errors.yaml
   - name: step-99
     try:
-    - command:
-        args:
-        - "8"
-        entrypoint: sleep
+    - sleep:
+        duration: 8s
     - command:
         args:
         - bucket_does_not_exist

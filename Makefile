@@ -7,7 +7,7 @@ PROJECT_ROOT = $(shell git rev-parse --show-toplevel)
 PLATFORMS ?= linux_amd64 linux_arm64
 -include build/makelib/common.mk
 
-# Generate kuttl e2e tests for the following kind node versions
+# Generate chainsaw e2e tests for the following kind node versions
 # TEST_KIND_NODES is not intended to be updated manually.
 # Please edit LATEST_KIND_NODE instead and run 'make update-kind-nodes'.
 TEST_KIND_NODES ?= 1.26.14,1.27.11,1.28.7,1.29.2
@@ -15,8 +15,6 @@ TEST_KIND_NODES ?= 1.26.14,1.27.11,1.28.7,1.29.2
 LATEST_KUBE_VERSION ?= 1.29
 LATEST_KIND_NODE ?= 1.29.2
 REPO ?= provider-ceph
-
-KUTTL_VERSION ?= 0.15.0
 
 CROSSPLANE_VERSION ?= 1.15.0
 LOCALSTACK_VERSION ?= 2.2
@@ -95,7 +93,7 @@ e2e.run: test-integration
 update-kind-nodes:
 	LATEST_KIND_NODE=$(LATEST_KIND_NODE) ./hack/update-kind-nodes.sh
 
-# Generate kuttl e2e tests.
+# Generate chainsaw e2e tests.
 generate-tests:
 	TEST_KIND_NODES=$(TEST_KIND_NODES) REPO=$(REPO) LOCALSTACK_VERSION=$(LOCALSTACK_VERSION) CERT_MANAGER_VERSION=$(CERT_MANAGER_VERSION) ./hack/generate-tests.sh
 

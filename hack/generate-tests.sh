@@ -88,16 +88,25 @@ jobs:
         uses: styfle/cancel-workflow-action@0.9.1
         with:
           access_token: \${{ github.token }}
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+
+      - name: Vendor Dependencies
+        run: make vendor vendor.check
+
       - name: Docker cache
         uses: ScribeMD/docker-cache@0.3.7
         with:
           key: docker-\${{ runner.os }}-\${{ hashFiles('go.sum') }}}
-      - name: Build
-        run: make submodules build
+
       - name: Run chainsaw tests ${major}
         run: make chainsaw
         env:
@@ -105,11 +114,6 @@ jobs:
           AWS_ACCESS_KEY_ID: 'Dummy'
           AWS_SECRET_ACCESS_KEY: 'Dummy'
           AWS_DEFAULT_REGION: 'us-east-1'
-      - uses: actions/upload-artifact@v4
-        if: \${{ always() }}
-        with:
-          name: kind-logs
-          path: kind-logs-*
 EOF
 
 done

@@ -184,6 +184,9 @@ load-package: $(KIND) build kustomize-webhook
 	@BUILD_REGISTRY=$(BUILD_REGISTRY) PROJECT_NAME=$(PROJECT_NAME) ARCH=$(ARCH) VERSION=$(VERSION) ./hack/deploy-provider.sh
 	@$(OK) deploying provider package $(PROJECT_NAME) $(VERSION)
 
+CHAINSAW_VERSION ?= v0.1.9
+CHAINSAW_BIN := $(TOOLS_HOST_DIR)/chainsaw-$(CHAINSAW_VERSION)
+
 # Spin up a Kind cluster and localstack and install Crossplane via Helm.
 # Build the controller image and the provider package.
 # Load the controller image to the Kind cluster and add the provider package
@@ -191,11 +194,19 @@ load-package: $(KIND) build kustomize-webhook
 # Run Chainsaw test suite on newly built controller image.
 # Destroy Kind and localstack.
 .PHONY: chainsaw
-chainsaw: $(CHAINSAW) generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
+chainsaw: $(CHAINSAW_BIN) generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
 	@$(INFO) Running chainsaw test suite
-	$(CHAINSAW) test e2e/tests/stable --config e2e/tests/stable/.chainsaw.yaml
+	$(CHAINSAW_BIN) test e2e/tests/stable --config e2e/tests/stable/.chainsaw.yaml
 	@$(OK) Running chainsaw test suite
 	@$(MAKE) cluster-clean
+
+# chainsaw binary download and install.
+$(CHAINSAW_BIN):
+	@$(INFO) installing chainsaw $(CHAINSAW_VERSION)
+	@mkdir -p $(TOOLS_HOST_DIR)
+	@GOBIN=$(TOOLS_HOST_DIR) go install github.com/kyverno/chainsaw@$(CHAINSAW_VERSION)
+	@mv $(TOOLS_HOST_DIR)/chainsaw $(CHAINSAW_BIN)
+	@$(OK) installing chainsaw $(CHAINSAW_VERSION)
 
 ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
 	@$(INFO) Creating kind cluster
@@ -392,14 +403,3 @@ $(GOVULNCHECK):
 	@GOBIN=$(TOOLS_HOST_DIR) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
 	@mv $(TOOLS_HOST_DIR)/govulncheck $(GOVULNCHECK)
 	@$(OK) installing govulncheck $(GOVULNCHECK_VERSION)
-
-CHAINSAW_VERSION ?= v0.1.9
-CHAINSAW := $(TOOLS_HOST_DIR)/chainsaw-$(CHAINSAW_VERSION)
-
-# chainsaw download and install.
-$(CHAINSAW):
-	@$(INFO) installing chainsaw $(CHAINSAW_VERSION)
-	@mkdir -p $(TOOLS_HOST_DIR)
-	@GOBIN=$(TOOLS_HOST_DIR) go install github.com/kyverno/chainsaw@$(CHAINSAW_VERSION)
-	@mv $(TOOLS_HOST_DIR)/chainsaw $(CHAINSAW)
-	@$(OK) installing chainsaw $(CHAINSAW_VERSION)

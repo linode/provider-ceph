@@ -1,6 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-  - command: helm repo add crossplane-stable https://charts.crossplane.io/stable
-  - command: helm repo update
-  - command: helm install crossplane --namespace crossplane-system --create-namespace crossplane-stable/crossplane

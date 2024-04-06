@@ -196,7 +196,7 @@ CHAINSAW_BIN := $(TOOLS_HOST_DIR)/chainsaw-$(CHAINSAW_VERSION)
 .PHONY: chainsaw
 chainsaw: $(CHAINSAW_BIN) generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
 	@$(INFO) Running chainsaw test suite
-	$(CHAINSAW_BIN) test e2e/tests/stable --config e2e/tests/stable/.chainsaw.yaml
+	$(CHAINSAW_BIN) test e2e/tests/stable
 	@$(OK) Running chainsaw test suite
 	@$(MAKE) cluster-clean
 
@@ -208,11 +208,12 @@ $(CHAINSAW_BIN):
 	@mv $(TOOLS_HOST_DIR)/chainsaw $(CHAINSAW_BIN)
 	@$(OK) installing chainsaw $(CHAINSAW_VERSION)
 
-ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
-	@$(INFO) Creating kind cluster
-	@$(KIND) create cluster --name=$(KIND_CLUSTER_NAME)
-	@$(OK) Creating kind cluster
-	@$(KUTTL) test --config e2e/kuttl/ceph/provider-ceph-$(LATEST_KUBE_VERSION).yaml
+.PHONY: ceph-chainsaw
+ceph-chainsaw: $(CHAINSAW_BIN) crossplane-cluster load-package
+	@$(INFO) Running chainsaw test suite against ceph cluster
+	$(CHAINSAW_BIN) test e2e/tests/ceph
+	@$(OK) Running chainsaw test suite against ceph cluster
+	@$(MAKE) cluster-clean
 
 # Spin up a Kind cluster and localstack and install Crossplane CRDs (not
 # containerised Crossplane componenets).

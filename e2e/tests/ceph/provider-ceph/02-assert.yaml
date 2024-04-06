@@ -1,9 +1,0 @@
-apiVersion: ceph.crossplane.io/v1alpha1
-kind: ProviderConfig
-metadata:
-  name: ceph-cluster
-status:
-  conditions:
-  - reason: HealthCheckSuccess
-    status: "True"
-    type: Ready

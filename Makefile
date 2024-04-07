@@ -194,7 +194,7 @@ CHAINSAW_BIN := $(TOOLS_HOST_DIR)/chainsaw-$(CHAINSAW_VERSION)
 .PHONY: chainsaw
 chainsaw: $(CHAINSAW_BIN) generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
 	@$(INFO) Running chainsaw test suite
-	$(CHAINSAW_BIN) test e2e/tests/stable
+	$(CHAINSAW_BIN) test e2e/tests/stable --config e2e/tests/stable/.chainsaw.yaml
 	@$(OK) Running chainsaw test suite
 	@$(MAKE) cluster-clean
 

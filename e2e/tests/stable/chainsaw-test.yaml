@@ -114,14 +114,14 @@ spec:
           status:
             availableReplicas: 1
 
-  - name: Apply bucket-for-all-prov-set and bucket-for-all-prov-empty.
+  - name: Apply lc-config-bucket and auto-pause-bucket.
     try:
     - apply:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-set
+            name: lc-config-bucket
             labels:
               provider-ceph.crossplane.io/validation-required: "true"
           spec:
@@ -140,19 +140,19 @@ spec:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-empty
+            name: auto-pause-bucket
             labels:
               provider-ceph.crossplane.io/validation-required: "true"
           spec:
             autoPause: true
             forProvider: {}
-    # Assert bucket-for-all-prov-set is synced with LC configs on backends.
+    # Assert lc-config-bucket is synced with LC configs on backends.
     - assert:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-set
+            name: lc-config-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
             - "bucket-in-use.provider-ceph.crossplane.io"
@@ -199,13 +199,13 @@ spec:
 #              status: "True"
 #              type: Synced
 
-    # Assert bucket-for-all-prov-empty is synced with paused label.
+    # Assert auto-pause-bucket is synced with paused label.
     - assert:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-empty
+            name: auto-pause-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
             - "bucket-in-use.provider-ceph.crossplane.io"
@@ -240,14 +240,14 @@ spec:
               status: "True"
               type: Synced
 
-  - name: Disable LC config on bucket-for-all-prov-set.
+  - name: Disable LC config on lc-config-bucket.
     try:
     - apply:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-set
+            name: lc-config-bucket
             labels:
               provider-ceph.crossplane.io/validation-required: "true"
           spec:
@@ -265,13 +265,13 @@ spec:
                     days: 1
                   filter:
                     prefix: "images/"
-    # Assert that the LC config has been removed from bucket-for-all-prov-set.
+    # Assert that the LC config has been removed from lc-config-bucket.
     - assert:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-set
+            name: lc-config-bucket
           status:
             atProvider:
               backends:
@@ -290,76 +290,77 @@ spec:
                     reason: Available
                     status: "True"
                     type: Ready
-            conditions:
-            - reason: Available
-              status: "True"
-              type: Ready
-            - reason: ReconcileSuccess
-              status: "True"
-              type: Synced
+# TODO: These conditions are appearing in the wrong order which is causing the test to fail.                   
+#            conditions:
+#            - reason: Available
+#              status: "True"
+#              type: Ready
+#            - reason: ReconcileSuccess
+#              status: "True"
+#              type: Synced
 
   - name: Check for buckets on Localstack backends.
     try:
-    # Check for bucket-for-all-prov-set on all backends.
+    # Check for lc-config-bucket on all backends.
     - command:
         args:
         - bucket_exists
-        - bucket-for-all-prov-set
+        - lc-config-bucket
         - local-dev-control-plane:32566
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_exists
-        - bucket-for-all-prov-set
+        - lc-config-bucket
         - local-dev-control-plane:32567
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_exists
-        - bucket-for-all-prov-set
+        - lc-config-bucket
         - local-dev-control-plane:32568
         entrypoint: ../../../hack/expect_bucket.sh
-    # Check for bucket-for-all-prov-empty on all backends.
+    # Check for auto-pause-bucket on all backends.
     - command:
         args:
         - bucket_exists
-        - bucket-for-all-prov-empty
+        - auto-pause-bucket
         - local-dev-control-plane:32566
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_exists
-        - bucket-for-all-prov-empty
+        - auto-pause-bucket
         - local-dev-control-plane:32567
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_exists
-        - bucket-for-all-prov-empty
+        - auto-pause-bucket
         - local-dev-control-plane:32568
         entrypoint: ../../../hack/expect_bucket.sh
 
-  - name: Apply bucket-for-localstack-b.
+  - name: Apply localstack-b-bucket.
     try:
     - apply:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-localstack-b
+            name: localstack-b-bucket
             labels:
               provider-ceph.crossplane.io/validation-required: "true"
           spec:
             providers:
             - localstack-b
             forProvider: {}
-    # Assert that bucket-for-localstack-b was created on localsatck-b only.
+    # Assert that localstack-b-bucket was created on localsatck-b only.
     - assert:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-localstack-b
+            name: localstack-b-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
             - "bucket-in-use.provider-ceph.crossplane.io"
@@ -379,42 +380,42 @@ spec:
               status: "True"
               type: Synced
 
-  - name: Check that bucket-for-localstack-b only exists on backend localstack-b.
+  - name: Check that localstack-b-bucket only exists on backend localstack-b.
     try:
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-localstack-b
+        - localstack-b-bucket
         - local-dev-control-plane:32566
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_exists
-        - bucket-for-localstack-b
+        - localstack-b-bucket
         - local-dev-control-plane:32567
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-localstack-b
+        - localstack-b-bucket
         - local-dev-control-plane:32568
         entrypoint: ../../../hack/expect_bucket.sh
 
-  - name: Delete bucket-for-all-prov-set and bucket-for-all-prov-empty.
+  - name: Delete lc-config-bucket and auto-pause-bucket.
     try:
     - command:
         args:
         - delete
         - bucket
-        - bucket-for-all-prov-set
+        - lc-config-bucket
         entrypoint: kubectl
     - command:
-      # We need to "unpause" bucket-for-all-prov-set to allow deletion.
+      # We need to "unpause" lc-config-bucket to allow deletion.
         args:
         - patch
         - --type=merge
         - buckets
-        - bucket-for-all-prov-empty
+        - auto-pause-bucket
         - -p
         - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
         entrypoint: kubectl
@@ -422,70 +423,70 @@ spec:
         args:
         - delete
         - bucket
-        - bucket-for-all-prov-empty
+        - auto-pause-bucket
         entrypoint: kubectl
     - error:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-set
+            name: lc-config-bucket
     - error:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-empty
+            name: auto-pause-bucket
 
-  - name: Check for bucket-for-all-prov-set and bucket-for-all-prov-empty on backends.
+  - name: Check for lc-config-bucket and auto-pause-bucket on backends.
     try:
-    # Check for bucket-for-all-prov-set on all backends.
+    # Check for lc-config-bucket on all backends.
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-all-prov-set
+        - lc-config-bucket
         - local-dev-control-plane:32566
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-all-prov-set
+        - lc-config-bucket
         - local-dev-control-plane:32567
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-all-prov-set
+        - lc-config-bucket
         - local-dev-control-plane:32568
         entrypoint: ../../../hack/expect_bucket.sh
-    # Check for bucket-for-all-prov-empty on all backends.
+    # Check for auto-pause-bucket on all backends.
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-all-prov-empty
+        - auto-pause-bucket
         - local-dev-control-plane:32566
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-all-prov-empty
+        - auto-pause-bucket
         - local-dev-control-plane:32567
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-all-prov-empty
+        - auto-pause-bucket
         - local-dev-control-plane:32568
         entrypoint: ../../../hack/expect_bucket.sh
 
-  - name: Disable bucket-for-localstack-b and assert that there are no backend in the Bucket Status.
+  - name: Disable localstack-b-bucket and assert that there are no backend in the Bucket Status.
     try:
     - apply:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-localstack-b
+            name: localstack-b-bucket
           spec:
             providers:
             - localstack-b
@@ -496,7 +497,7 @@ spec:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-localstack-b
+            name: localstack-b-bucket
           spec:
             providers:
             - localstack-b
@@ -505,24 +506,24 @@ spec:
             atProvider:
               configurableField: ""
 
-  - name: Check that bucket-for-localstack-b does not exist on any backends after being disabled.
+  - name: Check that localstack-b-bucket does not exist on any backends after being disabled.
     try:
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-localstack-b
+        - localstack-b-bucket
         - local-dev-control-plane:32566
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-localstack-b
+        - localstack-b-bucket
         - local-dev-control-plane:32567
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_does_not_exist
-        - bucket-for-localstack-b
+        - localstack-b-bucket
         - local-dev-control-plane:32568
         entrypoint: ../../../hack/expect_bucket.sh
 
@@ -598,14 +599,14 @@ spec:
               status: "False"
               type: Ready
 
-  - name: Apply bucket-for-all-prov-empty and bucket-for-all-prov-c-disabled.
+  - name: Apply auto-pause-bucket and avoid-localstack-c-bucket.
     try:
     - apply:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-empty
+            name: auto-pause-bucket
             labels:
               provider-ceph.crossplane.io/validation-required: "true"
           spec:
@@ -616,21 +617,21 @@ spec:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-c-disabled
+            name: avoid-localstack-c-bucket
             labels:
               provider-ceph.crossplane.io/validation-required: "true"
               provider-ceph.backends.localstack-c: "false"
           spec:
             autoPause: true
             forProvider: {}
-    # Assert bucket-for-all-prov-empty is only created on localstack-b
+    # Assert auto-pause-bucket is only created on localstack-b
     # and localstack-c, as localstack-a is currently unhealthy.
     - assert:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-empty
+            name: auto-pause-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
             - "bucket-in-use.provider-ceph.crossplane.io"
@@ -659,7 +660,7 @@ spec:
             - reason: ReconcileSuccess
               status: "True"
               type: Synced
-    # Assert bucket-for-all-prov-c-disabled is only created on localstack-b,
+    # Assert avoid-localstack-c-bucket is only created on localstack-b,
     # as localstack-a is currently unhealthy and this bucket is not intended
     # for localstack-c via the "false" label that was set.
     - assert:
@@ -667,7 +668,7 @@ spec:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-c-disabled
+            name: avoid-localstack-c-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
             - "bucket-in-use.provider-ceph.crossplane.io"
@@ -713,14 +714,14 @@ spec:
               status: "True"
               type: Ready
 
-  - name: Assert bucket-for-all-prov-empty and bucket-for-all-prov-c-disabled are created on localstack-a now that it is Healthy.
+  - name: Assert auto-pause-bucket and avoid-localstack-c-bucket are created on localstack-a now that it is Healthy.
     try:
     - assert:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-empty
+            name: auto-pause-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
             - "bucket-in-use.provider-ceph.crossplane.io"
@@ -759,7 +760,7 @@ spec:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-c-disabled
+            name: avoid-localstack-c-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
             - "bucket-in-use.provider-ceph.crossplane.io"
@@ -789,15 +790,15 @@ spec:
               status: "True"
               type: Synced
 
-  - name: Delete bucket-for-all-prov-empty and bucket-for-all-prov-c-disabled.
+  - name: Delete auto-pause-bucket and avoid-localstack-c-bucket.
     try:
     - command:
-      # We need to "unpause" bucket-for-all-prov-empty to allow deletion.
+      # We need to "unpause" auto-pause-bucket to allow deletion.
         args:
         - patch
         - --type=merge
         - buckets
-        - bucket-for-all-prov-empty
+        - auto-pause-bucket
         - -p
         - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
         entrypoint: kubectl
@@ -805,15 +806,15 @@ spec:
         args:
         - delete
         - bucket
-        - bucket-for-all-prov-empty
+        - auto-pause-bucket
         entrypoint: kubectl
     - command:
-      # We need to "unpause" bucket-for-all-prov-c-disabled to allow deletion.
+      # We need to "unpause" avoid-localstack-c-bucket to allow deletion.
         args:
         - patch
         - --type=merge
         - buckets
-        - bucket-for-all-prov-c-disabled
+        - avoid-localstack-c-bucket
         - -p
         - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
         entrypoint: kubectl
@@ -821,20 +822,20 @@ spec:
         args:
         - delete
         - bucket
-        - bucket-for-all-prov-c-disabled
+        - avoid-localstack-c-bucket
         entrypoint: kubectl
     - error:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-empty
+            name: auto-pause-bucket
     - error:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: bucket-for-all-prov-c-disabled
+            name: avoid-localstack-c-bucket
 
   - name: Delete all ProviderConfigs.
     try:

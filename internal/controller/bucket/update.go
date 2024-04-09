@@ -8,9 +8,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
@@ -64,7 +61,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	updateAllErr := c.updateOnAllBackends(ctx, bucket, bucketBackends, providerNames)
 	if updateAllErr != nil {
-		c.log.Info("Failed to update on all bckends", consts.KeyBucketName, bucket.Name, "error", updateAllErr.Error())
+		c.log.Info("Failed to update on all backends", consts.KeyBucketName, bucket.Name, "error", updateAllErr.Error())
 		traces.SetAndRecordError(span, updateAllErr)
 	}
 
@@ -180,7 +177,7 @@ func (c *external) updateOnBackend(ctx context.Context, beName string, bucket *v
 			c.log.Info("Recreated missing bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 		}
 
-		err = c.doUpdateOnBackend(ctx, cl, bucket, beName, bb)
+		err = c.doUpdateOnBackend(ctx, bucket, beName, bb)
 		if err != nil {
 			c.log.Info("Error occurred attempting to update bucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 			bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
@@ -203,17 +200,7 @@ func (c *external) updateOnBackend(ctx context.Context, beName string, bucket *v
 	}
 }
 
-func (c *external) doUpdateOnBackend(ctx context.Context, cl backendstore.S3Client, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
-	if s3types.ObjectOwnership(aws.ToString(b.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
-		_, err := cl.PutBucketAcl(ctx, rgw.BucketToPutBucketACLInput(b))
-		if err != nil {
-			return err
-		}
-	}
-
-	//TODO: Add functionality for bucket ownership controls, using s3 apis:
-	// - DeleteBucketOwnershipControls
-	// - PutBucketOwnershipControls
+func (c *external) doUpdateOnBackend(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	for _, subResourceClient := range c.subresourceClients {
 		err := subResourceClient.Handle(ctx, b, backendName, bb)
 		if err != nil {

@@ -28,7 +28,11 @@ import (
 // BucketParameters are the configurable fields of a Bucket.
 type BucketParameters struct {
 	// The canned ACL to apply to the bucket.
+	// +kubebuilder:validation:Enum=private;public-read;public-read-write;authenticated-read
 	ACL *string `json:"acl,omitempty"`
+
+	// Contains the elements that set the ACL permissions for an object per grantee.
+	AccessControlPolicy *AccessControlPolicy `json:"accessControlPolicy,omitempty"`
 
 	// Allows grantee the read, write, read ACP, and write ACP permissions on the
 	// bucket.

@@ -277,7 +277,7 @@ dev: dev-cluster run
 
 # Locally run provider-ceph controller against your own Ceph Cluster.
 # Removes need for Crossplane install via Helm.
-dev: dev-cluster-ceph run
+dev-ceph: dev-cluster-ceph run
 
 # Destroy Kind cluster and localstack.
 cluster-clean: $(KIND) $(KUBECTL)

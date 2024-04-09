@@ -190,27 +190,14 @@ spec:
                     reason: Available
                     status: "True"
                     type: Ready
-    # Extra assertion for overall Bucket conditions.
-    # This method of iterative assertions is necessary here because
-    # these conditions do not always appear in the same order.
-    # We perform this as a separate assertion, after the initial
-    # assertion because this method will result in a nil error
-    # if the conditions do not exist.
-    - assert:
-        resource:
-          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
-          kind: Bucket
-          metadata:
-            name: lc-config-bucket
-          status:
-            ~.(conditions[?reason == 'Available']):
-              status: "True"
-              type: Ready
-            ~.(conditions[?reason == 'ReconcileSuccess']):
-              status: "True"
-              type: Synced
-
-
+            # This method of test assertion is necessary here because
+            # these conditions do not always appear in the same order.
+            (conditions[?type == 'Ready']):
+            - status: "True"
+              reason: Available
+            (conditions[?type == 'Synced']):
+            - status: "True"
+              reason: ReconcileSuccess
     # Assert auto-pause-bucket is synced with paused label.
     - assert:
         resource:
@@ -302,16 +289,14 @@ spec:
                     reason: Available
                     status: "True"
                     type: Ready
-            # This method of iterative assertions is necessary here because
+            # This method of test assertion is necessary here because
             # these conditions do not always appear in the same order.
-            # It's safe to perform this assertions because we have already
-            # asserted that these conditios exist.
-            ~.(conditions[?reason == 'Available']):
-              status: "True"
-              type: Ready
-            ~.(conditions[?reason == 'ReconcileSuccess']):
-              status: "True"
-              type: Synced
+            (conditions[?type == 'Ready']):
+            - status: "True"
+              reason: Available
+            (conditions[?type == 'Synced']):
+            - status: "True"
+              reason: ReconcileSuccess
 
   - name: Check for buckets on Localstack backends.
     try:

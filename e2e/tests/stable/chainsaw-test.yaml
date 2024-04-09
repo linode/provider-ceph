@@ -1,0 +1,902 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: provider-ceph
+spec:
+  steps:
+
+  - name: Assert that Crossplane has been installed.
+    try:
+    - assert:
+        resource:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: crossplane
+            namespace: crossplane-system
+          status:
+            readyReplicas: 1
+    - assert:
+        resource:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: crossplane-rbac-manager
+            namespace: crossplane-system
+          status:
+            readyReplicas: 1
+    - assert:
+        resource:
+          apiVersion: apiextensions.k8s.io/v1
+          kind: CustomResourceDefinition
+          metadata:
+            name: providerconfigs.ceph.crossplane.io
+
+  - name: Apply Localstack PCs. Assert Deployments are available and PCs are healthy.
+    try:
+    - command:
+      # We don't do this inline because we use the localstack provider config mainifest
+      # located in the localstack directory. We do this because this mainfes is used
+      # elsewhere and it's best to use the same one everywhere.
+        args:
+        - apply
+        - -f
+        - ../../localstack/localstack-provider-cfg.yaml
+        entrypoint: kubectl
+    # Assert that Localstack ProviderConfigs are healthy.
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-a
+          status:
+            conditions:
+            - reason: HealthCheckSuccess
+              status: "True"
+              type: Ready
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-b
+          status:
+            conditions:
+            - reason: HealthCheckSuccess
+              status: "True"
+              type: Ready
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-c
+          status:
+            conditions:
+            - reason: HealthCheckSuccess
+              status: "True"
+              type: Ready
+    # Assert that Localstack Deployments are available.
+    - assert:
+        resource:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            labels:
+              io.kompose.service: localstack-a
+            name: localstack-a
+            namespace: crossplane-system
+          status:
+            availableReplicas: 1
+    - assert:
+        resource:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            labels:
+              io.kompose.service: localstack-b
+            name: localstack-b
+            namespace: crossplane-system
+          status:
+            availableReplicas: 1
+    - assert:
+        resource:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            labels:
+              io.kompose.service: localstack-c
+            name: localstack-c
+            namespace: crossplane-system
+          status:
+            availableReplicas: 1
+
+  - name: Apply lc-config-bucket and auto-pause-bucket.
+    try:
+    - apply:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: lc-config-bucket
+            labels:
+              provider-ceph.crossplane.io/validation-required: "true"
+          spec:
+            lifecycleConfigurationDisabled: false
+            forProvider:
+              lifecycleConfiguration:
+                rules:
+                - id: "ImageExpiration"
+                  status: "Enabled"
+                  expiration:
+                    days: 1
+                  filter:
+                    prefix: "images/"
+    - apply:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: auto-pause-bucket
+            labels:
+              provider-ceph.crossplane.io/validation-required: "true"
+          spec:
+            autoPause: true
+            forProvider: {}
+    # Assert lc-config-bucket is synced with LC configs on backends.
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: lc-config-bucket
+            finalizers:
+            - "finalizer.managedresource.crossplane.io"
+            - "bucket-in-use.provider-ceph.crossplane.io"
+            labels:
+              provider-ceph.backends.localstack-a: "true"
+              provider-ceph.backends.localstack-b: "true"
+              provider-ceph.backends.localstack-c: "true"
+          status:
+            atProvider:
+              backends:
+                localstack-a:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                  lifecycleConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                localstack-b:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                  lifecycleConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                localstack-c:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                  lifecycleConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+    # Extra assertion for overall Bucket conditions.
+    # This method of iterative assertions is necessary here because
+    # these conditions do not always appear in the same order.
+    # We perform this as a separate assertion, after the initial
+    # assertion because this method will result in a nil error
+    # if the conditions do not exist.
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: lc-config-bucket
+          status:
+            ~.(conditions[?reason == 'Available']):
+              status: "True"
+              type: Ready
+            ~.(conditions[?reason == 'ReconcileSuccess']):
+              status: "True"
+              type: Synced
+
+
+    # Assert auto-pause-bucket is synced with paused label.
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: auto-pause-bucket
+            finalizers:
+            - "finalizer.managedresource.crossplane.io"
+            - "bucket-in-use.provider-ceph.crossplane.io"
+            labels:
+              crossplane.io/paused: "true"
+              provider-ceph.backends.localstack-a: "true"
+              provider-ceph.backends.localstack-b: "true"
+              provider-ceph.backends.localstack-c: "true"
+          status:
+            atProvider:
+              backends:
+                localstack-a:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                localstack-b:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                localstack-c:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+            conditions:
+            - reason: Available
+              status: "True"
+              type: Ready
+            - reason: ReconcileSuccess
+              status: "True"
+              type: Synced
+
+  - name: Disable LC config on lc-config-bucket.
+    try:
+    - apply:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: lc-config-bucket
+            labels:
+              provider-ceph.crossplane.io/validation-required: "true"
+          spec:
+            providers:
+            - localstack-a
+            - localstack-b
+            - localstack-c
+            lifecycleConfigurationDisabled: true
+            forProvider:
+              lifecycleConfiguration:
+                rules:
+                - id: "ImageExpiration"
+                  status: "Enabled"
+                  expiration:
+                    days: 1
+                  filter:
+                    prefix: "images/"
+    # Assert that the LC config has been removed from lc-config-bucket.
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: lc-config-bucket
+          status:
+            atProvider:
+              backends:
+                localstack-a:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                localstack-b:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                localstack-c:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+            # This method of iterative assertions is necessary here because
+            # these conditions do not always appear in the same order.
+            # It's safe to perform this assertions because we have already
+            # asserted that these conditios exist.
+            ~.(conditions[?reason == 'Available']):
+              status: "True"
+              type: Ready
+            ~.(conditions[?reason == 'ReconcileSuccess']):
+              status: "True"
+              type: Synced
+
+  - name: Check for buckets on Localstack backends.
+    try:
+    # Check for lc-config-bucket on all backends.
+    - command:
+        args:
+        - bucket_exists
+        - lc-config-bucket
+        - local-dev-control-plane:32566
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_exists
+        - lc-config-bucket
+        - local-dev-control-plane:32567
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_exists
+        - lc-config-bucket
+        - local-dev-control-plane:32568
+        entrypoint: ../../../hack/expect_bucket.sh
+    # Check for auto-pause-bucket on all backends.
+    - command:
+        args:
+        - bucket_exists
+        - auto-pause-bucket
+        - local-dev-control-plane:32566
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_exists
+        - auto-pause-bucket
+        - local-dev-control-plane:32567
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_exists
+        - auto-pause-bucket
+        - local-dev-control-plane:32568
+        entrypoint: ../../../hack/expect_bucket.sh
+
+  - name: Apply localstack-b-bucket.
+    try:
+    - apply:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: localstack-b-bucket
+            labels:
+              provider-ceph.crossplane.io/validation-required: "true"
+          spec:
+            providers:
+            - localstack-b
+            forProvider: {}
+    # Assert that localstack-b-bucket was created on localsatck-b only.
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: localstack-b-bucket
+            finalizers:
+            - "finalizer.managedresource.crossplane.io"
+            - "bucket-in-use.provider-ceph.crossplane.io"
+          status:
+            atProvider:
+              backends:
+                localstack-b:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+            conditions:
+            - reason: Available
+              status: "True"
+              type: Ready
+            - reason: ReconcileSuccess
+              status: "True"
+              type: Synced
+
+  - name: Check that localstack-b-bucket only exists on backend localstack-b.
+    try:
+    - command:
+        args:
+        - bucket_does_not_exist
+        - localstack-b-bucket
+        - local-dev-control-plane:32566
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_exists
+        - localstack-b-bucket
+        - local-dev-control-plane:32567
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - localstack-b-bucket
+        - local-dev-control-plane:32568
+        entrypoint: ../../../hack/expect_bucket.sh
+
+  - name: Delete lc-config-bucket and auto-pause-bucket.
+    try:
+    - command:
+        args:
+        - delete
+        - bucket
+        - lc-config-bucket
+        entrypoint: kubectl
+    - command:
+      # We need to "unpause" lc-config-bucket to allow deletion.
+        args:
+        - patch
+        - --type=merge
+        - buckets
+        - auto-pause-bucket
+        - -p
+        - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - delete
+        - bucket
+        - auto-pause-bucket
+        entrypoint: kubectl
+    - error:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: lc-config-bucket
+    - error:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: auto-pause-bucket
+
+  - name: Check for lc-config-bucket and auto-pause-bucket on backends.
+    try:
+    # Check for lc-config-bucket on all backends.
+    - command:
+        args:
+        - bucket_does_not_exist
+        - lc-config-bucket
+        - local-dev-control-plane:32566
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - lc-config-bucket
+        - local-dev-control-plane:32567
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - lc-config-bucket
+        - local-dev-control-plane:32568
+        entrypoint: ../../../hack/expect_bucket.sh
+    # Check for auto-pause-bucket on all backends.
+    - command:
+        args:
+        - bucket_does_not_exist
+        - auto-pause-bucket
+        - local-dev-control-plane:32566
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - auto-pause-bucket
+        - local-dev-control-plane:32567
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - auto-pause-bucket
+        - local-dev-control-plane:32568
+        entrypoint: ../../../hack/expect_bucket.sh
+
+  - name: Disable localstack-b-bucket and assert that there are no backend in the Bucket Status.
+    try:
+    - apply:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: localstack-b-bucket
+          spec:
+            providers:
+            - localstack-b
+            disabled: true
+            forProvider: {}
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: localstack-b-bucket
+          spec:
+            providers:
+            - localstack-b
+            disabled: true
+          status:
+            atProvider:
+              configurableField: ""
+
+  - name: Check that localstack-b-bucket does not exist on any backends after being disabled.
+    try:
+    - command:
+        args:
+        - bucket_does_not_exist
+        - localstack-b-bucket
+        - local-dev-control-plane:32566
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - localstack-b-bucket
+        - local-dev-control-plane:32567
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - localstack-b-bucket
+        - local-dev-control-plane:32568
+        entrypoint: ../../../hack/expect_bucket.sh
+
+  - name: Make localstack-a unreachable and therefore Unhealthy.
+    try:
+    - command:
+        args:
+        - patch
+        - service
+        - localstack-a
+        - -n
+        - crossplane-system
+        - --type=merge
+        - -p
+        - '{"spec":{"selector":{"io.kompose.service":"not-exists"}}}'
+        entrypoint: kubectl
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-a
+          status:
+            conditions:
+            - reason: HealthCheckFail
+              status: "False"
+              type: Ready
+
+  - name: Make localstack-a reachable again and therefore Healthy.
+    try:
+    - command:
+        args:
+        - patch
+        - service
+        - localstack-a
+        - -n
+        - crossplane-system
+        - --type=merge
+        - -p
+        - '{"spec":{"selector":{"io.kompose.service":"localstack-a"}}}'
+        entrypoint: kubectl
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-a
+          status:
+            conditions:
+            - reason: HealthCheckSuccess
+              status: "True"
+              type: Ready
+
+  - name: Scale localstack-a deployment to zero and therefore Unhealthy.
+    try:
+    - command:
+        args:
+        - scale
+        - -n
+        - crossplane-system
+        - deploy/localstack-a
+        - --replicas=0
+        entrypoint: kubectl
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-a
+          status:
+            conditions:
+            - reason: HealthCheckFail
+              status: "False"
+              type: Ready
+
+  - name: Apply auto-pause-bucket and avoid-localstack-c-bucket.
+    try:
+    - apply:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: auto-pause-bucket
+            labels:
+              provider-ceph.crossplane.io/validation-required: "true"
+          spec:
+            autoPause: true
+            forProvider: {}
+    - apply:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: avoid-localstack-c-bucket
+            labels:
+              provider-ceph.crossplane.io/validation-required: "true"
+              provider-ceph.backends.localstack-c: "false"
+          spec:
+            autoPause: true
+            forProvider: {}
+    # Assert auto-pause-bucket is only created on localstack-b
+    # and localstack-c, as localstack-a is currently unhealthy.
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: auto-pause-bucket
+            finalizers:
+            - "finalizer.managedresource.crossplane.io"
+            - "bucket-in-use.provider-ceph.crossplane.io"
+            labels:
+              crossplane.io/paused: "true"
+              provider-ceph.backends.localstack-a: "true"
+              provider-ceph.backends.localstack-b: "true"
+              provider-ceph.backends.localstack-c: "true"
+          status:
+            atProvider:
+              backends:
+                localstack-b:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                localstack-c:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+            conditions:
+            - reason: Available
+              status: "True"
+              type: Ready
+            - reason: ReconcileSuccess
+              status: "True"
+              type: Synced
+    # Assert avoid-localstack-c-bucket is only created on localstack-b,
+    # as localstack-a is currently unhealthy and this bucket is not intended
+    # for localstack-c via the "false" label that was set.
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: avoid-localstack-c-bucket
+            finalizers:
+            - "finalizer.managedresource.crossplane.io"
+            - "bucket-in-use.provider-ceph.crossplane.io"
+            labels:
+              provider-ceph.backends.localstack-a: "true"
+              provider-ceph.backends.localstack-b: "true"
+              provider-ceph.backends.localstack-c: "false"
+          status:
+            atProvider:
+              backends:
+                localstack-b:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+            conditions:
+            - reason: Available
+              status: "True"
+              type: Ready
+            - reason: ReconcileError
+              status: "False"
+              type: Synced
+
+  - name: Scale localstack-a back up to one and therefore Healthy.
+    try:
+    - command:
+        args:
+        - scale
+        - -n
+        - crossplane-system
+        - deploy/localstack-a
+        - --replicas=1
+        entrypoint: kubectl
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-a
+          status:
+            conditions:
+            - reason: HealthCheckSuccess
+              status: "True"
+              type: Ready
+
+  - name: Assert auto-pause-bucket and avoid-localstack-c-bucket are created on localstack-a now that it is Healthy.
+    try:
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: auto-pause-bucket
+            finalizers:
+            - "finalizer.managedresource.crossplane.io"
+            - "bucket-in-use.provider-ceph.crossplane.io"
+            labels:
+              crossplane.io/paused: "true"
+              provider-ceph.backends.localstack-a: "true"
+              provider-ceph.backends.localstack-b: "true"
+              provider-ceph.backends.localstack-c: "true"
+          status:
+            atProvider:
+              backends:
+                localstack-a:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                localstack-b:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                localstack-c:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+            conditions:
+            - reason: Available
+              status: "True"
+              type: Ready
+            - reason: ReconcileSuccess
+              status: "True"
+              type: Synced
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: avoid-localstack-c-bucket
+            finalizers:
+            - "finalizer.managedresource.crossplane.io"
+            - "bucket-in-use.provider-ceph.crossplane.io"
+            labels:
+              crossplane.io/paused: "true"
+              provider-ceph.backends.localstack-a: "true"
+              provider-ceph.backends.localstack-b: "true"
+              provider-ceph.backends.localstack-c: "false"
+          status:
+            atProvider:
+              backends:
+                localstack-a:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                localstack-b:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+            conditions:
+            - reason: Available
+              status: "True"
+              type: Ready
+            - reason: ReconcileSuccess
+              status: "True"
+              type: Synced
+
+  - name: Delete auto-pause-bucket and avoid-localstack-c-bucket.
+    try:
+    - command:
+      # We need to "unpause" auto-pause-bucket to allow deletion.
+        args:
+        - patch
+        - --type=merge
+        - buckets
+        - auto-pause-bucket
+        - -p
+        - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - delete
+        - bucket
+        - auto-pause-bucket
+        entrypoint: kubectl
+    - command:
+      # We need to "unpause" avoid-localstack-c-bucket to allow deletion.
+        args:
+        - patch
+        - --type=merge
+        - buckets
+        - avoid-localstack-c-bucket
+        - -p
+        - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - delete
+        - bucket
+        - avoid-localstack-c-bucket
+        entrypoint: kubectl
+    - error:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: auto-pause-bucket
+    - error:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: avoid-localstack-c-bucket
+
+  - name: Delete all ProviderConfigs.
+    try:
+    - command:
+        args:
+        - delete
+        - providerconfig
+        - --all
+        entrypoint: kubectl
+    - error:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-a
+    - error:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-b
+    - error:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-c
+
+  - name: Check that LC config validation buckets have been removed from backends.
+    try:
+    - sleep:
+        duration: 8s
+    - command:
+        args:
+        - bucket_does_not_exist
+        - lifecycle-config-validation-bucket
+        - local-dev-control-plane:32566
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - lifecycle-config-validation-bucket
+        - local-dev-control-plane:32567
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - lifecycle-config-validation-bucket
+        - local-dev-control-plane:32568
+        entrypoint: ../../../hack/expect_bucket.sh

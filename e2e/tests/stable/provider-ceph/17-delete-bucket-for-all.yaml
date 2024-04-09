@@ -1,7 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-  - command: kubectl patch --type=merge buckets bucket-for-all-prov-empty -p '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
-  - command: kubectl delete bucket bucket-for-all-prov-empty
-  - command: kubectl patch --type=merge buckets bucket-for-all-prov-c-disabled -p '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
-  - command: kubectl delete bucket bucket-for-all-prov-c-disabled

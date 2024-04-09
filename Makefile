@@ -7,7 +7,7 @@ PROJECT_ROOT = $(shell git rev-parse --show-toplevel)
 PLATFORMS ?= linux_amd64 linux_arm64
 -include build/makelib/common.mk
 
-# Generate kuttl e2e tests for the following kind node versions
+# Generate chainsaw e2e tests for the following kind node versions
 # TEST_KIND_NODES is not intended to be updated manually.
 # Please edit LATEST_KIND_NODE instead and run 'make update-kind-nodes'.
 TEST_KIND_NODES ?= 1.26.14,1.27.11,1.28.7,1.29.2
@@ -15,8 +15,6 @@ TEST_KIND_NODES ?= 1.26.14,1.27.11,1.28.7,1.29.2
 LATEST_KUBE_VERSION ?= 1.29
 LATEST_KIND_NODE ?= 1.29.2
 REPO ?= provider-ceph
-
-KUTTL_VERSION ?= 0.15.0
 
 CROSSPLANE_VERSION ?= 1.15.0
 LOCALSTACK_VERSION ?= 2.2
@@ -95,7 +93,7 @@ e2e.run: test-integration
 update-kind-nodes:
 	LATEST_KIND_NODE=$(LATEST_KIND_NODE) ./hack/update-kind-nodes.sh
 
-# Generate kuttl e2e tests.
+# Generate chainsaw e2e tests.
 generate-tests:
 	TEST_KIND_NODES=$(TEST_KIND_NODES) REPO=$(REPO) LOCALSTACK_VERSION=$(LOCALSTACK_VERSION) CERT_MANAGER_VERSION=$(CERT_MANAGER_VERSION) ./hack/generate-tests.sh
 
@@ -184,23 +182,36 @@ load-package: $(KIND) build kustomize-webhook
 	@BUILD_REGISTRY=$(BUILD_REGISTRY) PROJECT_NAME=$(PROJECT_NAME) ARCH=$(ARCH) VERSION=$(VERSION) ./hack/deploy-provider.sh
 	@$(OK) deploying provider package $(PROJECT_NAME) $(VERSION)
 
+CHAINSAW_VERSION ?= v0.1.9
+CHAINSAW_BIN := $(TOOLS_HOST_DIR)/chainsaw-$(CHAINSAW_VERSION)
+
 # Spin up a Kind cluster and localstack and install Crossplane via Helm.
 # Build the controller image and the provider package.
 # Load the controller image to the Kind cluster and add the provider package
 # to the Provider.
-# Run Kuttl test suite on newly built controller image.
+# Run Chainsaw test suite on newly built controller image.
 # Destroy Kind and localstack.
-kuttl: $(KUTTL) generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
-	@$(INFO) Running kuttl test suite
-	@$(KUTTL) test --config e2e/kuttl/stable/provider-ceph-$(LATEST_KUBE_VERSION).yaml
-	@$(OK) Running kuttl test suite
+.PHONY: chainsaw
+chainsaw: $(CHAINSAW_BIN) generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
+	@$(INFO) Running chainsaw test suite
+	$(CHAINSAW_BIN) test e2e/tests/stable --config e2e/tests/stable/.chainsaw.yaml
+	@$(OK) Running chainsaw test suite
 	@$(MAKE) cluster-clean
 
-ceph-kuttl: $(KIND) $(KUTTL) $(HELM3) cluster-clean
-	@$(INFO) Creating kind cluster
-	@$(KIND) create cluster --name=$(KIND_CLUSTER_NAME)
-	@$(OK) Creating kind cluster
-	@$(KUTTL) test --config e2e/kuttl/ceph/provider-ceph-$(LATEST_KUBE_VERSION).yaml
+# chainsaw binary download and install.
+$(CHAINSAW_BIN):
+	@$(INFO) installing chainsaw $(CHAINSAW_VERSION)
+	@mkdir -p $(TOOLS_HOST_DIR)
+	@GOBIN=$(TOOLS_HOST_DIR) go install github.com/kyverno/chainsaw@$(CHAINSAW_VERSION)
+	@mv $(TOOLS_HOST_DIR)/chainsaw $(CHAINSAW_BIN)
+	@$(OK) installing chainsaw $(CHAINSAW_VERSION)
+
+.PHONY: ceph-chainsaw
+ceph-chainsaw: $(CHAINSAW_BIN) crossplane-cluster load-package
+	@$(INFO) Running chainsaw test suite against ceph cluster
+	$(CHAINSAW_BIN) test e2e/tests/ceph
+	@$(OK) Running chainsaw test suite against ceph cluster
+	@$(MAKE) cluster-clean
 
 # Spin up a Kind cluster and localstack and install Crossplane CRDs (not
 # containerised Crossplane componenets).

@@ -33,9 +33,6 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 			ID:     local.ID,
 			Status: types.ExpirationStatus(local.Status),
 		}
-		if local.Prefix != nil {
-			rule.Prefix = local.Prefix //nolint:staticcheck // Support deprecated field.
-		}
 		if local.AbortIncompleteMultipartUpload != nil && local.AbortIncompleteMultipartUpload.DaysAfterInitiation != nil {
 			rule.AbortIncompleteMultipartUpload = &types.AbortIncompleteMultipartUpload{
 				DaysAfterInitiation: local.AbortIncompleteMultipartUpload.DaysAfterInitiation,
@@ -89,8 +86,14 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 				rule.Transitions = append(rule.Transitions, transition)
 			}
 		}
-		// This is done because S3 expects an empty filter, and never nil
-		rule.Filter = &types.LifecycleRuleFilterMemberPrefix{}
+
+		if local.Prefix != nil {
+			rule.Prefix = local.Prefix //nolint:staticcheck // Support deprecated field.
+		} else {
+			// This is done because S3 expects an empty filter, and never nil if Prefix is not set.
+			rule.Filter = &types.LifecycleRuleFilterMemberPrefix{}
+		}
+
 		//nolint:nestif // Multiple checks required
 		if local.Filter != nil {
 			if local.Filter.Prefix != nil {

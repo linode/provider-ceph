@@ -42,6 +42,7 @@ import (
 	kcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -50,7 +51,9 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/crossplane-runtime/pkg/statemetrics"
 
 	"github.com/linode/provider-ceph/apis"
 	providercephv1alpha1 "github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
@@ -80,19 +83,20 @@ func main() {
 		leaderElection = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()
 		leaderRenew    = app.Flag("leader-renew", "Set leader election renewal.").Short('r').Default("10s").OverrideDefaultFromEnvar("LEADER_ELECTION_RENEW").Duration()
 
-		syncInterval         = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
-		syncTimeout          = app.Flag("sync-timeout", "Cache sync timeout.").Default("10s").Duration()
-		pollInterval         = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("30m").Duration()
-		bucketExistsCache    = app.Flag("bucket-exists-cache", "How long the provider caches bucket exists result").Short('c').Default("5s").Duration()
-		reconcileConcurrency = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("100").Int()
-		maxReconcileRate     = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("1000").Int()
-		reconcileTimeout     = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("3s").Duration()
-		s3Timeout            = app.Flag("s3-timeout", "S3 API operations timeout").Default("10s").Duration()
-		creationGracePeriod  = app.Flag("creation-grace-period", "Duration to wait for the external API to report that a newly created external resource exists.").Default("10s").Duration()
-		tracesEnabled        = app.Flag("otel-enable-tracing", "").Default("false").Bool()
-		tracesExportTimeout  = app.Flag("otel-traces-export-timeout", "Timeout when exporting traces").Default("2s").Duration()
-		tracesExportInterval = app.Flag("otel-traces-export-interval", "Interval at which traces are exported").Default("5s").Duration()
-		tracesExportAddress  = app.Flag("otel-traces-export-address", "Address of otel collector").Default("opentelemetry-collector.opentelemetry:4317").String()
+		syncInterval            = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
+		syncTimeout             = app.Flag("sync-timeout", "Cache sync timeout.").Default("10s").Duration()
+		pollInterval            = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("30m").Duration()
+		pollStateMetricInterval = app.Flag("poll-state-metric", "State metric recording interval").Default("5s").Duration()
+		bucketExistsCache       = app.Flag("bucket-exists-cache", "How long the provider caches bucket exists result").Short('c').Default("5s").Duration()
+		reconcileConcurrency    = app.Flag("reconcile-concurrency", "Set number of reconciliation loops.").Default("100").Int()
+		maxReconcileRate        = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may checked for drift from the desired state.").Default("1000").Int()
+		reconcileTimeout        = app.Flag("reconcile-timeout", "Object reconciliation timeout").Short('t').Default("3s").Duration()
+		s3Timeout               = app.Flag("s3-timeout", "S3 API operations timeout").Default("10s").Duration()
+		creationGracePeriod     = app.Flag("creation-grace-period", "Duration to wait for the external API to report that a newly created external resource exists.").Default("10s").Duration()
+		tracesEnabled           = app.Flag("otel-enable-tracing", "").Default("false").Bool()
+		tracesExportTimeout     = app.Flag("otel-traces-export-timeout", "Timeout when exporting traces").Default("2s").Duration()
+		tracesExportInterval    = app.Flag("otel-traces-export-interval", "Interval at which traces are exported").Default("5s").Duration()
+		tracesExportAddress     = app.Flag("otel-traces-export-address", "Address of otel collector").Default("opentelemetry-collector.opentelemetry:4317").String()
 
 		kubeClientRate = app.Flag("kube-client-rate", "The global maximum rate per second at how many requests the client can do.").Default("1000").Int()
 
@@ -217,6 +221,18 @@ func main() {
 	httpClient.Transport = otelhttp.NewTransport(httpClient.Transport)
 	httpClient.Timeout = *syncTimeout
 
+	mm := managed.NewMRMetricRecorder()
+	sm := statemetrics.NewMRStateMetrics()
+
+	metrics.Registry.MustRegister(mm)
+	metrics.Registry.MustRegister(sm)
+
+	mo := controller.MetricOptions{
+		PollStateMetricInterval: *pollStateMetricInterval,
+		MRMetrics:               mm,
+		MRStateMetrics:          sm,
+	}
+
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		LeaderElection:             *leaderElection,
 		LeaderElectionID:           "crossplane-leader-election-provider-ceph-ibyaiby",
@@ -251,6 +267,7 @@ func main() {
 		PollInterval:            *pollInterval,
 		GlobalRateLimiter:       ratelimiter.NewGlobal(*maxReconcileRate),
 		Features:                &feature.Flags{},
+		MetricOptions:           &mo,
 	}
 
 	if *enableExternalSecretStores {

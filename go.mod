@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.51.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.1
 	github.com/aws/smithy-go v1.20.1
-	github.com/crossplane/crossplane-runtime v1.15.1
+	github.com/crossplane/crossplane-runtime v1.16.0
 	github.com/crossplane/crossplane-tools v0.0.0-20230925130601-628280f8bf79
 	github.com/google/go-cmp v0.6.0
 	github.com/pkg/errors v0.9.1
@@ -52,6 +52,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.20.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.23.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dave/jennifer v1.7.0 // indirect

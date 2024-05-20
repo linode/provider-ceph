@@ -20,10 +20,11 @@ import (
 )
 
 var (
-	s3Err        = errors.New("some error")
+	errS3        = errors.New("some error")
 	samplePolicy = `{"Policy": "{\"Version\": \"2012-10-17\", \"Statement\": [{\"Action\": [\"*\"], \"Principal\": \"*\", \"Sid\": \"\", \"Effect\": \"Allow\", \"Resource\": \"arn:aws:s3:::shunsuke-rgw-acl-test/*\"},]}"}`
 )
 
+//nolint:maintidx // for testing
 func TestPolicyObserveBackend(t *testing.T) {
 	t.Parallel()
 
@@ -76,7 +77,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{
 						GetBucketPolicyStub: func(ctx context.Context, in *s3.GetBucketPolicyInput, f ...func(*s3.Options)) (*s3.GetBucketPolicyOutput, error) {
-							return nil, s3Err
+							return nil, errS3
 						},
 					}
 
@@ -96,7 +97,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 			},
 			want: want{
 				status: NeedsUpdate,
-				err:    s3Err,
+				err:    errS3,
 			},
 		},
 		"ok - policy is updated": {

@@ -37,6 +37,7 @@ func NewLifecycleConfigurationClient(b *backendstore.BackendStore, h *s3clientha
 	return &LifecycleConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
+//nolint:dupl // LifecycleConfiguration and BucketPolicy are different feature.
 func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.LifecycleConfigurationClient.Observe")
 	defer span.End()

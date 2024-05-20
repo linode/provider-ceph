@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/smithy-go"
 
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
@@ -89,15 +90,23 @@ func (p *BucketPolicyClient) observeBackend(ctx context.Context, bucket *v1alpha
 		return NeedsUpdate, err
 	}
 
+	// external keeps the bucket policy in backend.
+	var external string
+
 	response, err := rgw.GetBucketPolicy(ctx, s3Client, aws.String(bucket.Name))
-	if err != nil {
+	// If error is not NoSuchBucketPolicy error, return with the error.
+	if err != nil && !isNoSuchBucketPolicy(err) {
 		return NeedsUpdate, err
+	}
+
+	if response != nil && response.Policy != nil {
+		external = *response.Policy
 	}
 
 	if bucket.Spec.ForProvider.BucketPolicy == "" {
 		// No policy config is specified.
 		// In that case, it should not exist on any backend.
-		if *response.Policy == "" {
+		if external == "" {
 			p.log.Info("No bucket policy found on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return Updated, nil
@@ -108,15 +117,7 @@ func (p *BucketPolicyClient) observeBackend(ctx context.Context, bucket *v1alpha
 		}
 	}
 
-	// TODO: Ensure how to compare
 	local := bucket.Spec.ForProvider.BucketPolicy
-
-	external := *response.Policy
-
-	if external != "" && local == "" {
-		return NeedsUpdate, nil
-	}
-
 	if local != external {
 		p.log.Info("Bucket policy requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
@@ -189,4 +190,13 @@ func (p *BucketPolicyClient) delete(ctx context.Context, b *v1alpha1.Bucket, bac
 	}
 
 	return nil
+}
+
+func isNoSuchBucketPolicy(err error) bool {
+	var ae smithy.APIError
+	if !errors.As(err, &ae) {
+		return false
+	}
+
+	return ae != nil && ae.ErrorCode() == "NoSuchBucketPolicy"
 }

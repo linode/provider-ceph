@@ -179,6 +179,12 @@ spec:
                       - value
                       type: object
                     type: array
+                  bucketPolicy:
+                    description: |-
+                      BucketPolicy is a JSON string of BucketPolicy.
+                      If it is set, Provider-Ceph calls PutBucketPolicy API after creating the bucket.
+                      Before adding it, you should validate the JSON string.
+                    type: string
                   grantFullControl:
                     description: |-
                       Allows grantee the read, write, read ACP, and write ACP permissions on the

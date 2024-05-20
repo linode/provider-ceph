@@ -85,6 +85,12 @@ type BucketParameters struct {
 	// AssumeRoleTags may be used to add custom values to an AssumeRole request.
 	// +optional
 	AssumeRoleTags []Tag `json:"assumeRoleTags,omitempty"`
+
+	// BucketPolicy is a JSON string of BucketPolicy.
+	// If it is set, Provider-Ceph calls PutBucketPolicy API after creating the bucket.
+	// Before adding it, you should validate the JSON string.
+	// +optional
+	BucketPolicy string `json:"bucketPolicy,omitempty"`
 }
 
 // BackendInfo contains relevant information about an S3 backend for

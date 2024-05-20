@@ -45,16 +45,16 @@ func PutBucketPolicy(ctx context.Context, s3Backend backendstore.S3Client, b *v1
 	return resp, nil
 }
 
-func DeleteBucketPolicy(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) (*awss3.DeleteBucketPolicyOutput, error) {
+func DeleteBucketPolicy(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) error {
 	ctx, span := otel.Tracer("").Start(ctx, "DeleteBucketPolicy")
 	defer span.End()
 
-	resp, err := s3Backend.DeleteBucketPolicy(ctx, &awss3.DeleteBucketPolicyInput{Bucket: bucketName})
+	_, err := s3Backend.DeleteBucketPolicy(ctx, &awss3.DeleteBucketPolicyInput{Bucket: bucketName})
 	if err != nil {
 		traces.SetAndRecordError(span, err)
 
-		return resp, errors.Wrap(err, errDeleteBucketPolicy)
+		return errors.Wrap(err, errDeleteBucketPolicy)
 	}
 
-	return resp, nil
+	return nil
 }

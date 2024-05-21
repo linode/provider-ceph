@@ -37,6 +37,7 @@ func NewSubresourceClients(b *backendstore.BackendStore, h *s3clienthandler.Hand
 	return []SubresourceClient{
 		NewLifecycleConfigurationClient(b, h, l.WithValues("lifecycle-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
 		NewACLClient(b, h, l.WithValues("acl-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
+		NewPolicyClient(b, h, l.WithValues("policy-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
 	}
 }
 

@@ -19,21 +19,21 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-// PolicyClient is the client for API methods and reconciling the BucketPolicy
-type BucketPolicyClient struct {
+// PolicyClient is the client for API methods and reconciling a BucketPolicy
+type PolicyClient struct {
 	backendStore    *backendstore.BackendStore
 	s3ClientHandler *s3clienthandler.Handler
 	log             logging.Logger
 }
 
-// NewBucketPolicyClient creates the client for Accelerate Configuration
-func NewBucketPolicyClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *BucketPolicyClient {
-	return &BucketPolicyClient{backendStore: b, s3ClientHandler: h, log: l}
+// NewPolicyClient creates the client for Accelerate Configuration
+func NewPolicyClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *PolicyClient {
+	return &PolicyClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
-//nolint:dupl // LifecycleConfiguration and BucketPolicy are different feature.
-func (p *BucketPolicyClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
-	ctx, span := otel.Tracer("").Start(ctx, "bucket.BucketPolicyClient.Observe")
+//nolint:dupl // LifecycleConfiguration and Policy are different feature.
+func (p *PolicyClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "bucket.PolicyClient.Observe")
 	defer span.End()
 
 	observationChan := make(chan ResourceStatus)
@@ -75,7 +75,7 @@ func (p *BucketPolicyClient) Observe(ctx context.Context, bucket *v1alpha1.Bucke
 	return Updated, nil
 }
 
-func (p *BucketPolicyClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
+func (p *PolicyClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
 	p.log.Info("Observing subresource policy on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	if p.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
@@ -104,7 +104,7 @@ func (p *BucketPolicyClient) observeBackend(ctx context.Context, bucket *v1alpha
 		external = *response.Policy
 	}
 
-	if bucket.Spec.ForProvider.BucketPolicy == "" {
+	if bucket.Spec.ForProvider.Policy == "" {
 		// No policy config is specified.
 		// In that case, it should not exist on any backend.
 		if external == "" {
@@ -118,7 +118,7 @@ func (p *BucketPolicyClient) observeBackend(ctx context.Context, bucket *v1alpha
 		}
 	}
 
-	local := bucket.Spec.ForProvider.BucketPolicy
+	local := bucket.Spec.ForProvider.Policy
 	if local != external {
 		p.log.Info("Bucket policy requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
@@ -128,8 +128,8 @@ func (p *BucketPolicyClient) observeBackend(ctx context.Context, bucket *v1alpha
 	return Updated, nil
 }
 
-func (p *BucketPolicyClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
-	ctx, span := otel.Tracer("").Start(ctx, "bucket.BucketPolicyClient.Handle")
+func (p *PolicyClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+	ctx, span := otel.Tracer("").Start(ctx, "bucket.PolicyClient.Handle")
 	defer span.End()
 
 	observation, err := p.observeBackend(ctx, b, backendName)
@@ -164,7 +164,7 @@ func (p *BucketPolicyClient) Handle(ctx context.Context, b *v1alpha1.Bucket, bac
 	return nil
 }
 
-func (p *BucketPolicyClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
+func (p *PolicyClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
 	p.log.Info("Updating bucket policy", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
 	s3Client, err := p.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {
@@ -179,7 +179,7 @@ func (p *BucketPolicyClient) createOrUpdate(ctx context.Context, b *v1alpha1.Buc
 	return nil
 }
 
-func (p *BucketPolicyClient) delete(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
+func (p *PolicyClient) delete(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
 	p.log.Info("Deleting bucket policy", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
 	s3Client, err := p.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {

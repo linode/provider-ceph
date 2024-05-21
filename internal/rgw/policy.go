@@ -35,7 +35,7 @@ func PutBucketPolicy(ctx context.Context, s3Backend backendstore.S3Client, b *v1
 	ctx, span := otel.Tracer("").Start(ctx, "PutBucketPolicy")
 	defer span.End()
 
-	resp, err := s3Backend.PutBucketPolicy(ctx, &awss3.PutBucketPolicyInput{Bucket: &b.Name, Policy: &b.Spec.ForProvider.BucketPolicy})
+	resp, err := s3Backend.PutBucketPolicy(ctx, &awss3.PutBucketPolicyInput{Bucket: &b.Name, Policy: &b.Spec.ForProvider.Policy})
 	if err != nil {
 		traces.SetAndRecordError(span, err)
 

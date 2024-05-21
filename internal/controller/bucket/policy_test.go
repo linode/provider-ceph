@@ -122,7 +122,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
-							BucketPolicy: samplePolicy,
+							Policy: samplePolicy,
 						},
 					},
 				},
@@ -154,7 +154,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
-							BucketPolicy: samplePolicy,
+							Policy: samplePolicy,
 						},
 					},
 				},
@@ -214,7 +214,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
-							BucketPolicy: samplePolicy,
+							Policy: samplePolicy,
 						},
 					},
 				},
@@ -274,7 +274,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
-							BucketPolicy: samplePolicy,
+							Policy: samplePolicy,
 						},
 					},
 				},
@@ -291,7 +291,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			c := NewBucketPolicyClient(
+			c := NewPolicyClient(
 				tc.fields.backendStore,
 				s3clienthandler.NewHandler(
 					s3clienthandler.WithAssumeRoleArn(nil),

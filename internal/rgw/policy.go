@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	errGetBucketPolicy    = ""
-	errPutBucketPolicy    = ""
-	errDeleteBucketPolicy = ""
+	errGetBucketPolicy    = "failed to get bucket policy"
+	errPutBucketPolicy    = "failed to put bucket policy"
+	errDeleteBucketPolicy = "failed to delete bucket policy"
 )
 
 func GetBucketPolicy(ctx context.Context, s3Backend backendstore.S3Client, bucketName *string) (*awss3.GetBucketPolicyOutput, error) {

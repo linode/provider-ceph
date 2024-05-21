@@ -479,6 +479,12 @@ spec:
                       don't specify an ACL or bucket owner full control ACLs, such as the bucket-owner-full-control
                       canned ACL or an equivalent form of this ACL expressed in the XML format.
                     type: string
+                  policy:
+                    description: |-
+                      Policy is a JSON string of BucketPolicy.
+                      If it is set, Provider-Ceph calls PutBucketPolicy API after creating the bucket.
+                      Before adding it, you should validate the JSON string.
+                    type: string
                 type: object
               lifecycleConfigurationDisabled:
                 description: |-

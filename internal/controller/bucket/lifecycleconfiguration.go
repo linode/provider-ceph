@@ -32,11 +32,11 @@ type LifecycleConfigurationClient struct {
 	log             logging.Logger
 }
 
-// NewLifecycleConfigurationClient creates the client for Accelerate Configuration
 func NewLifecycleConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *LifecycleConfigurationClient {
 	return &LifecycleConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
+//nolint:dupl // LifecycleConfiguration and Policy are different feature.
 func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.LifecycleConfigurationClient.Observe")
 	defer span.End()

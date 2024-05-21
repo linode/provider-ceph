@@ -24,5 +24,9 @@ const (
 	errObserveAcl = "failed to observe bucket acl"
 	errHandleAcl  = "failed to handle bucket acl"
 
+	// Policy error messages.
+	errObservePolicy = "failed to observe bucket policy"
+	errHandlePolicy  = "failed to handle bucket policy"
+
 	True = "true"
 )

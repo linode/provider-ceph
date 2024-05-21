@@ -20,7 +20,7 @@ Spin up the test environment, but without Localstack and use your own external C
 
 ```
 AWS_ACCESS_KEY_ID=<your-access-key> AWS_SECRET_ACCESS_KEY=<yoursecret-key> CEPH_ADDRESS=<your-ceph-cluster-address> make dev-ceph
-`
+```
 
 In either case, after you've made some changes, kill (Ctrl+C) the existing `provider-ceph` and re-run it:
 

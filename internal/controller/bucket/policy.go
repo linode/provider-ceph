@@ -26,7 +26,6 @@ type PolicyClient struct {
 	log             logging.Logger
 }
 
-// NewPolicyClient creates the client for Accelerate Configuration
 func NewPolicyClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *PolicyClient {
 	return &PolicyClient{backendStore: b, s3ClientHandler: h, log: l}
 }

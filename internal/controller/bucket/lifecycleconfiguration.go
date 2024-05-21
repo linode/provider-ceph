@@ -32,7 +32,6 @@ type LifecycleConfigurationClient struct {
 	log             logging.Logger
 }
 
-// NewLifecycleConfigurationClient creates the client for Accelerate Configuration
 func NewLifecycleConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *LifecycleConfigurationClient {
 	return &LifecycleConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
 }

@@ -19,7 +19,7 @@ jobs:
     if: >
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      !contains(github.event.head_commit.message, 'Set release candidate version'))
+      !contains(github.event.head_commit.message, 'Set release candidate version')
     runs-on: ubuntu-22.04
     permissions:
       contents: write

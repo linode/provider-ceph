@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - release-*
-  pull_request:
-    types: [closed]
-    branches:
       - main
   workflow_dispatch: {}
 
@@ -32,7 +29,7 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release-')) ||
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'candidate-'))
+      (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'Set release candidate version'))
 
     runs-on: ubuntu-22.04
 

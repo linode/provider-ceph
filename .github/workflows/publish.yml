@@ -1,9 +1,6 @@
 name: Publish
 
 on:
-  push:
-    branches:
-      - release-*
   workflow_dispatch: {}
 
 concurrency:
@@ -25,10 +22,6 @@ env:
 jobs:
 
   publish-artifacts:
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release-')) ||
-
     runs-on: ubuntu-22.04
 
     steps:

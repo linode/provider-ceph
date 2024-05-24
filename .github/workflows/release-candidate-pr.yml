@@ -116,11 +116,6 @@ jobs:
         name: output
         path: _output/**
 
-    - name: Create a new branch
-      # publish only works on branches main, master and release-
-      run: |
-        git checkout -b release-$VERSION
-
     - name: Publish Artifacts
       if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != ''
-      run: make publish BRANCH_NAME=release-$VERSION
+      run: make publish BRANCH_NAME=${GITHUB_REF##*/}

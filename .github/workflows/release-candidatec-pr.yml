@@ -16,7 +16,6 @@ permissions:
 jobs:
   create-rc-pr:
     # We don't want to run this on main upon merging the PR we are creating.
-    if: "!startsWith(github.event.pull_request.head.ref, 'candidate-')"
     if: >
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&

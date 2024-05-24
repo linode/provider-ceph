@@ -110,6 +110,7 @@ jobs:
       # publish only works on branches main, master and release-
       run: |
         git checkout -b release-$VERSION
+        make publish BRANCH_NAME=release-$VERSION
 
     - name: Publish Artifacts
       if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != ''

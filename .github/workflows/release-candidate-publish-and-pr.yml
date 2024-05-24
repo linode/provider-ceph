@@ -1,4 +1,4 @@
-name: Release Candidate PR
+name: Release Candidate Publish and PR
 
 on:
   push:
@@ -24,8 +24,13 @@ env:
   UPBOUND_MARKETPLACE_PUSH_ROBOT_USR: ${{ secrets.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR }}
 
 jobs:
-  create-rc-pr:
-    # We don't want to run this on main upon merging the PR we are creating.
+  # Upon a merge to main, this job checks out main and updates package/crossplane.yaml
+  # and README.md to point to the latest version (latest git commit SHA). This version
+  # is then used to create and publish a new package to the Upbound marketplace. Finally,
+  # using our updated branch an automated PR is opened against main with the version changes.
+  release-candidate-publish-and-pr:
+    # We don't want to run this on main upon merging the automated PR we are creating,
+    # otherwise we would end up in an endless loop of automated PRs.
     if: >
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
@@ -65,16 +70,6 @@ jobs:
         git add .
         git commit -m "Set release candidate version [skip ci]: ${VERSION}"
         git push --set-upstream origin $BRANCH
-
-    - name: Create a PR
-      run: |
-        gh pr create \
-          --base ${GITHUB_REF#refs/heads/} \
-          --head $BRANCH \
-          --title "Release Candidate: ${VERSION}" \
-          --body "This PR is created by GitHub Actions."
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Setup QEMU
       uses: docker/setup-qemu-action@v3
@@ -119,3 +114,13 @@ jobs:
     - name: Publish Artifacts
       if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != ''
       run: make publish BRANCH_NAME=${GITHUB_REF##*/}
+
+    - name: Create a PR
+      run: |
+        gh pr create \
+          --base ${GITHUB_REF#refs/heads/} \
+          --head $BRANCH \
+          --title "Release Candidate: ${VERSION}" \
+          --body "This PR is created by GitHub Actions."
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -50,7 +50,11 @@ func TestCreateBasicErrors(t *testing.T) {
 				backendStore: backendstore.NewBackendStore(),
 			},
 			args: args{
-				mg: &v1alpha1.Bucket{},
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+				},
 			},
 			want: want{
 				err: errors.New(errNoS3BackendsStored),
@@ -67,6 +71,9 @@ func TestCreateBasicErrors(t *testing.T) {
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
 					},
@@ -81,7 +88,11 @@ func TestCreateBasicErrors(t *testing.T) {
 				backendStore: backendstore.NewBackendStore(),
 			},
 			args: args{
-				mg: &v1alpha1.Bucket{},
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+				},
 			},
 			want: want{
 				err: errors.New(errNoS3BackendsStored),
@@ -93,8 +104,16 @@ func TestCreateBasicErrors(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			s := runtime.NewScheme()
+			s.AddKnownTypes(v1alpha1.SchemeGroupVersion, &v1alpha1.Bucket{}, &v1alpha1.BucketList{})
+
+			cl := fake.NewClientBuilder().
+				WithScheme(s).
+				WithObjects(tc.args.mg).
+				WithStatusSubresource(tc.args.mg)
 
 			e := external{
+				kubeClient:   cl.Build(),
 				backendStore: tc.fields.backendStore,
 				log:          logging.NewNopLogger(),
 			}

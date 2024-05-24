@@ -35,6 +35,48 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, err
 	}
 
+	// Just before Crossplane's over-arching Reconcile function calls external.Create, it
+	// updates the MR with the create-pending annotation. After external.Create is finished,
+	// the create-success or create-failure annotaion is then added to the MR by the Reconciler
+	// depending on the result of external.Create (this function).
+	// In the event that an "incomplete creation" occurs (ie the create-pending annotaion is the
+	// most recent annotation to be applied out of create-pending, create-failed and create-succeeded)
+	// then the MR will not be re-queued. This is to protect against the possibility of "leaked
+	// resources" (ie resources which have been created by the provider but are no longer under
+	// the provider's control). This must all happen sequentially in a single Reconcile loop.
+	// See this Github issue and comment for more context on what is a known issue:
+	// https://github.com/crossplane/crossplane/issues/3037#issuecomment-1110142427
+	//
+	// This approach leaves the possibility for the following scenario:
+	// 1. The create-pending annotaion is applied to an MR by Crossplane and external.Create is called.
+	// 2. The provider pod crashes before it gets a chance to perform its external.Create function.
+	// 3. As a consequence, the resulting create-succeeded or create-failed annotations are never added to
+	// the MR.
+	// 4. The provider pod comes back online and the MR is automatically reconciled by Crossplane.
+	// 5. Crossplane interprets the MR annotaions and believes that an incomplete creation has
+	// occurred and therefore does not perform any action on the MR.
+	// 6. The MR is effectively paused, awaiting human intervention.
+	//
+	// To counteract this, we attempt to remove the create-pending annotation as immediately after it
+	// has been applied by Crossplane. It is safe for us to do this because the resources we are creating
+	// (S3 buckets) have deterministic names. This function will only create a bucket of the given
+	// name and will do so idempotently, therefore we are never in danger of creating a cascading
+	// number of buckets due to previous failures.
+	// Of course, this approach does not completely remove the possibility of us finding ourselves in
+	// the above scenario. It only mitigates it. As long as Crossplane persists with its existing logic
+	// then we can only make a "best-effort" to avoid it.
+	if err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+		meta.RemoveAnnotations(bucket, meta.AnnotationKeyExternalCreatePending)
+
+		return NeedsObjectUpdate
+	}); err != nil {
+		c.log.Info("Failed to remove pending annotation", consts.KeyBucketName, bucket.Name)
+		err = errors.Wrap(err, errUpdateBucketCR)
+		traces.SetAndRecordError(span, err)
+
+		return managed.ExternalCreation{}, err
+	}
+
 	span.SetAttributes(attribute.String(consts.KeyBucketName, bucket.Name))
 
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
@@ -171,15 +213,9 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 		select {
 		case <-ctx.Done():
 			c.log.Info("Context timeout waiting for bucket creation", consts.KeyBucketName, bucket.Name)
-
-			return managed.ExternalCreation{}, ctx.Err()
+			createErr = ctx.Err()
 		case beName := <-readyChan:
 			err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-				// Remove the annotation, because Crossplane is not always able to do it.
-				// This workaround doesn't eliminates the problem, if this update fails,
-				// Crossplane skips object forever.
-				delete(bucketLatest.ObjectMeta.Annotations, meta.AnnotationKeyExternalCreatePending)
-
 				setAllBackendLabels(bucketLatest, providerNames)
 
 				return NeedsObjectUpdate

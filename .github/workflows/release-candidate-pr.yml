@@ -63,7 +63,7 @@ jobs:
     - name: Commit
       run: |
         git add .
-        git commit -m "Set release candidate version: ${VERSION}"
+        git commit -m "Set release candidate version [skip ci]: ${VERSION}"
         git push --set-upstream origin $BRANCH
 
     - name: Create a PR

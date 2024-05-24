@@ -44,7 +44,7 @@ jobs:
     - name: Commit
       run: |
         git add .
-        git commit -m "Bump version: ${VERSION}"
+        git commit -m "Bump version [skip ci]: ${VERSION}"
         git push --set-upstream origin $BRANCH
 
     - name: Tag

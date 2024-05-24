@@ -85,9 +85,6 @@ jobs:
         username: ${{ secrets.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR }}
         password: ${{ secrets.UPBOUND_MARKETPLACE_PUSH_ROBOT_PSW }}
 
-    - name: Fetch History
-      run: git fetch --prune --unshallow
-
     - name: Setup Go
       uses: actions/setup-go@v5
       with:

@@ -851,6 +851,264 @@ spec:
           metadata:
             name: avoid-localstack-c-bucket
 
+  # The following steps replicate an edge case scenario described here:
+  # https://github.com/crossplane/crossplane/issues/3037#issuecomment-1110142427
+  #
+  # 1. Make all Localstack backends unreachable.
+  # 2. Create edge-case-bucket and wait for failure.
+  # 3. Update edge-case-bucket, removing its create-failed annotation.
+  # 4. Make all Localstack backends reachable again.
+  # 5. Restart Provider Ceph deployment.
+  # 6. Bucket edge-case-bucket should become Ready and Synced.
+  - name: Make localstack-a unreachable and therefore Unhealthy.
+    try:
+    - command:
+        args:
+        - patch
+        - service
+        - localstack-a
+        - -n
+        - crossplane-system
+        - --type=merge
+        - -p
+        - '{"spec":{"selector":{"io.kompose.service":"not-exists"}}}'
+        entrypoint: kubectl
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-a
+          status:
+            conditions:
+            - reason: HealthCheckFail
+              status: "False"
+              type: Ready
+
+  - name: Make localstack-b unreachable and therefore Unhealthy.
+    try:
+    - command:
+        args:
+        - patch
+        - service
+        - localstack-b
+        - -n
+        - crossplane-system
+        - --type=merge
+        - -p
+        - '{"spec":{"selector":{"io.kompose.service":"not-exists"}}}'
+        entrypoint: kubectl
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-b
+          status:
+            conditions:
+            - reason: HealthCheckFail
+              status: "False"
+              type: Ready
+
+  - name: Make localstack-c unreachable and therefore Unhealthy.
+    try:
+    - command:
+        args:
+        - patch
+        - service
+        - localstack-c
+        - -n
+        - crossplane-system
+        - --type=merge
+        - -p
+        - '{"spec":{"selector":{"io.kompose.service":"not-exists"}}}'
+        entrypoint: kubectl
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-c
+          status:
+            conditions:
+            - reason: HealthCheckFail
+              status: "False"
+              type: Ready
+
+  - name: Apply edge-case-bucket.
+    try:
+    - apply:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: edge-case-bucket
+            labels:
+              provider-ceph.crossplane.io/validation-required: "true"
+          spec:
+            autoPause: true
+            forProvider: {}
+
+    # Assert edge-case-bucket has failed.
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: edge-case-bucket
+          status:
+            conditions:
+            - reason: Creating
+              status: "False"
+              type: Ready
+            - reason: ReconcileError
+              status: "False"
+              type: Synced
+
+  - name: Remove creation-failed annotation from edge-case-bucket.
+    try:
+    - command:
+        args:
+        - patch
+        - bucket
+        - edge-case-bucket
+        - --type=json
+        - -p
+        - '[{"op": "remove", "path": "/metadata/annotations/crossplane.io~1external-create-failed"}]'
+        entrypoint: kubectl
+
+
+  - name: Make localstack-a reachable again and therefore Healthy.
+    try:
+    - command:
+        args:
+        - patch
+        - service
+        - localstack-a
+        - -n
+        - crossplane-system
+        - --type=merge
+        - -p
+        - '{"spec":{"selector":{"io.kompose.service":"localstack-a"}}}'
+        entrypoint: kubectl
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-a
+          status:
+            conditions:
+            - reason: HealthCheckSuccess
+              status: "True"
+              type: Ready
+
+  - name: Make localstack-b reachable again and therefore Healthy.
+    try:
+    - command:
+        args:
+        - patch
+        - service
+        - localstack-b
+        - -n
+        - crossplane-system
+        - --type=merge
+        - -p
+        - '{"spec":{"selector":{"io.kompose.service":"localstack-b"}}}'
+        entrypoint: kubectl
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-b
+          status:
+            conditions:
+            - reason: HealthCheckSuccess
+              status: "True"
+              type: Ready
+
+  - name: Make localstack-c reachable again and therefore Healthy.
+    try:
+    - command:
+        args:
+        - patch
+        - service
+        - localstack-c
+        - -n
+        - crossplane-system
+        - --type=merge
+        - -p
+        - '{"spec":{"selector":{"io.kompose.service":"localstack-c"}}}'
+        entrypoint: kubectl
+    - assert:
+        resource:
+          apiVersion: ceph.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          metadata:
+            name: localstack-c
+          status:
+            conditions:
+            - reason: HealthCheckSuccess
+              status: "True"
+              type: Ready
+
+  - name: Scale Provider Ceph deployment to zero in order to restart.
+    try:
+    - command:
+        args:
+        - scale
+        - -n
+        - crossplane-system
+        - deploy/provider-ceph-provider-cep
+        - --replicas=0
+        entrypoint: kubectl
+
+  - name: Assert edge-case-bucket is created successfully.
+    try:
+    # Assert edge-case-bucket has been created successfully.
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: edge-case-bucket
+          status:
+            conditions:
+            - reason: Available
+              status: "True"
+              type: Ready
+            - reason: ReconcileSuccess
+              status: "True"
+              type: Synced
+
+  - name: Delete edge-case-bucket.
+    try:
+    - command:
+      # We need to "unpause" edge-case-bucket to allow deletion.
+        args:
+        - patch
+        - --type=merge
+        - buckets
+        - edge-case-bucket
+        - -p
+        - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - delete
+        - bucket
+        - edge-case-bucket
+        entrypoint: kubectl
+    - error:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: edge-case-bucket
+  # End of edge case test scenario.
+
+  # Clean up ProviderConfigs.
   - name: Delete all ProviderConfigs.
     try:
     - command:

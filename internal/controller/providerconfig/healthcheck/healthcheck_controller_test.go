@@ -18,8 +18,8 @@ package healthcheck
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -59,6 +59,8 @@ func NewTestClient(fn RoundTripFunc) *http.Client {
 func TestReconcile(t *testing.T) {
 	t.Parallel()
 	backendName := "test-backend"
+	someErr := errors.New("some error")
+	urlErr := url.Error{Op: "Get", URL: "http:", Err: someErr}
 
 	type fields struct {
 		fakeS3Client   func(*backendstorefakes.FakeS3Client)
@@ -88,10 +90,7 @@ func TestReconcile(t *testing.T) {
 		"ProviderConfig has been deleted": {
 			fields: fields{
 				testHttpClient: NewTestClient(func(req *http.Request) (*http.Response, error) {
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Status:     http.StatusText(http.StatusOK),
-					}, nil
+					return &http.Response{}, nil
 				}),
 				fakeS3Client: func(fake *backendstorefakes.FakeS3Client) {
 					// cleanup calls HeadBucket
@@ -163,10 +162,7 @@ func TestReconcile(t *testing.T) {
 		"ProviderConfig goes from healthy to unhealthy with bad request": {
 			fields: fields{
 				testHttpClient: NewTestClient(func(req *http.Request) (*http.Response, error) {
-					return &http.Response{
-						StatusCode: http.StatusBadRequest,
-						Status:     http.StatusText(http.StatusBadRequest),
-					}, nil
+					return &http.Response{}, someErr
 				}),
 				providerConfig: &apisv1alpha1.ProviderConfig{
 					ObjectMeta: metav1.ObjectMeta{
@@ -195,7 +191,7 @@ func TestReconcile(t *testing.T) {
 			},
 			want: want{
 				res: ctrl.Result{},
-				err: errors.New(fmt.Sprintf(errUnexpectedResp, http.StatusText(http.StatusBadRequest))),
+				err: errors.Wrap(&urlErr, errFailedHealthCheckReq),
 				pc: &apisv1alpha1.ProviderConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: backendName,
@@ -208,7 +204,7 @@ func TestReconcile(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									v1alpha1.HealthCheckFail().
-										WithMessage(fmt.Sprintf(errUnexpectedResp, http.StatusText(http.StatusBadRequest))),
+										WithMessage(errors.Wrap(&urlErr, errFailedHealthCheckReq).Error()),
 								},
 							},
 						},
@@ -219,10 +215,7 @@ func TestReconcile(t *testing.T) {
 		"ProviderConfig goes from unhealthy to healthy so its buckets should be unpaused": {
 			fields: fields{
 				testHttpClient: NewTestClient(func(req *http.Request) (*http.Response, error) {
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Status:     http.StatusText(http.StatusOK),
-					}, nil
+					return &http.Response{}, nil
 				}),
 				providerConfig: &apisv1alpha1.ProviderConfig{
 					ObjectMeta: metav1.ObjectMeta{
@@ -353,10 +346,7 @@ func TestReconcile(t *testing.T) {
 		"ProviderConfig goes from health check disabled to healthy so its buckets should be unpaused": {
 			fields: fields{
 				testHttpClient: NewTestClient(func(req *http.Request) (*http.Response, error) {
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Status:     http.StatusText(http.StatusOK),
-					}, nil
+					return &http.Response{}, nil
 				}),
 				providerConfig: &apisv1alpha1.ProviderConfig{
 					ObjectMeta: metav1.ObjectMeta{

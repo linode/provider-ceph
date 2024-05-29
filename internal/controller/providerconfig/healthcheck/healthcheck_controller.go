@@ -18,7 +18,6 @@ package healthcheck
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -50,7 +49,6 @@ const (
 	errDeleteLCValidationBucket = "failed to delete lifecycle configuration validation bucket"
 	errUpdateHealthStatus       = "failed to update health status of provider config"
 	errFailedHealthCheckReq     = "failed to forward health check request"
-	errUnexpectedResp           = "unexpected response from health check request: %s"
 
 	healthCheckSuffix = "-health-check"
 
@@ -199,23 +197,15 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 
 		return doErr
 	}
+	// We don't actually check the response code or body for the health check.
+	// This is because a HTTP Get request to RGW equates to a ListBuckets S3 request and
+	// it is possible that an authorisation error will occur, resulting in a 4XX error.
+	// Instead, we assume healthiness by simply making the connection successfully.
 
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			c.log.Info("failed to close response reader after health check", "error", err.Error())
-		}
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		statusErr := errors.New(fmt.Sprintf(errUnexpectedResp, resp.Status))
-		traces.SetAndRecordError(span, statusErr)
-
-		return statusErr
-	}
 	// Health check completed successfully, update status.
 	providerConfig.Status.SetConditions(v1alpha1.HealthCheckSuccess())
 
-	return nil
+	return resp.Body.Close()
 }
 
 // unpauseBuckets lists all buckets that exist on the given backend by using the custom

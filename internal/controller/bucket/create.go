@@ -82,12 +82,16 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
+	// A disabled Bucket CR means we log and return no error as we do not wish to requeue.
 	if bucket.Spec.Disabled {
 		c.log.Info("Bucket is disabled - no buckets to be created on backends", consts.KeyBucketName, bucket.Name)
 
 		return managed.ExternalCreation{}, nil
 	}
 
+	// If no backends are stored then we return an error in order to requeue until
+	// backends appear in the store. The backend store is updated by the backend-monitor
+	// which reconciles ProviderConfig objects representing backends.
 	if !c.backendStore.BackendsAreStored() {
 		err := errors.New(errNoS3BackendsStored)
 		traces.SetAndRecordError(span, err)
@@ -95,31 +99,54 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, err
 	}
 
+	// allBackendNames is a list of the names of all backends from backend store which
+	// are Healthy. These backends can be active or inactive. A backend is marked
+	// as inactive in the backend store when its ProviderConfig object has been deleted.
+	// Inactive backends are included in this list so that we can attempt to recreate
+	// this bucket on those backends should they become active again.
 	allBackendNames := c.backendStore.GetAllBackendNames(false)
-	providerNames := getBucketProvidersFilterDisabledLabel(bucket, allBackendNames)
 
-	// Create the bucket on each backend in a separate go routine
-	activeBackends := c.backendStore.GetActiveBackends(providerNames)
-	if len(activeBackends) == 0 {
+	// allBackendsToCreateOn is a list of names of all backends on which this S3 bucket
+	// is to be created. This will either be:
+	// 1. The list of bucket.Spec.Providers, if specified.
+	// 2. Otherwise, the allBackendNames list.
+	// In either case, the list will exclude any backends which have been specified as
+	// disabled on the Bucket CR. A backend is specified as disabled for a given bucket
+	// if it has been given the backend label (eg 'provider-ceph.backends.<backend-name>: "false"').
+	// This means that Provider Ceph will NOT create the bucket on this backend.
+	allBackendsToCreateOn := getBucketProvidersFilterDisabledLabel(bucket, allBackendNames)
+
+	// If none of the backends on which we wish to create the bucket are active then we
+	// return an error in order to requeue until backends become active.
+	// Otherwise we do a quick sanity check to see if there are backends
+	// that the bucket will not be created on and log these backends.
+	activeBackendsToCreateOn := c.backendStore.GetActiveBackends(allBackendsToCreateOn)
+	if len(activeBackendsToCreateOn) == 0 {
 		err := errors.New(errNoActiveS3Backends)
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalCreation{}, err
-	} else if len(activeBackends) != len(providerNames) {
-		c.log.Info("Missing S3 backends", consts.KeyBucketName, bucket.Name, "missing", utils.MissingStrings(providerNames, allBackendNames))
+	} else if len(activeBackendsToCreateOn) != len(allBackendsToCreateOn) {
+		c.log.Info("Bucket will not be created on the following S3 backends", consts.KeyBucketName, bucket.Name, "backends", utils.MissingStrings(allBackendsToCreateOn, allBackendNames))
 		traces.SetAndRecordError(span, errors.New(errMissingS3Backend))
 	}
 
-	// This value shows a bucket on one backend is already created.
-	// It is used to prevent goroutines from sending duplicated messages to `readyChan`.
+	// This value shows a bucket on the given backend is already created.
+	// It is used to prevent go routines from sending duplicated messages to `readyChan`.
 	bucketAlreadyCreated := atomic.Bool{}
 	backendCount := 0
-	errChan := make(chan error, len(activeBackends))
+	errChan := make(chan error, len(activeBackendsToCreateOn))
 	readyChan := make(chan string)
 
-	for beName := range activeBackends {
+	// Now we're ready to start creating S3 buckets on our desired active backends.
+	for beName := range activeBackendsToCreateOn {
 		originalBucket := bucket.DeepCopy()
 
+		// Attempt to get an S3 client for the backend. This will either be the default
+		// S3 client created for each backend by the backend monitor or it will be a new
+		// temporary S3 client created via the STS AssumeRole endpoint. The latter will
+		// be used if the user has specified an "assume-role-arn" at start-up. If an error
+		// occurs, continue to the next backend.
 		cl, err := c.s3ClientHandler.GetS3Client(ctx, bucket, beName)
 		if err != nil {
 			traces.SetAndRecordError(span, err)
@@ -130,6 +157,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 		c.log.Info("Creating bucket on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName)
 
+		// Now we want to ensure that the backend's ProviderConfig object exists.
+		// If we cannot retrieve it from the k8s API, we return an error.
+		// TODO: can we remove this check? it feels unnecessary given that we don't
+		// actually need any data from it at this point.
 		pc := &apisv1alpha1.ProviderConfig{}
 		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
 			c.log.Info("Failed to fetch provider config", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName, "err", err.Error())
@@ -142,6 +173,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		// Increment the backend counter. We need this later to know when the operation should finish.
 		backendCount++
 
+		// Launch a go routine for each backend, creating buckets concurrently.
 		beName := beName
 		go func() {
 			_, err := rgw.CreateBucket(ctx, cl, rgw.BucketToCreateBucketInput(originalBucket))
@@ -176,16 +208,21 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		}()
 	}
 
+	// We couldn't attempt to create a bucket on any backend. We update the bucket CR
+	// with the relevant labels and return no error as we do not wish to requeue this
+	// Bucket CR while there are no backends for us to create on.
 	if backendCount == 0 {
 		c.log.Info("Failed to find any backend for bucket", consts.KeyBucketName, bucket.Name)
-
 		if err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
 			// Although no backends were found for the bucket, we still apply the backend
 			// label to the Bucket CR for each backend that the bucket was intended to be
 			// created on. This is to ensure the bucket will eventually be created on these
 			// backends whenever they become active again.
-			setAllBackendLabels(bucketLatest, providerNames)
-
+			setAllBackendLabels(bucketLatest, allBackendsToCreateOn)
+			// Pause the Bucket CR because there is no backend for it to be created on.
+			// If a backend for which it was intended becomes active, the health-check
+			// controller will un-pause the Bucket CR (identifying it by its backend label)
+			// and it will be re-reconciled.
 			bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = True
 
 			return NeedsObjectUpdate
@@ -200,10 +237,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, nil
 	}
 
-	return c.waitForCreationAndUpdateBucketCR(ctx, bucket, providerNames, readyChan, errChan, backendCount)
+	return c.waitForCreationAndUpdateBucketCR(ctx, bucket, allBackendsToCreateOn, readyChan, errChan, backendCount)
 }
 
-func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, providerNames []string, readyChan <-chan string, errChan <-chan error, backendCount int) (managed.ExternalCreation, error) {
+func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, allBackendsToCreateOn []string, readyChan <-chan string, errChan <-chan error, backendCount int) (managed.ExternalCreation, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "waitForCreationAndUpdateBucketCR")
 	defer span.End()
 
@@ -212,11 +249,20 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 	for i := 0; i < backendCount; i++ {
 		select {
 		case <-ctx.Done():
+			// The create bucket request timed out. Update createErr value, if this is the last error to
+			// occur for all our backends then it will be the error that is seen in the Bucket CR Status.
 			c.log.Info("Context timeout waiting for bucket creation", consts.KeyBucketName, bucket.Name)
 			createErr = ctx.Err()
 		case beName := <-readyChan:
+			// This channel receives the value of the backend name that the bucket is first created on.
+			// We only need the bucket to be created on a single backend for the Bucket CR to be
+			// considered in the Ready condition. Therefore we update the Bucket CR with:
+			// 1. The backend labels.
+			// 2. The Bucket CR Status with the Ready condition.
+			// 3. The Bucket CR Status Backends with a Ready condition for the backend the bucket
+			// was created on.
 			err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-				setAllBackendLabels(bucketLatest, providerNames)
+				setAllBackendLabels(bucketLatest, allBackendsToCreateOn)
 
 				return NeedsObjectUpdate
 			}, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
@@ -238,6 +284,9 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 
 			return managed.ExternalCreation{}, err
 		case createErr = <-errChan:
+			// If this channel receives an error it means bucket creation failed on a backend.
+			// Therefore, we simply log and continue to the next backend as we only need one
+			// successful creation.
 			if createErr != nil {
 				traces.SetAndRecordError(span, createErr)
 			}
@@ -247,7 +296,9 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 	}
 
 	c.log.Info("Failed to create bucket on any backend", consts.KeyBucketName, bucket.Name)
-
+	// Update the Bucket CR Status condition to Unavailable. This means the Bucket CR will
+	// not be seen as Ready. If that update is successful, we return the createErr which will
+	// be the most recent error receieved from a backend's failed creation.
 	if err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
 		bucketLatest.Status.SetConditions(xpv1.Unavailable())
 

@@ -120,29 +120,36 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return err
 	}
 
-	// If an error occurred during deletion, we must return for requeue.
-	if deleteErr != nil {
+	if deleteErr != nil { //nolint:nestif // Multiple checks required.
 		c.log.Info("Failed to delete bucket on one or more backends", "error", deleteErr.Error())
 		traces.SetAndRecordError(span, deleteErr)
 
-		// If the error is BucketNotEmpty error, the DeleteBucket operation should be failed
-		// and the client should be able to use the bucket with non-empty buckends.
 		if errors.Is(deleteErr, rgw.ErrBucketNotEmpty) {
+			c.log.Info("Cannot delete non-empty bucket - this error will not be requeued", consts.KeyBucketName, bucket.Name)
+			// An error occurred attempting to delete the bucket because it is not empty.
+			// If this Delete operation was triggered because the Bucket CR was "Disabled",
+			// we need to unset this value so as not to continue attempting Delete.
+			// Otherwise we can return no error as we do not wish to requeue the Delete.
+			if !bucket.Spec.Disabled {
+				return nil
+			}
 			if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-				c.log.Info("Change 'disabled' flag to false", consts.KeyBucketName, bucket.Name)
+				c.log.Info("Bucket CRs with non-empty buckets should not be disabled - setting 'disabled' flag to false", consts.KeyBucketName, bucket.Name)
 
 				bucketLatest.Spec.Disabled = false
 
 				return NeedsObjectUpdate
 			}); err != nil {
 				err = errors.Wrap(err, errUpdateBucketCR)
-				c.log.Info("Failed to change 'disabled' flag to false", consts.KeyBackendName, bucket.Name, "error", err.Error())
+				c.log.Info("Failed to set 'disabled' flag to false", consts.KeyBucketName, bucket.Name, "error", err.Error())
 				traces.SetAndRecordError(span, err)
 
 				return err
 			}
-		}
 
+			return nil
+		}
+		// In all other cases we should return the deletion error for requeue.
 		return deleteErr
 	}
 

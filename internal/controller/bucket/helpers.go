@@ -160,8 +160,10 @@ func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends, pr
 		bucket.Status.SetConditions(xpv1.Available())
 	}
 	// The Bucket CR is considered Synced (ReconcileSuccess) once the bucket is available
-	// on the lesser of all backends or minimum replicas.
-	if float64(ok) >= math.Min(float64(len(providerNames)), float64(minReplicas)) {
+	// on the lesser of all backends or minimum replicas. We also ensure that the overall
+	// Bucket CR is available (in a Ready state) - this should already be the case.
+	if float64(ok) >= math.Min(float64(len(providerNames)), float64(minReplicas)) &&
+		bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) {
 		bucket.Status.SetConditions(xpv1.ReconcileSuccess())
 
 		return

@@ -6,7 +6,6 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"k8s.io/apimachinery/pkg/types"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
@@ -15,7 +14,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
-	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/rgw"
@@ -154,25 +152,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			continue
 		}
-
-		c.log.Info("Creating bucket on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName)
-
-		// Now we want to ensure that the backend's ProviderConfig object exists.
-		// If we cannot retrieve it from the k8s API, we return an error.
-		// TODO: can we remove this check? it feels unnecessary given that we don't
-		// actually need any data from it at this point.
-		pc := &apisv1alpha1.ProviderConfig{}
-		if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: beName}, pc); err != nil {
-			c.log.Info("Failed to fetch provider config", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName, "err", err.Error())
-			err := errors.Wrap(err, errGetPC)
-			traces.SetAndRecordError(span, err)
-
-			return managed.ExternalCreation{}, err
-		}
-
 		// Increment the backend counter. We need this later to know when the operation should finish.
 		backendCount++
 
+		c.log.Info("Creating bucket on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName)
 		// Launch a go routine for each backend, creating buckets concurrently.
 		beName := beName
 		go func() {

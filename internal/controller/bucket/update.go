@@ -146,14 +146,6 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 	g := new(errgroup.Group)
 
 	for backendName := range c.backendStore.GetActiveBackends(allBackendsToUpdateOn) {
-		// TODO: Can we remove this check? we are already iterating over active backends only.
-		if !c.backendStore.IsBackendActive(backendName) {
-			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
-			bb.setBucketCondition(bucket.Name, backendName, xpv1.Unavailable().WithMessage("Backend is marked inactive"))
-
-			continue
-		}
-
 		// Attempt to get an S3 client for the backend. This will either be the default
 		// S3 client created for each backend by the backend monitor or it will be a new
 		// temporary S3 client created via the STS AssumeRole endpoint. The latter will

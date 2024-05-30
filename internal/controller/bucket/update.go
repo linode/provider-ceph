@@ -40,17 +40,35 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
 
+	// A disabled Bucket CR means we perform the Delete flow to remove buckets
+	// from all backends without deleting the Bucket CR.
 	if bucket.Spec.Disabled {
 		c.log.Info("Bucket is disabled - remove any existing buckets from backends", "bucket name", bucket.Name)
 
 		return managed.ExternalUpdate{}, c.Delete(ctx, mg)
 	}
 
+	// allBackendNames is a list of the names of all backends from backend store which
+	// are Healthy. These backends can be active or inactive. A backend is marked
+	// as inactive in the backend store when its ProviderConfig object has been deleted.
+	// Inactive backends are included in this list so that we can attempt to recreate
+	// this bucket on those backends should they become active again.
 	allBackendNames := c.backendStore.GetAllBackendNames(false)
-	providerNames := getBucketProvidersFilterDisabledLabel(bucket, allBackendNames)
 
-	activeBackends := c.backendStore.GetActiveBackends(providerNames)
-	if len(activeBackends) == 0 {
+	// allBackendsToUpdateOn is a list of names of all backends on which this S3 bucket
+	// is to be updated. This will either be:
+	// 1. The list of bucket.Spec.Providers, if specified.
+	// 2. Otherwise, the allBackendNames list.
+	// In either case, the list will exclude any backends which have been specified as
+	// disabled on the Bucket CR. A backend is specified as disabled for a given bucket
+	// if it has been given the backend label (eg 'provider-ceph.backends.backend-a: "false"').
+	// This means that Provider Ceph should NOT update the bucket on this backend.
+	allBackendsToUpdateOn := getBucketProvidersFilterDisabledLabel(bucket, allBackendNames)
+
+	// If none of the backends on which we wish to update the bucket are active then we
+	// return an error in order to requeue until backends become active.
+	activeBackendsToUpdateOn := c.backendStore.GetActiveBackends(allBackendsToUpdateOn)
+	if len(activeBackendsToUpdateOn) == 0 {
 		err := errors.New(errNoActiveS3Backends)
 		traces.SetAndRecordError(span, err)
 
@@ -58,8 +76,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	bucketBackends := newBucketBackends()
-
-	updateAllErr := c.updateOnAllBackends(ctx, bucket, bucketBackends, providerNames)
+	updateAllErr := c.updateOnAllBackends(ctx, bucket, bucketBackends, allBackendsToUpdateOn)
 	if updateAllErr != nil {
 		c.log.Info("Failed to update on all backends", consts.KeyBucketName, bucket.Name, "error", updateAllErr.Error())
 		traces.SetAndRecordError(span, updateAllErr)
@@ -69,7 +86,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	// Bucket CR Status in all cases to represent the conditions of each individual bucket.
 	if err := c.updateBucketCR(ctx, bucket,
 		func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-			setBucketStatus(bucketLatest, bucketBackends, providerNames, c.minReplicas)
+			setBucketStatus(bucketLatest, bucketBackends, allBackendsToUpdateOn, c.minReplicas)
 
 			return NeedsStatusUpdate
 		}); err != nil {
@@ -87,19 +104,25 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 				bucketLatest.ObjectMeta.Labels = map[string]string{}
 			}
 
-			// Auto pause the Bucket CR if required.
-			cls := c.backendStore.GetBackendS3Clients(providerNames)
-			if isPauseRequired(bucketLatest, providerNames, c.minReplicas, cls, bucketBackends, c.autoPauseBucket) {
+			// Auto pause the Bucket CR if required - ie if auto-pause has been enabled and the
+			// criteria is met before pausing a Bucket CR. Otherwise we check to see if there are
+			// backends that the bucket was not updated on and if so, we set the updateAllErr
+			// which will be returned at the end of this function, triggering a requeue.
+			cls := c.backendStore.GetBackendS3Clients(allBackendsToUpdateOn)
+			if isPauseRequired(bucketLatest, allBackendsToUpdateOn, c.minReplicas, cls, bucketBackends, c.autoPauseBucket) {
 				c.log.Info("Auto pausing bucket", consts.KeyBucketName, bucket.Name)
 				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = True
-			} else if updateAllErr == nil && len(activeBackends) != len(providerNames) {
+			} else if updateAllErr == nil && len(activeBackendsToUpdateOn) != len(allBackendsToUpdateOn) {
 				updateAllErr = errors.New(errMissingS3Backend)
-				c.log.Info("Missing S3 backends", consts.KeyBucketName, bucket.Name, "missing", utils.MissingStrings(providerNames, allBackendNames))
+				c.log.Info("Bucket was not updated on the following backends", consts.KeyBucketName, bucket.Name, "missing", utils.MissingStrings(allBackendsToUpdateOn, allBackendNames))
 				traces.SetAndRecordError(span, updateAllErr)
 			}
-
-			setAllBackendLabels(bucketLatest, providerNames)
-
+			// Apply the backend label to the Bucket CR for each backend that the bucket was
+			// intended to be updated on. This is to ensure the bucket will eventually be updated
+			// on these backends whenever they become active again.
+			setAllBackendLabels(bucketLatest, allBackendsToUpdateOn)
+			// Add the in-use finalizer to ensure that the Bucket CR cannot be deleted while
+			// it has existing buckets.
 			controllerutil.AddFinalizer(bucketLatest, v1alpha1.InUseFinalizer)
 
 			return NeedsObjectUpdate
@@ -114,15 +137,16 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalUpdate{}, updateAllErr
 }
 
-func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Bucket, bb *bucketBackends, providerNames []string) error {
+func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Bucket, bb *bucketBackends, allBackendsToUpdateOn []string) error {
 	ctx, span := otel.Tracer("").Start(ctx, "updateOnAllBackends")
 	defer span.End()
 
-	defer setBucketStatus(bucket, bb, providerNames, c.minReplicas)
+	defer setBucketStatus(bucket, bb, allBackendsToUpdateOn, c.minReplicas)
 
 	g := new(errgroup.Group)
 
-	for backendName := range c.backendStore.GetActiveBackends(providerNames) {
+	for backendName := range c.backendStore.GetActiveBackends(allBackendsToUpdateOn) {
+		// TODO: Can we remove this check? we are already iterating over active backends only.
 		if !c.backendStore.IsBackendActive(backendName) {
 			c.log.Info("Backend is marked inactive - bucket will not be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 			bb.setBucketCondition(bucket.Name, backendName, xpv1.Unavailable().WithMessage("Backend is marked inactive"))
@@ -130,6 +154,12 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 			continue
 		}
 
+		// Attempt to get an S3 client for the backend. This will either be the default
+		// S3 client created for each backend by the backend monitor or it will be a new
+		// temporary S3 client created via the STS AssumeRole endpoint. The latter will
+		// be used if the user has specified an "assume-role-arn" at start-up. If an error
+		// occurs, update the Bucket CR Status with the condition of this backend and
+		// continue to the next backend.
 		cl, err := c.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 		if err != nil {
 			traces.SetAndRecordError(span, err)

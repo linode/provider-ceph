@@ -943,8 +943,6 @@ spec:
           kind: Bucket
           metadata:
             name: edge-case-bucket
-            labels:
-              provider-ceph.crossplane.io/validation-required: "true"
           spec:
             autoPause: true
             forProvider: {}

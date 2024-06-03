@@ -3,6 +3,7 @@ package rgw
 import (
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/document"
@@ -18,6 +19,8 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 	days90 := int32(90)
 	days365 := int32(365)
 	days3650 := int32(3650)
+	maxObjectSize := int64(100)
+	minObjectSize := int64(1)
 	t.Parallel()
 
 	type args struct {
@@ -167,6 +170,58 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 									{
 										Days:         &days90,
 										StorageClass: types.TransitionStorageClassDeepArchive,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"Config with filters": {
+			args: args{
+				name: bucketname,
+				config: &v1alpha1.BucketLifecycleConfiguration{
+					Rules: []v1alpha1.LifecycleRule{
+						{
+							Status: "Enabled",
+							Expiration: &v1alpha1.LifecycleExpiration{
+								Days: &days365,
+							},
+							Filter: &v1alpha1.LifecycleRuleFilter{
+								And: &v1alpha1.LifecycleRuleAndOperator{
+									Prefix: &prefix,
+									Tags: []v1alpha1.Tag{
+										{Key: "key1", Value: "value1"},
+										{Key: "key2", Value: "value2"},
+									},
+									ObjectSizeGreaterThan: &maxObjectSize,
+									ObjectSizeLessThan:    &minObjectSize,
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				result: &awss3.PutBucketLifecycleConfigurationInput{
+					Bucket: &bucketname,
+					LifecycleConfiguration: &types.BucketLifecycleConfiguration{
+						Rules: []types.LifecycleRule{
+							{
+								Status: "Enabled",
+								Expiration: &types.LifecycleExpiration{
+									Days: &days365,
+								},
+								Filter: &types.LifecycleRuleFilterMemberAnd{
+									Value: types.LifecycleRuleAndOperator{
+										Prefix: &prefix,
+										Tags: []types.Tag{
+											{Key: aws.String("key1"), Value: aws.String("value1")},
+											{Key: aws.String("key2"), Value: aws.String("value2")},
+										},
+										ObjectSizeGreaterThan: &maxObjectSize,
+										ObjectSizeLessThan:    &minObjectSize,
 									},
 								},
 							},

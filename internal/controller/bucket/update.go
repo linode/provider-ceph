@@ -6,7 +6,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/sync/errgroup"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
@@ -121,9 +120,6 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			// intended to be updated on. This is to ensure the bucket will eventually be updated
 			// on these backends whenever they become active again.
 			setAllBackendLabels(bucketLatest, allBackendsToUpdateOn)
-			// Add the in-use finalizer to ensure that the Bucket CR cannot be deleted while
-			// it has existing buckets.
-			controllerutil.AddFinalizer(bucketLatest, v1alpha1.InUseFinalizer)
 
 			return NeedsObjectUpdate
 		})

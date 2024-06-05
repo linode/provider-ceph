@@ -126,9 +126,8 @@ func TestDelete(t *testing.T) {
 	}
 
 	type want struct {
-		err           error
-		statusDiff    func(t *testing.T, mg resource.Managed)
-		finalizerDiff func(t *testing.T, mg resource.Managed)
+		err        error
+		statusDiff func(t *testing.T, mg resource.Managed)
 	}
 
 	cases := map[string]struct {
@@ -160,8 +159,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:       "test-bucket",
-						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Name: "test-bucket",
 						Labels: map[string]string{
 							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
 							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
@@ -212,15 +210,6 @@ func TestDelete(t *testing.T) {
 						}(bucket.Status.AtProvider.Backends),
 						"s3-backend-2 should not exist in backends")
 				},
-				finalizerDiff: func(t *testing.T, mg resource.Managed) {
-					t.Helper()
-					bucket, _ := mg.(*v1alpha1.Bucket)
-
-					assert.Empty(t,
-						len(bucket.Finalizers),
-						"unexpeceted finalizers",
-					)
-				},
 			},
 		},
 		"Delete buckets on all backends": {
@@ -246,8 +235,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:       "test-bucket",
-						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Name: "test-bucket",
 						Labels: map[string]string{
 							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
 							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
@@ -299,15 +287,6 @@ func TestDelete(t *testing.T) {
 						}(bucket.Status.AtProvider.Backends),
 						"s3-backend-2 should not exist in backends")
 				},
-				finalizerDiff: func(t *testing.T, mg resource.Managed) {
-					t.Helper()
-					bucket, _ := mg.(*v1alpha1.Bucket)
-
-					assert.Empty(t,
-						len(bucket.Finalizers),
-						"unexpeceted finalizers",
-					)
-				},
 			},
 		},
 		"Error deleting buckets on all specified backends": {
@@ -332,8 +311,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:       "bucket",
-						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Name: "bucket",
 						Labels: map[string]string{
 							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
 							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
@@ -372,16 +350,6 @@ func TestDelete(t *testing.T) {
 						bucket.Status.AtProvider.Backends[s3Backend2].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
 						"unexpected bucket condition on s3-backend-2")
 				},
-				finalizerDiff: func(t *testing.T, mg resource.Managed) {
-					t.Helper()
-					bucket, _ := mg.(*v1alpha1.Bucket)
-
-					assert.Equal(t,
-						[]string{v1alpha1.InUseFinalizer},
-						bucket.Finalizers,
-						"unexpected finalizers",
-					)
-				},
 			},
 		},
 		"Error deleting buckets on all backends": {
@@ -406,8 +374,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:       "bucket",
-						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Name: "bucket",
 						Labels: map[string]string{
 							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
 							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
@@ -442,16 +409,6 @@ func TestDelete(t *testing.T) {
 						bucket.Status.AtProvider.Backends[s3Backend2].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
 						"unexpected bucket condition on s3-backend-2")
 				},
-				finalizerDiff: func(t *testing.T, mg resource.Managed) {
-					t.Helper()
-					bucket, _ := mg.(*v1alpha1.Bucket)
-
-					assert.Equal(t,
-						[]string{v1alpha1.InUseFinalizer},
-						bucket.Finalizers,
-						"unexpected finalizers",
-					)
-				},
 			},
 		},
 
@@ -475,8 +432,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:       "bucket",
-						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Name: "bucket",
 						Labels: map[string]string{
 							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
 							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
@@ -510,16 +466,6 @@ func TestDelete(t *testing.T) {
 					assert.True(t,
 						bucket.Status.AtProvider.Backends[s3Backend2].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to assume role"), "Failed to create s3 client via assume role").Error())),
 						"unexpected bucket condition on s3-backend-2")
-				},
-				finalizerDiff: func(t *testing.T, mg resource.Managed) {
-					t.Helper()
-					bucket, _ := mg.(*v1alpha1.Bucket)
-
-					assert.Equal(t,
-						[]string{v1alpha1.InUseFinalizer},
-						bucket.Finalizers,
-						"unexpected finalizers",
-					)
 				},
 			},
 		},
@@ -556,8 +502,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:       "bucket",
-						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Name: "bucket",
 						Labels: map[string]string{
 							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
 							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
@@ -605,16 +550,6 @@ func TestDelete(t *testing.T) {
 						}(bucket.Status.AtProvider.Backends),
 						"s3-backend-2 should not exist in backends")
 				},
-				finalizerDiff: func(t *testing.T, mg resource.Managed) {
-					t.Helper()
-					bucket, _ := mg.(*v1alpha1.Bucket)
-
-					assert.Equal(t,
-						[]string{v1alpha1.InUseFinalizer},
-						bucket.Finalizers,
-						"unexpeceted finalizers",
-					)
-				},
 			},
 		},
 
@@ -654,8 +589,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:       "bucket",
-						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Name: "bucket",
 						Labels: map[string]string{
 							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
 							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
@@ -709,16 +643,6 @@ func TestDelete(t *testing.T) {
 						"Disabled flag should be false",
 					)
 				},
-				finalizerDiff: func(t *testing.T, mg resource.Managed) {
-					t.Helper()
-					bucket, _ := mg.(*v1alpha1.Bucket)
-
-					assert.Equal(t,
-						[]string{v1alpha1.InUseFinalizer},
-						bucket.Finalizers,
-						"unexpeceted finalizers",
-					)
-				},
 			},
 		},
 		"Error deleting disabled bucket because one specified bucket is not empty": {
@@ -757,8 +681,7 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:       "bucket",
-						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Name: "bucket",
 						Labels: map[string]string{
 							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
 							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
@@ -813,16 +736,6 @@ func TestDelete(t *testing.T) {
 						"Disabled flag should be false",
 					)
 				},
-				finalizerDiff: func(t *testing.T, mg resource.Managed) {
-					t.Helper()
-					bucket, _ := mg.(*v1alpha1.Bucket)
-
-					assert.Equal(t,
-						[]string{v1alpha1.InUseFinalizer},
-						bucket.Finalizers,
-						"unexpeceted finalizers",
-					)
-				},
 			},
 		},
 	}
@@ -853,9 +766,6 @@ func TestDelete(t *testing.T) {
 			require.ErrorIs(t, err, tc.want.err, "unexpected err")
 			if tc.want.statusDiff != nil {
 				tc.want.statusDiff(t, tc.args.mg)
-			}
-			if tc.want.finalizerDiff != nil {
-				tc.want.finalizerDiff(t, tc.args.mg)
 			}
 		})
 	}

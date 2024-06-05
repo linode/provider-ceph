@@ -3,6 +3,4 @@ kind: Bucket
 metadata:
   name: test-bucket
 spec:
-  providers:
-  - ceph-admin-cfg
   forProvider: {}

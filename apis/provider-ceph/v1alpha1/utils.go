@@ -18,5 +18,4 @@ package v1alpha1
 
 const (
 	BackendLabelPrefix = "provider-ceph.backends."
-	InUseFinalizer     = "bucket-in-use.provider-ceph.crossplane.io"
 )

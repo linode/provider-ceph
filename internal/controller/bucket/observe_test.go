@@ -159,42 +159,6 @@ func TestObserve(t *testing.T) {
 				},
 			},
 		},
-		"Bucket doesn't have finalizer": {
-			fields: fields{
-				backendStore: func() *backendstore.BackendStore {
-					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, true, apisv1alpha1.HealthStatusHealthy)
-
-					return bs
-				}(),
-			},
-			args: args{
-				mg: &v1alpha1.Bucket{
-					Spec: v1alpha1.BucketSpec{
-						ResourceSpec: v1.ResourceSpec{
-							ProviderConfigReference: &v1.Reference{
-								Name: "s3-backend-1",
-							},
-						},
-					},
-					Status: v1alpha1.BucketStatus{
-						AtProvider: v1alpha1.BucketObservation{
-							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketCondition: v1.Available(),
-								},
-							},
-						},
-					},
-				},
-			},
-			want: want{
-				o: managed.ExternalObservation{
-					ResourceExists:   true,
-					ResourceUpToDate: false,
-				},
-			},
-		},
 		"Bucket status is not available": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
@@ -206,9 +170,6 @@ func TestObserve(t *testing.T) {
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{v1alpha1.InUseFinalizer},
-					},
 					Spec: v1alpha1.BucketSpec{
 						ResourceSpec: v1.ResourceSpec{
 							ProviderConfigReference: &v1.Reference{
@@ -252,9 +213,6 @@ func TestObserve(t *testing.T) {
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{v1alpha1.InUseFinalizer},
-					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
 						ResourceSpec: v1.ResourceSpec{
@@ -306,8 +264,7 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:       "bucket-check-external-error",
-						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Name: "bucket-check-external-error",
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
@@ -361,8 +318,7 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:       "bucket-check-external-not-exists",
-						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Name: "bucket-check-external-not-exists",
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
@@ -416,8 +372,7 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:       "bucket-check-external-ok",
-						Finalizers: []string{v1alpha1.InUseFinalizer},
+						Name: "bucket-check-external-ok",
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
@@ -471,9 +426,6 @@ func TestObserve(t *testing.T) {
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Finalizers: []string{v1alpha1.InUseFinalizer},
-					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{"s3-backend-1"},
 						ResourceSpec: v1.ResourceSpec{

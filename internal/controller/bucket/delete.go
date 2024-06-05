@@ -13,7 +13,6 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/consts"
@@ -101,8 +100,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	// 1. The caller attempts to delete the CR and an error occurs during the call to
 	// the bucket's backends. In this case the bucket may be successfully deleted
 	// from some backends, but not from others. As such, we must update the bucket CR
-	// status accordingly as Delete has ultimately failed and the 'in-use' finalizer
-	// will not be removed.
+	// status accordingly as Delete has ultimately failed.
 	// 2. The caller attempts to delete the bucket from it's backends without deleting
 	// the bucket CR. This is done by setting the Disabled flag on the bucket
 	// CR spec. If the deletion is successful or unsuccessful, the bucket CR status must be
@@ -154,22 +152,6 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	}
 
 	c.log.Info("All buckets successfully deleted from backends for Bucket CR", consts.KeyBucketName, bucket.Name)
-
-	// No errors occurred - the bucket has successfully been deleted from all backends.
-	// We do not need to update the Bucket CR Status, we simply remove the "in-use" finalizer.
-	if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-		c.log.Info("Removing 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name)
-
-		controllerutil.RemoveFinalizer(bucketLatest, v1alpha1.InUseFinalizer)
-
-		return NeedsObjectUpdate
-	}); err != nil {
-		err = errors.Wrap(err, errUpdateBucketCR)
-		c.log.Info("Failed to remove 'in-use' finalizer from Bucket CR", consts.KeyBucketName, bucket.Name, "error", err.Error())
-		traces.SetAndRecordError(span, err)
-
-		return err
-	}
 
 	return nil
 }

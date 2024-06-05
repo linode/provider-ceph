@@ -5,7 +5,6 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
@@ -46,13 +45,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	if (bucket.Spec.AutoPause || c.autoPauseBucket) && !isBucketPaused(bucket) {
-		return managed.ExternalObservation{
-			ResourceExists:   true,
-			ResourceUpToDate: false,
-		}, nil
-	}
-
-	if !controllerutil.ContainsFinalizer(bucket, v1alpha1.InUseFinalizer) {
 		return managed.ExternalObservation{
 			ResourceExists:   true,
 			ResourceUpToDate: false,

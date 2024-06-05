@@ -111,6 +111,15 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 				if local.Filter.And.Tags != nil {
 					andOperator.Tags = sortS3TagSet(copyTags(local.Filter.And.Tags))
 				}
+
+				if local.Filter.And.ObjectSizeGreaterThan != nil {
+					andOperator.ObjectSizeGreaterThan = local.Filter.And.ObjectSizeGreaterThan
+				}
+
+				if local.Filter.And.ObjectSizeLessThan != nil {
+					andOperator.ObjectSizeLessThan = local.Filter.And.ObjectSizeLessThan
+				}
+
 				rule.Filter = &types.LifecycleRuleFilterMemberAnd{Value: andOperator}
 			}
 		}

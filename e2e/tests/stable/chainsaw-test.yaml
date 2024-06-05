@@ -155,7 +155,6 @@ spec:
             name: lc-config-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
-            - "bucket-in-use.provider-ceph.crossplane.io"
             labels:
               provider-ceph.backends.localstack-a: "true"
               provider-ceph.backends.localstack-b: "true"
@@ -220,7 +219,6 @@ spec:
             name: auto-pause-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
-            - "bucket-in-use.provider-ceph.crossplane.io"
             labels:
               crossplane.io/paused: "true"
               provider-ceph.backends.localstack-a: "true"
@@ -377,7 +375,6 @@ spec:
             name: localstack-b-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
-            - "bucket-in-use.provider-ceph.crossplane.io"
           status:
             atProvider:
               backends:
@@ -648,7 +645,6 @@ spec:
             name: auto-pause-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
-            - "bucket-in-use.provider-ceph.crossplane.io"
             labels:
               crossplane.io/paused: "true"
               provider-ceph.backends.localstack-a: "true"
@@ -685,7 +681,6 @@ spec:
             name: avoid-localstack-c-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
-            - "bucket-in-use.provider-ceph.crossplane.io"
             labels:
               provider-ceph.backends.localstack-a: "true"
               provider-ceph.backends.localstack-b: "true"
@@ -738,7 +733,6 @@ spec:
             name: auto-pause-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
-            - "bucket-in-use.provider-ceph.crossplane.io"
             labels:
               crossplane.io/paused: "true"
               provider-ceph.backends.localstack-a: "true"
@@ -777,7 +771,6 @@ spec:
             name: avoid-localstack-c-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
-            - "bucket-in-use.provider-ceph.crossplane.io"
             labels:
               crossplane.io/paused: "true"
               provider-ceph.backends.localstack-a: "true"

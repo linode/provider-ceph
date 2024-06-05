@@ -81,7 +81,6 @@ spec:
             name: test-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
-            - "bucket-in-use.provider-ceph.crossplane.io"
           status:
             atProvider:
               backends:
@@ -105,7 +104,6 @@ spec:
             name: test-bucket-all
             finalizers:
             - "finalizer.managedresource.crossplane.io"
-            - "bucket-in-use.provider-ceph.crossplane.io"
           status:
             atProvider:
               backends:
@@ -185,7 +183,6 @@ spec:
             name: test-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
-            - "bucket-in-use.provider-ceph.crossplane.io"
           status:
             atProvider:
               backends:
@@ -257,7 +254,6 @@ spec:
             name: test-bucket
             finalizers:
             - "finalizer.managedresource.crossplane.io"
-            - "bucket-in-use.provider-ceph.crossplane.io"
           status:
             atProvider:
               backends:

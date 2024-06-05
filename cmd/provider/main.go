@@ -74,7 +74,6 @@ var defaultZapConfig = map[string]string{
 
 //nolint:maintidx // Function requires a lot of setup operations.
 func main() {
-	// This is a test.
 	var (
 		app            = kingpin.New(filepath.Base(os.Args[0]), "Ceph support for Crossplane.").DefaultEnvars()
 		leaderElection = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").OverrideDefaultFromEnvar("LEADER_ELECTION").Bool()
@@ -112,6 +111,8 @@ func main() {
 	)
 
 	var zo zap.Options
+	var zapDevel *bool
+
 	zapFlagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	zo.BindFlags(zapFlagSet)
 
@@ -121,14 +122,16 @@ func main() {
 		if !ok {
 			defaultValue = f.DefValue
 		}
-
 		kf := app.Flag(f.Name, f.Usage).Default(defaultValue)
 
 		switch f.Name {
 		case "zap-devel":
-			d := kf.Bool()
+			// Store the value for zap-devel for use when we come to zap-log-level so that we
+			// do not overwrite the level. VisitAll visits flags in lexicographical order so it
+			// is safe to assume "zap-devel" will always be visited before "zap-log-level".
+			zapDevel = kf.Bool()
 			zapOpts = append(zapOpts, func(o *zap.Options) {
-				o.Development = *d
+				o.Development = *zapDevel
 			})
 		case "zap-encoder":
 			e := kf.String()
@@ -148,6 +151,10 @@ func main() {
 			zapOpts = append(zapOpts, func(o *zap.Options) {
 				l := zapcore.Level(0)
 				app.FatalIfError(l.Set(*ll), "Unable to unmarshal zap-log-level")
+				// if zap-devel is enabled, the log level should be debug (-1).
+				if *zapDevel {
+					l = zapcore.Level(-1)
+				}
 				o.Level = l
 			})
 		case "zap-stacktrace-level":
@@ -173,7 +180,6 @@ func main() {
 	klog.SetLogger(zl)
 
 	log := logging.NewLogrLogger(zl.WithName("provider-ceph"))
-
 	// Init otel tracer provider if the user sets the flag
 	if *tracesEnabled {
 		flush, err := traces.InitTracerProvider(log, *tracesExportAddress, *tracesExportTimeout, *tracesExportInterval)

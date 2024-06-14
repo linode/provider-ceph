@@ -13,6 +13,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
@@ -169,6 +170,13 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 				return
 			}
 			c.log.Info("Bucket created on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+
+			_, err = rgw.PutObjectLockConfiguration(ctx, cl, &awss3.PutObjectLockConfigurationInput{Bucket: &bucket.Name})
+			if err != nil {
+				c.log.Info("PUT LOCK CONFIG FAILED", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName, "err", err.Error())
+
+			}
+			c.log.Info("PUT LOCK DONE", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 
 			// This compare-and-swap operation is the atomic equivalent of:
 			//	if *bucketAlreadyCreated == false {

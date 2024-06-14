@@ -17,7 +17,25 @@ const (
 	errGetLifecycleConfig = "failed to get bucket lifecycle configuration"
 	errPutLifecycleConfig = "failed to put bucket lifecycle configuration"
 	errDeleteLifecycle    = "failed to delete bucket lifecycle"
+
+	errPutLockConfig = "failed to put bucket lock configuration"
 )
+
+func PutObjectLockConfiguration(ctx context.Context, s3Backend backendstore.S3Client, bucket *awss3.PutObjectLockConfigurationInput, o ...func(*awss3.Options)) (*awss3.PutObjectLockConfigurationOutput, error) {
+	ctx, span := otel.Tracer("").Start(ctx, "PutObjectLockConfiguration")
+	defer span.End()
+
+	resp, err := s3Backend.PutObjectLockConfiguration(ctx, bucket, o...)
+	if err != nil {
+		err := errors.Wrap(err, errPutLifecycleConfig)
+		traces.SetAndRecordError(span, err)
+
+		return resp, err
+
+	}
+
+	return resp, nil
+}
 
 func PutBucketLifecycleConfiguration(ctx context.Context, s3Backend backendstore.S3Client, b *v1alpha1.Bucket) (*awss3.PutBucketLifecycleConfigurationOutput, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "PutBucketLifecycleConfiguration")

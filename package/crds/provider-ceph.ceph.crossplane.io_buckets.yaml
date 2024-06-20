@@ -485,6 +485,29 @@ spec:
                       If it is set, Provider-Ceph calls PutBucketPolicy API after creating the bucket.
                       Before adding it, you should validate the JSON string.
                     type: string
+                  versioningConfiguration:
+                    description: |-
+                      VersioningConfiguration describes the desired versioning state of an S3 bucket.
+                      See the API reference guide for PutBucketVersioning for usage and error information.
+                      See also, https://docs.aws.amazon.com/goto/WebAPI/s3-2006-03-01/PutBucketVersioning
+                    properties:
+                      mfaDelete:
+                        description: |-
+                          MFADelete specifies whether MFA delete is enabled in the bucket versioning configuration.
+                          This element is only returned if the bucket has been configured with MFA
+                          delete. If the bucket has never been so configured, this element is not returned.
+                        enum:
+                        - Enabled
+                        - Disabled
+                        type: string
+                      status:
+                        description: Status is the desired versioning state of the
+                          bucket.
+                        enum:
+                        - Enabled
+                        - Suspended
+                        type: string
+                    type: object
                 type: object
               lifecycleConfigurationDisabled:
                 description: |-
@@ -718,6 +741,42 @@ spec:
                             LifecycleConfigurationCondition is the condition of the bucket lifecycle
                             configuration on the S3 backend. Use a pointer to allow nil value when
                             there is no lifecycle configuration.
+                          properties:
+                            lastTransitionTime:
+                              description: |-
+                                LastTransitionTime is the last time this condition transitioned from one
+                                status to another.
+                              format: date-time
+                              type: string
+                            message:
+                              description: |-
+                                A Message containing details about this condition's last transition from
+                                one status to another, if any.
+                              type: string
+                            reason:
+                              description: A Reason for this condition's last transition
+                                from one status to another.
+                              type: string
+                            status:
+                              description: Status of this condition; is it currently
+                                True, False, or Unknown?
+                              type: string
+                            type:
+                              description: |-
+                                Type of this condition. At most one of each condition type may apply to
+                                a resource at any point in time.
+                              type: string
+                          required:
+                          - lastTransitionTime
+                          - reason
+                          - status
+                          - type
+                          type: object
+                        versioningConfigurationCondition:
+                          description: |-
+                            VersioningConfigurationCondition is the condition of the versioning
+                            configuration on the S3 backend. Use a pointer to allow nil value when
+                            there is no versioning configuration.
                           properties:
                             lastTransitionTime:
                               description: |-

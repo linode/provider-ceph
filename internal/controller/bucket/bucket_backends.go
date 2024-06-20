@@ -81,6 +81,36 @@ func (b *bucketBackends) getLifecycleConfigCondition(bucketName, backendName str
 	return b.backends[bucketName][backendName].LifecycleConfigurationCondition
 }
 
+func (b *bucketBackends) setVersioningConfigCondition(bucketName, backendName string, c *xpv1.Condition) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.backends[bucketName] == nil {
+		b.backends[bucketName] = make(v1alpha1.Backends)
+	}
+
+	if b.backends[bucketName][backendName] == nil {
+		b.backends[bucketName][backendName] = &v1alpha1.BackendInfo{}
+	}
+
+	b.backends[bucketName][backendName].VersioningConfigurationCondition = c
+}
+
+func (b *bucketBackends) getVersioningConfigCondition(bucketName, backendName string) *xpv1.Condition {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if _, ok := b.backends[bucketName]; !ok {
+		return nil
+	}
+
+	if _, ok := b.backends[bucketName][backendName]; !ok {
+		return nil
+	}
+
+	return b.backends[bucketName][backendName].VersioningConfigurationCondition
+}
+
 func (b *bucketBackends) deleteBackend(bucketName, backendName string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -181,6 +211,50 @@ func (b *bucketBackends) isLifecycleConfigRemovedFromBackends(bucket *v1alpha1.B
 		lcCondition := b.getLifecycleConfigCondition(bucket.Name, backendName)
 		if lcCondition != nil {
 			// The lifecycleconfig has not been created on this backend.
+			return false
+		}
+	}
+
+	return true
+}
+
+// isVersioningConfigAvailableOnBackends checks the backends listed in providerNames against
+// bucketBackends to ensure versioning configurations are considered Available on all desired backends.
+func (b *bucketBackends) isVersioningConfigAvailableOnBackends(bucketName string, providerNames []string, c map[string]backendstore.S3Client) bool {
+	for _, backendName := range providerNames {
+		if _, ok := c[backendName]; !ok {
+			// This backend does not exist in the list of available backends.
+			// The backend may be offline, so it is skipped.
+			continue
+		}
+
+		vCondition := b.getVersioningConfigCondition(bucketName, backendName)
+		if vCondition == nil {
+			// The versioningconfig has not been created on this backend.
+			return false
+		}
+
+		if !vCondition.Equal(xpv1.Available()) {
+			// The versioningconfig is not Available on this backend.
+			return false
+		}
+	}
+
+	return true
+}
+
+// isVersioningConfigRemovedFromBackends checks the backends listed in providerNames against
+// bucketBackends to verify a versioning configuration does not exist on any backend.
+func (b *bucketBackends) isVersioningConfigRemovedFromBackends(bucketName string, providerNames []string, c map[string]backendstore.S3Client) bool {
+	for _, backendName := range providerNames {
+		if _, ok := c[backendName]; !ok {
+			// This backend does not exist in the list of available backends.
+			// The backend may be offline, so it is skipped.
+			continue
+		}
+
+		vCondition := b.getVersioningConfigCondition(bucketName, backendName)
+		if vCondition != nil {
 			return false
 		}
 	}

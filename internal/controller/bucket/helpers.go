@@ -52,6 +52,12 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, minReplica
 		return false
 	}
 
+	// We should avoid pausing when versioning configurations exist on backends, but not all
+	// versioning configs are available.
+	if !bb.isVersioningConfigRemovedFromBackends(bucket.Name, providerNames, c) && !bb.isVersioningConfigAvailableOnBackends(bucket.Name, providerNames, c) {
+		return false
+	}
+
 	return (bucket.Spec.AutoPause || autopauseEnabled) &&
 		// Only return true if this label value is "".
 		// This is to allow the user to delete a paused bucket with autopause enabled.

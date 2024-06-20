@@ -3,4 +3,6 @@ kind: Bucket
 metadata:
   name: test-bucket
 spec:
-  forProvider: {}
+  forProvider: 
+    versioningConfiguration:
+      status: Enabled 

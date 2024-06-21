@@ -52,8 +52,15 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, minReplica
 		return false
 	}
 
-	// We should avoid pausing when versioning configurations exist on backends, but not all
+	// Avoid pausing when a versioning configuration is specified in the spec, but not all
 	// versioning configs are available.
+	if bucket.Spec.ForProvider.VersioningConfiguration != nil && !bb.isVersioningConfigAvailableOnBackends(bucket.Name, providerNames, c) {
+		return false
+	}
+
+	// Avoid pausing when versioning configurations exist on backends, but not all
+	// versioning configs are available. This scenario can occur when the versioning
+	// config has been removed from the Spec (and is therefore suspended).
 	if !bb.isVersioningConfigRemovedFromBackends(bucket.Name, providerNames, c) && !bb.isVersioningConfigAvailableOnBackends(bucket.Name, providerNames, c) {
 		return false
 	}

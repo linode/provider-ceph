@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/document"
 
@@ -81,7 +80,6 @@ func (l *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1a
 	return Updated, nil
 }
 
-//nolint:gocyclo,cyclop // Function requires multiple checks.
 func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
 	l.log.Info("Observing subresource versioning configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
@@ -106,7 +104,7 @@ func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 		// No versioining config was defined by the user in the Bucket CR Spec.
 		// This is should result in (a) an unversioned bucket remaining unversioned
 		// OR (b) a versioned bucket having versioning suspended.
-		if response.Status == "" && response.MFADelete == "" {
+		if response == nil || (response.Status == "" && response.MFADelete == "") {
 			// An empty versioning configuration was returned from the backend, signifying
 			// that versioning was never enabled on this bucket. Therefore versioning is
 			// considered Updated for the bucket and we do nothing.
@@ -125,8 +123,8 @@ func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 
 	external := &s3types.VersioningConfiguration{}
 	if response != nil {
-		external.Status = types.BucketVersioningStatus(response.Status)
-		external.MFADelete = types.MFADelete(response.MFADelete)
+		external.Status = response.Status
+		external.MFADelete = s3types.MFADelete(response.MFADelete)
 	}
 
 	desiredVersioningConfig := rgw.GenerateVersioningConfiguration(bucket.Spec.ForProvider.VersioningConfiguration)

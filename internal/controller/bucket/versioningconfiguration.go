@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/document"
 
@@ -125,8 +124,8 @@ func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 
 	external := &s3types.VersioningConfiguration{}
 	if response != nil {
-		external.Status = types.BucketVersioningStatus(response.Status)
-		external.MFADelete = types.MFADelete(response.MFADelete)
+		external.Status = s3types.BucketVersioningStatus(response.Status)
+		external.MFADelete = s3types.MFADelete(response.MFADelete)
 	}
 
 	desiredVersioningConfig := rgw.GenerateVersioningConfiguration(bucket.Spec.ForProvider.VersioningConfiguration)

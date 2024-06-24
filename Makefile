@@ -189,14 +189,14 @@ load-package: $(KIND) build kustomize-webhook
 # Run Chainsaw test suite on newly built controller image.
 # Destroy Kind and localstack.
 .PHONY: chainsaw
-chainsaw: generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
+chainsaw: $(CHAINSAW) generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
 	@$(INFO) Running chainsaw test suite
 	$(CHAINSAW) test e2e/tests/stable --config e2e/tests/stable/.chainsaw.yaml
 	@$(OK) Running chainsaw test suite
 	@$(MAKE) cluster-clean
 
 .PHONY: ceph-chainsaw
-ceph-chainsaw: crossplane-cluster load-package
+ceph-chainsaw: $(CHAINSAW) crossplane-cluster load-package
 	@$(INFO) Running chainsaw test suite against ceph cluster
 	$(CHAINSAW) test e2e/tests/ceph
 	@$(OK) Running chainsaw test suite against ceph cluster

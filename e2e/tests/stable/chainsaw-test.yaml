@@ -114,14 +114,14 @@ spec:
           status:
             availableReplicas: 1
 
-  - name: Apply lc-config-bucket and auto-pause-bucket.
+  - name: Apply lc-and-version-configs and auto-pause-bucket.
     try:
     - apply:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: lc-config-bucket
+            name: lc-and-version-configs
             labels:
               provider-ceph.crossplane.io/validation-required: "true"
           spec:
@@ -135,6 +135,8 @@ spec:
                     days: 1
                   filter:
                     prefix: "images/"
+              versioningConfiguration:
+                status: "Enabled"
     - apply:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
@@ -146,13 +148,13 @@ spec:
           spec:
             autoPause: true
             forProvider: {}
-    # Assert lc-config-bucket is synced with LC configs on backends.
+    # Assert lc-and-version-configs is synced with LC and Versioning configs on backends.
     - assert:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: lc-config-bucket
+            name: lc-and-version-configs
             finalizers:
             - "finalizer.managedresource.crossplane.io"
             labels:
@@ -171,6 +173,10 @@ spec:
                     reason: Available
                     status: "True"
                     type: Ready
+                  versioningConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
                 localstack-b:
                   bucketCondition:
                     reason: Available
@@ -180,12 +186,20 @@ spec:
                     reason: Available
                     status: "True"
                     type: Ready
+                  versioningConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
                 localstack-c:
                   bucketCondition:
                     reason: Available
                     status: "True"
                     type: Ready
                   lifecycleConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                  versioningConfigurationCondition:
                     reason: Available
                     status: "True"
                     type: Ready
@@ -200,7 +214,7 @@ spec:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: lc-config-bucket
+            name: lc-and-version-configs
           status:
             ~.(conditions[?reason == 'Available']):
               status: "True"
@@ -250,14 +264,14 @@ spec:
               status: "True"
               type: Synced
 
-  - name: Disable LC config on lc-config-bucket.
+  - name: Disable LC config and remove versioning on lc-and-version-configs.
     try:
     - apply:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: lc-config-bucket
+            name: lc-and-version-configs
             labels:
               provider-ceph.crossplane.io/validation-required: "true"
           spec:
@@ -275,13 +289,16 @@ spec:
                     days: 1
                   filter:
                     prefix: "images/"
-    # Assert that the LC config has been removed from lc-config-bucket.
+              versioningConfiguration:
+    # Assert that the LC config has been removed from lc-and-version-configs.
+    # Assert that the versioning config remains. By removing it from the Spec above
+    # we are only suspending versioning, buckets cannot be un-versioned.
     - assert:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: lc-config-bucket
+            name: lc-and-version-configs
           status:
             atProvider:
               backends:
@@ -290,8 +307,16 @@ spec:
                     reason: Available
                     status: "True"
                     type: Ready
+                  versioningConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
                 localstack-b:
                   bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                  versioningConfigurationCondition:
                     reason: Available
                     status: "True"
                     type: Ready
@@ -300,6 +325,11 @@ spec:
                     reason: Available
                     status: "True"
                     type: Ready
+                  versioningConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+
             # This method of iterative assertions is necessary here because
             # these conditions do not always appear in the same order.
             # It's safe to perform this assertions because we have already
@@ -313,23 +343,23 @@ spec:
 
   - name: Check for buckets on Localstack backends.
     try:
-    # Check for lc-config-bucket on all backends.
+    # Check for lc-and-version-configs on all backends.
     - command:
         args:
         - bucket_exists
-        - lc-config-bucket
+        - lc-and-version-configs
         - local-dev-control-plane:32566
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_exists
-        - lc-config-bucket
+        - lc-and-version-configs
         - local-dev-control-plane:32567
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_exists
-        - lc-config-bucket
+        - lc-and-version-configs
         - local-dev-control-plane:32568
         entrypoint: ../../../hack/expect_bucket.sh
     # Check for auto-pause-bucket on all backends.
@@ -412,16 +442,16 @@ spec:
         - local-dev-control-plane:32568
         entrypoint: ../../../hack/expect_bucket.sh
 
-  - name: Delete lc-config-bucket and auto-pause-bucket.
+  - name: Delete lc-and-version-configs and auto-pause-bucket.
     try:
     - command:
         args:
         - delete
         - bucket
-        - lc-config-bucket
+        - lc-and-version-configs
         entrypoint: kubectl
     - command:
-      # We need to "unpause" lc-config-bucket to allow deletion.
+      # We need to "unpause" lc-and-version-configs to allow deletion.
         args:
         - patch
         - --type=merge
@@ -441,7 +471,7 @@ spec:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
           kind: Bucket
           metadata:
-            name: lc-config-bucket
+            name: lc-and-version-configs
     - error:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
@@ -449,25 +479,25 @@ spec:
           metadata:
             name: auto-pause-bucket
 
-  - name: Check for lc-config-bucket and auto-pause-bucket on backends.
+  - name: Check for lc-and-version-configs and auto-pause-bucket on backends.
     try:
-    # Check for lc-config-bucket on all backends.
+    # Check for lc-and-version-configs on all backends.
     - command:
         args:
         - bucket_does_not_exist
-        - lc-config-bucket
+        - lc-and-version-configs
         - local-dev-control-plane:32566
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_does_not_exist
-        - lc-config-bucket
+        - lc-and-version-configs
         - local-dev-control-plane:32567
         entrypoint: ../../../hack/expect_bucket.sh
     - command:
         args:
         - bucket_does_not_exist
-        - lc-config-bucket
+        - lc-and-version-configs
         - local-dev-control-plane:32568
         entrypoint: ../../../hack/expect_bucket.sh
     # Check for auto-pause-bucket on all backends.

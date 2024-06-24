@@ -135,7 +135,7 @@ spec:
         - $CEPH_ADDRESS
         entrypoint: ../../../hack/expect_bucket.sh
 
-  - name: Apply lifecycle configuration to test-bucket.
+  - name: Apply lifecycle configuration and versioning configuration to test-bucket.
     try:
     - apply:
         resource: 
@@ -147,6 +147,8 @@ spec:
             providers:
             - ceph-cluster
             forProvider:
+              versioningConfiguration:
+                status: "Enabled"
               lifecycleConfiguration:
                 # Example rules from https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-configuration-examples.html
                 rules:
@@ -195,6 +197,10 @@ spec:
                     reason: Available
                     status: "True"
                     type: Ready
+                  versioningConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
             conditions:
             - reason: Available
               status: "True"
@@ -203,7 +209,7 @@ spec:
               status: "True"
               type: Synced
 
-  - name: Disable lifecycle configuration on test-bucket.
+  - name: Disable lifecycle configuration and remove versioning configuration on test-bucket.
     try:
     - apply:
         resource:
@@ -259,6 +265,10 @@ spec:
               backends:
                 ceph-cluster:
                   bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                  versioningConfigurationCondition:
                     reason: Available
                     status: "True"
                     type: Ready

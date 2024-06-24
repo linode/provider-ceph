@@ -80,7 +80,6 @@ func (l *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1a
 	return Updated, nil
 }
 
-//nolint:gocyclo,cyclop // Function requires multiple checks.
 func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
 	l.log.Info("Observing subresource versioning configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
@@ -124,7 +123,7 @@ func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 
 	external := &s3types.VersioningConfiguration{}
 	if response != nil {
-		external.Status = s3types.BucketVersioningStatus(response.Status)
+		external.Status = response.Status
 		external.MFADelete = s3types.MFADelete(response.MFADelete)
 	}
 

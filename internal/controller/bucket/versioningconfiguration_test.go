@@ -41,7 +41,6 @@ var (
 	vStatusEnabled   = v1alpha1.VersioningStatusEnabled
 )
 
-//nolint:maintidx // Function requires numerous checks.
 func TestVersioningConfigObserveBackend(t *testing.T) {
 	t.Parallel()
 

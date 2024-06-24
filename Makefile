@@ -98,7 +98,7 @@ generate-tests:
 	TEST_KIND_NODES=$(TEST_KIND_NODES) REPO=$(REPO) LOCALSTACK_VERSION=$(LOCALSTACK_VERSION) CERT_MANAGER_VERSION=$(CERT_MANAGER_VERSION) ./hack/generate-tests.sh
 
 # Run integration tests.
-test-integration: $(KIND) $(KUBECTL) $(UP) $(HELM3)
+test-integration: $(KIND) $(KUBECTL) $(UP) $(HELM)
 	@$(INFO) running integration tests using kind $(KIND_VERSION)
 	@KIND_NODE_IMAGE_TAG=${KIND_NODE_IMAGE_TAG} $(ROOT_DIR)/cluster/local/integration_tests.sh || $(FAIL)
 	@$(OK) integration tests passed
@@ -142,12 +142,12 @@ localstack-cluster: $(KIND) $(KUBECTL)
 	@$(KUBECTL) apply -R -f e2e/localstack/localstack-deployment.yaml
 
 # Spin up a Kind cluster and install Crossplane via Helm.
-crossplane-cluster: $(HELM3) cluster
+crossplane-cluster: $(HELM) cluster
 	@$(INFO) Installing Crossplane
-	@$(HELM3) repo add crossplane-stable https://charts.crossplane.io/stable
-	@$(HELM3) repo update
+	@$(HELM) repo add crossplane-stable https://charts.crossplane.io/stable
+	@$(HELM) repo update
 	@KIND_CLUSTER_NAME=$(KIND_CLUSTER_NAME) SOURCE="helm template crossplane --namespace crossplane-system --version $(CROSSPLANE_VERSION) crossplane-stable/crossplane" ./hack/load-images.sh
-	@$(HELM3) install crossplane --namespace crossplane-system --create-namespace --version $(CROSSPLANE_VERSION) crossplane-stable/crossplane
+	@$(HELM) install crossplane --namespace crossplane-system --create-namespace --version $(CROSSPLANE_VERSION) crossplane-stable/crossplane
 	@$(OK) Installing Crossplane
 
 ## Deploy cert manager to the K8s cluster specified in ~/.kube/config.
@@ -182,9 +182,6 @@ load-package: $(KIND) build kustomize-webhook
 	@BUILD_REGISTRY=$(BUILD_REGISTRY) PROJECT_NAME=$(PROJECT_NAME) ARCH=$(ARCH) VERSION=$(VERSION) ./hack/deploy-provider.sh
 	@$(OK) deploying provider package $(PROJECT_NAME) $(VERSION)
 
-CHAINSAW_VERSION ?= v0.1.9
-CHAINSAW_BIN := $(TOOLS_HOST_DIR)/chainsaw-$(CHAINSAW_VERSION)
-
 # Spin up a Kind cluster and localstack and install Crossplane via Helm.
 # Build the controller image and the provider package.
 # Load the controller image to the Kind cluster and add the provider package
@@ -192,24 +189,16 @@ CHAINSAW_BIN := $(TOOLS_HOST_DIR)/chainsaw-$(CHAINSAW_VERSION)
 # Run Chainsaw test suite on newly built controller image.
 # Destroy Kind and localstack.
 .PHONY: chainsaw
-chainsaw: $(CHAINSAW_BIN) generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
+chainsaw: generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
 	@$(INFO) Running chainsaw test suite
-	$(CHAINSAW_BIN) test e2e/tests/stable --config e2e/tests/stable/.chainsaw.yaml
+	$(CHAINSAW) test e2e/tests/stable --config e2e/tests/stable/.chainsaw.yaml
 	@$(OK) Running chainsaw test suite
 	@$(MAKE) cluster-clean
 
-# chainsaw binary download and install.
-$(CHAINSAW_BIN):
-	@$(INFO) installing chainsaw $(CHAINSAW_VERSION)
-	@mkdir -p $(TOOLS_HOST_DIR)
-	@GOBIN=$(TOOLS_HOST_DIR) go install github.com/kyverno/chainsaw@$(CHAINSAW_VERSION)
-	@mv $(TOOLS_HOST_DIR)/chainsaw $(CHAINSAW_BIN)
-	@$(OK) installing chainsaw $(CHAINSAW_VERSION)
-
 .PHONY: ceph-chainsaw
-ceph-chainsaw: $(CHAINSAW_BIN) crossplane-cluster load-package
+ceph-chainsaw: crossplane-cluster load-package
 	@$(INFO) Running chainsaw test suite against ceph cluster
-	$(CHAINSAW_BIN) test e2e/tests/ceph
+	$(CHAINSAW) test e2e/tests/ceph
 	@$(OK) Running chainsaw test suite against ceph cluster
 	@$(MAKE) cluster-clean
 

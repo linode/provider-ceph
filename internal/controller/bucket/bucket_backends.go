@@ -143,10 +143,10 @@ func (b *bucketBackends) countBucketsAvailableOnBackends(bucket *v1alpha1.Bucket
 	return i
 }
 
-// isLifecycleConfigAvailableOnBackends checks the backends listed in Spec.Providers against
+// isLifecycleConfigAvailableOnBackends checks the backends listed in providerNames against
 // bucketBackends to ensure lifecycle configurations are considered Available on all desired backends.
-func (b *bucketBackends) isLifecycleConfigAvailableOnBackends(bucket *v1alpha1.Bucket, c map[string]backendstore.S3Client) bool {
-	for _, backendName := range bucket.Spec.Providers {
+func (b *bucketBackends) isLifecycleConfigAvailableOnBackends(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client) bool {
+	for _, backendName := range providerNames {
 		if _, ok := c[backendName]; !ok {
 			// This backend does not exist in the list of available backends.
 			// The backend may be offline, so it is skipped.
@@ -168,10 +168,10 @@ func (b *bucketBackends) isLifecycleConfigAvailableOnBackends(bucket *v1alpha1.B
 	return true
 }
 
-// isLifecycleConfigRemovedFromBackends checks the backends listed in Spec.Providers against
+// isLifecycleConfigRemovedFromBackends checks the backends listed in providerNames against
 // bucketBackends to ensure lifecycle configurations are removed from all desired backends.
-func (b *bucketBackends) isLifecycleConfigRemovedFromBackends(bucket *v1alpha1.Bucket, c map[string]backendstore.S3Client) bool {
-	for _, backendName := range bucket.Spec.Providers {
+func (b *bucketBackends) isLifecycleConfigRemovedFromBackends(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client) bool {
+	for _, backendName := range providerNames {
 		if _, ok := c[backendName]; !ok {
 			// This backend does not exist in the list of available backends.
 			// The backend may be offline, so it is skipped.

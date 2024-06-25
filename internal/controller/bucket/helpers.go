@@ -42,13 +42,13 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, minReplica
 
 	// If lifecycle config is enabled and is specified in the spec, we should only pause once
 	// the lifecycle config is available on all backends.
-	if !bucket.Spec.LifecycleConfigurationDisabled && bucket.Spec.ForProvider.LifecycleConfiguration != nil && !bb.isLifecycleConfigAvailableOnBackends(bucket, c) {
+	if !bucket.Spec.LifecycleConfigurationDisabled && bucket.Spec.ForProvider.LifecycleConfiguration != nil && !bb.isLifecycleConfigAvailableOnBackends(bucket, providerNames, c) {
 		return false
 	}
 
 	// If lifecycle config is disabled, we should only pause once the lifecycle config is
 	// removed from all backends.
-	if bucket.Spec.LifecycleConfigurationDisabled && !bb.isLifecycleConfigRemovedFromBackends(bucket, c) {
+	if bucket.Spec.LifecycleConfigurationDisabled && !bb.isLifecycleConfigRemovedFromBackends(bucket, providerNames, c) {
 		return false
 	}
 

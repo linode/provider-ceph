@@ -104,7 +104,7 @@ func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 		// No versioining config was defined by the user in the Bucket CR Spec.
 		// This is should result in (a) an unversioned bucket remaining unversioned
 		// OR (b) a versioned bucket having versioning suspended.
-		if response.Status == "" && response.MFADelete == "" {
+		if response == nil || (response.Status == "" && response.MFADelete == "") {
 			// An empty versioning configuration was returned from the backend, signifying
 			// that versioning was never enabled on this bucket. Therefore versioning is
 			// considered Updated for the bucket and we do nothing.

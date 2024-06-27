@@ -34,9 +34,9 @@ func isBucketPaused(bucket *v1alpha1.Bucket) bool {
 }
 
 // isPauseRequired determines if the Bucket should be paused.
-func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, minReplicas uint, c map[string]backendstore.S3Client, bb *bucketBackends, autopauseEnabled bool) bool {
-	// If the number of backends on which the bucket is available is less than the number of providerNames or minReplicas, then the bucket must not be paused.
-	if float64(bb.countBucketsAvailableOnBackends(bucket.Name, providerNames, c)) < math.Min(float64(len(providerNames)), float64(minReplicas)) {
+func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client, bb *bucketBackends, autopauseEnabled bool) bool {
+	// If the number of backends on which the bucket is available is less than the number of providerNames.
+	if float64(bb.countBucketsAvailableOnBackends(bucket.Name, providerNames, c)) < float64(len(providerNames)) {
 		return false
 	}
 

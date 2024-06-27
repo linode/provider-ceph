@@ -2,7 +2,6 @@ package bucket
 
 import (
 	"context"
-	"math"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -106,8 +105,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 	// CR spec. If the deletion is successful or unsuccessful, the bucket CR status must be
 	// updated.
 	if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-		// Bucket status is unavailable at this point. Use math.MaxUint as minReplicas is irrelevant in this scenario.
-		setBucketStatus(bucketLatest, bucketBackends, providerNames, math.MaxUint)
+		setBucketStatus(bucketLatest, bucketBackends, providerNames, c.minReplicas)
 
 		return NeedsStatusUpdate
 	}); err != nil {

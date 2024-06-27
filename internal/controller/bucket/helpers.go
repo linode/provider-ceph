@@ -34,8 +34,16 @@ func isBucketPaused(bucket *v1alpha1.Bucket) bool {
 }
 
 // isPauseRequired determines if the Bucket should be paused.
+//
+//nolint:gocyclo,cyclop // Function requires numerous checks.
 func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client, bb *bucketBackends, autopauseEnabled bool) bool {
-	// If the number of backends on which the bucket is available is less than the number of providerNames.
+	// Avoid pausing if the Bucket CR is not Ready and Synced.
+	if !(bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) &&
+		bucket.Status.GetCondition(xpv1.TypeSynced).Equal(xpv1.ReconcileSuccess())) {
+		return false
+	}
+
+	// Avoid pausing if the number of backends on which the bucket is available is less than the number of providerNames.
 	if float64(bb.countBucketsAvailableOnBackends(bucket.Name, providerNames, c)) < float64(len(providerNames)) {
 		return false
 	}

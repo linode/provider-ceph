@@ -515,7 +515,7 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Status: "Enabled",
 									},
 								},
@@ -566,7 +566,7 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Status: "Enabled",
 									},
 								},
@@ -632,7 +632,7 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Status: "Enabled",
 									},
 								},
@@ -701,7 +701,7 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Status: "Enabled",
 									},
 								},

@@ -147,7 +147,7 @@ func (b *bucketBackends) getBackends(bucketName string, beNames []string) v1alph
 }
 
 // countBucketsAvailableOnBackends counts the backends listed in providerNames which are considered Available on the backends provided.
-func (b *bucketBackends) countBucketsAvailableOnBackends(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client) uint {
+func (b *bucketBackends) countBucketsAvailableOnBackends(bucketName string, providerNames []string, c map[string]backendstore.S3Client) uint {
 	i := uint(0)
 	for _, backendName := range providerNames {
 		if _, ok := c[backendName]; !ok {
@@ -156,7 +156,7 @@ func (b *bucketBackends) countBucketsAvailableOnBackends(bucket *v1alpha1.Bucket
 			continue
 		}
 
-		bucketCondition := b.getBucketCondition(bucket.Name, backendName)
+		bucketCondition := b.getBucketCondition(bucketName, backendName)
 		if bucketCondition == nil {
 			// The bucket has not been created on this backend.
 			continue

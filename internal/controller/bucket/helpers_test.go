@@ -17,6 +17,7 @@ limitations under the License.
 package bucket
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+//nolint:maintidx // Requires many scenarios for full coverage.
 func TestIsPauseRequired(t *testing.T) {
 	t.Parallel()
 	available := xpv1.Available()
@@ -50,11 +52,149 @@ func TestIsPauseRequired(t *testing.T) {
 		args   args
 		want   want
 	}{
+		"Bucket Status has no conditions - no pause": {
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				pauseIsRequired: false,
+			},
+		},
+		"Bucket Status has Ready condition but no Synced condition - no pause": {
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				pauseIsRequired: false,
+			},
+		},
+		"Bucket Status has Synced condition but no Ready condition - no pause": {
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.ReconcileError(fmt.Errorf("some error")),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				pauseIsRequired: false,
+			},
+		},
+		"Bucket Status has not Ready and not Synced conditions - no pause": {
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Unavailable(),
+									xpv1.ReconcileError(fmt.Errorf("some error")),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				pauseIsRequired: false,
+			},
+		},
+		"Bucket Status has Ready but not Synced conditions - no pause": {
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileError(fmt.Errorf("some error")),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				pauseIsRequired: false,
+			},
+		},
+		"Bucket Status has Synced but not Ready conditions - no pause": {
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Unavailable(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				pauseIsRequired: false,
+			},
+		},
+		// All Buckets from this point are Ready and Synced.
 		"One backend unavailable in bucket backends - no pause": {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "bucket",
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
 					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
@@ -65,7 +205,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
@@ -89,6 +229,16 @@ func TestIsPauseRequired(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "bucket",
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -98,7 +248,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
@@ -119,6 +269,16 @@ func TestIsPauseRequired(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "bucket",
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -128,7 +288,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
@@ -155,6 +315,16 @@ func TestIsPauseRequired(t *testing.T) {
 							meta.AnnotationKeyReconciliationPaused: "false",
 						},
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -164,7 +334,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
@@ -195,6 +365,16 @@ func TestIsPauseRequired(t *testing.T) {
 					Spec: v1alpha1.BucketSpec{
 						AutoPause: true,
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -204,7 +384,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
@@ -231,6 +411,16 @@ func TestIsPauseRequired(t *testing.T) {
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -240,7 +430,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
@@ -271,6 +461,16 @@ func TestIsPauseRequired(t *testing.T) {
 					Spec: v1alpha1.BucketSpec{
 						AutoPause: true,
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -280,7 +480,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
@@ -307,6 +507,16 @@ func TestIsPauseRequired(t *testing.T) {
 							"some": "label",
 						},
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -316,7 +526,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
@@ -347,6 +557,16 @@ func TestIsPauseRequired(t *testing.T) {
 					Spec: v1alpha1.BucketSpec{
 						AutoPause: true,
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -356,7 +576,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
@@ -388,9 +608,19 @@ func TestIsPauseRequired(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Status: "Enabled",
 									},
+								},
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -404,7 +634,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &available,
@@ -439,9 +669,19 @@ func TestIsPauseRequired(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Status: "Enabled",
 									},
+								},
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -455,7 +695,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &available,
@@ -489,9 +729,19 @@ func TestIsPauseRequired(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Status: "Enabled",
 									},
+								},
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -505,7 +755,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &available,
@@ -541,9 +791,19 @@ func TestIsPauseRequired(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Status: "Enabled",
 									},
+								},
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -557,7 +817,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &available,
@@ -592,9 +852,19 @@ func TestIsPauseRequired(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Status: "Enabled",
 									},
+								},
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -608,7 +878,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
@@ -643,6 +913,16 @@ func TestIsPauseRequired(t *testing.T) {
 							},
 						},
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -652,7 +932,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
@@ -690,6 +970,16 @@ func TestIsPauseRequired(t *testing.T) {
 							},
 						},
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -699,7 +989,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
@@ -736,6 +1026,16 @@ func TestIsPauseRequired(t *testing.T) {
 							},
 						},
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -745,7 +1045,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
@@ -779,6 +1079,16 @@ func TestIsPauseRequired(t *testing.T) {
 						AutoPause:   true,
 						ForProvider: v1alpha1.BucketParameters{},
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -788,7 +1098,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
@@ -822,6 +1132,16 @@ func TestIsPauseRequired(t *testing.T) {
 						AutoPause:   true,
 						ForProvider: v1alpha1.BucketParameters{},
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -831,7 +1151,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
@@ -864,6 +1184,16 @@ func TestIsPauseRequired(t *testing.T) {
 						AutoPause:   true,
 						ForProvider: v1alpha1.BucketParameters{},
 					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
 				},
 				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
 				clients: map[string]backendstore.S3Client{
@@ -873,7 +1203,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
@@ -908,13 +1238,23 @@ func TestIsPauseRequired(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Status: "Enabled",
 									},
 								},
 							},
 							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
 								Status: &vEnabled,
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
 							},
 						},
 					},
@@ -927,7 +1267,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
@@ -964,13 +1304,23 @@ func TestIsPauseRequired(t *testing.T) {
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
-									v1alpha1.LifecycleRule{
+									{
 										Status: "Enabled",
 									},
 								},
 							},
 							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
 								Status: &vEnabled,
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
 							},
 						},
 					},
@@ -983,7 +1333,7 @@ func TestIsPauseRequired(t *testing.T) {
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": v1alpha1.Backends{
+						"bucket": {
 							"s3-backend-1": &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,

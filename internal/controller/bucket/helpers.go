@@ -3,7 +3,6 @@ package bucket
 import (
 	"context"
 	"fmt"
-	"math"
 	"slices"
 	"strings"
 
@@ -176,14 +175,15 @@ func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends, pr
 		}
 		unavailableBackends = append(unavailableBackends, backendName)
 	}
-	// The Bucket CR is considered Available if the bucket is available on any backend.
-	if ok > 0 {
+	// The Bucket CR is considered Available if the bucket is available on "minReplicas"
+	// number of backends (default = 1).
+	if ok >= int(minReplicas) {
 		bucket.Status.SetConditions(xpv1.Available())
 	}
 	// The Bucket CR is considered Synced (ReconcileSuccess) once the bucket is available
-	// on the lesser of all backends or minimum replicas. We also ensure that the overall
-	// Bucket CR is available (in a Ready state) - this should already be the case.
-	if float64(ok) >= math.Min(float64(len(providerNames)), float64(minReplicas)) &&
+	// on all backends. We also ensure that the overall Bucket CR is available (in a Ready
+	// state) - this should already be the case.
+	if ok >= len(providerNames) &&
 		bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) {
 		bucket.Status.SetConditions(xpv1.ReconcileSuccess())
 

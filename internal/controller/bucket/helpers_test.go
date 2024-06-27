@@ -17,12 +17,12 @@ limitations under the License.
 package bucket
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -35,6 +35,7 @@ func TestIsPauseRequired(t *testing.T) {
 	available := xpv1.Available()
 	unavailable := xpv1.Unavailable()
 	vEnabled := v1alpha1.VersioningStatusEnabled
+	someErr := errors.New("some error")
 	type args struct {
 		bucket           *v1alpha1.Bucket
 		providerNames    []string
@@ -102,7 +103,7 @@ func TestIsPauseRequired(t *testing.T) {
 						ResourceStatus: xpv1.ResourceStatus{
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
-									xpv1.ReconcileError(fmt.Errorf("some error")),
+									xpv1.ReconcileError(someErr),
 								},
 							},
 						},
@@ -124,7 +125,7 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Unavailable(),
-									xpv1.ReconcileError(fmt.Errorf("some error")),
+									xpv1.ReconcileError(someErr),
 								},
 							},
 						},
@@ -146,7 +147,7 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileError(fmt.Errorf("some error")),
+									xpv1.ReconcileError(someErr),
 								},
 							},
 						},

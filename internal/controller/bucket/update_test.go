@@ -451,7 +451,7 @@ func TestUpdate(t *testing.T) {
 					s3clienthandler.WithBackendStore(tc.fields.backendStore),
 					s3clienthandler.WithKubeClient(cl)),
 				autoPauseBucket: tc.fields.autoPauseBucket,
-				minReplicas:     2,
+				minReplicas:     1,
 				log:             logging.NewNopLogger(),
 			}
 
@@ -765,7 +765,7 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 				backendStore:       tc.fields.backendStore,
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
-				minReplicas:        2,
+				minReplicas:        1,
 				log:                logging.NewNopLogger(),
 				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, logging.NewNopLogger()),
 			}
@@ -1066,7 +1066,7 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 				backendStore:       tc.fields.backendStore,
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
-				minReplicas:        2,
+				minReplicas:        1,
 				log:                logging.NewNopLogger(),
 				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, logging.NewNopLogger()),
 			}

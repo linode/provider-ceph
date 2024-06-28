@@ -184,12 +184,7 @@ func (b *bucketBackends) isLifecycleConfigAvailableOnBackends(bucket *v1alpha1.B
 		}
 
 		lcCondition := b.getLifecycleConfigCondition(bucket.Name, backendName)
-		if lcCondition == nil {
-			// The lifecycleconfig has not been created on this backend.
-			return false
-		}
-
-		if !lcCondition.Equal(xpv1.Available()) {
+		if lcCondition == nil || !lcCondition.Equal(xpv1.Available()) {
 			// The lifecycleconfig is not Available on this backend.
 			return false
 		}
@@ -229,12 +224,7 @@ func (b *bucketBackends) isVersioningConfigAvailableOnBackends(bucketName string
 		}
 
 		vCondition := b.getVersioningConfigCondition(bucketName, backendName)
-		if vCondition == nil {
-			// The versioningconfig has not been created on this backend.
-			return false
-		}
-
-		if !vCondition.Equal(xpv1.Available()) {
+		if vCondition == nil || !vCondition.Equal(xpv1.Available()) {
 			// The versioningconfig is not Available on this backend.
 			return false
 		}

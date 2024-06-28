@@ -104,10 +104,12 @@ type BucketParameters struct {
 type BackendInfo struct {
 	// BucketCondition is the condition of the Bucket on the S3 backend.
 	BucketCondition xpv1.Condition `json:"bucketCondition,omitempty"`
+	// +optional
 	// LifecycleConfigurationCondition is the condition of the bucket lifecycle
 	// configuration on the S3 backend. Use a pointer to allow nil value when
 	// there is no lifecycle configuration.
 	LifecycleConfigurationCondition *xpv1.Condition `json:"lifecycleConfigurationCondition,omitempty"`
+	// +optional
 	// VersioningConfigurationCondition is the condition of the versioning
 	// configuration on the S3 backend. Use a pointer to allow nil value when
 	// there is no versioning configuration.

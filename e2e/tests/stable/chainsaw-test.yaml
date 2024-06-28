@@ -568,6 +568,25 @@ spec:
         - local-dev-control-plane:32568
         entrypoint: ../../../hack/expect_bucket.sh
 
+  - name: Delete localstack-b-bucket.
+    try:
+    - command:
+      # We need to "unpause" auto-pause-bucket to allow deletion.
+        args:
+        - patch
+        - --type=merge
+        - buckets
+        - localstack-b-bucket
+        - -p
+        - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - delete
+        - bucket
+        - localstack-b-bucket
+        entrypoint: kubectl
+
   - name: Make localstack-a unreachable and therefore Unhealthy.
     try:
     - command:

@@ -130,6 +130,21 @@ type FakeS3Client struct {
 		result1 *s3.GetBucketPolicyOutput
 		result2 error
 	}
+	GetBucketVersioningStub        func(context.Context, *s3.GetBucketVersioningInput, ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error)
+	getBucketVersioningMutex       sync.RWMutex
+	getBucketVersioningArgsForCall []struct {
+		arg1 context.Context
+		arg2 *s3.GetBucketVersioningInput
+		arg3 []func(*s3.Options)
+	}
+	getBucketVersioningReturns struct {
+		result1 *s3.GetBucketVersioningOutput
+		result2 error
+	}
+	getBucketVersioningReturnsOnCall map[int]struct {
+		result1 *s3.GetBucketVersioningOutput
+		result2 error
+	}
 	GetObjectStub        func(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	getObjectMutex       sync.RWMutex
 	getObjectArgsForCall []struct {
@@ -233,6 +248,21 @@ type FakeS3Client struct {
 	}
 	putBucketPolicyReturnsOnCall map[int]struct {
 		result1 *s3.PutBucketPolicyOutput
+		result2 error
+	}
+	PutBucketVersioningStub        func(context.Context, *s3.PutBucketVersioningInput, ...func(*s3.Options)) (*s3.PutBucketVersioningOutput, error)
+	putBucketVersioningMutex       sync.RWMutex
+	putBucketVersioningArgsForCall []struct {
+		arg1 context.Context
+		arg2 *s3.PutBucketVersioningInput
+		arg3 []func(*s3.Options)
+	}
+	putBucketVersioningReturns struct {
+		result1 *s3.PutBucketVersioningOutput
+		result2 error
+	}
+	putBucketVersioningReturnsOnCall map[int]struct {
+		result1 *s3.PutBucketVersioningOutput
 		result2 error
 	}
 	PutObjectStub        func(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
@@ -782,6 +812,72 @@ func (fake *FakeS3Client) GetBucketPolicyReturnsOnCall(i int, result1 *s3.GetBuc
 	}{result1, result2}
 }
 
+func (fake *FakeS3Client) GetBucketVersioning(arg1 context.Context, arg2 *s3.GetBucketVersioningInput, arg3 ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error) {
+	fake.getBucketVersioningMutex.Lock()
+	ret, specificReturn := fake.getBucketVersioningReturnsOnCall[len(fake.getBucketVersioningArgsForCall)]
+	fake.getBucketVersioningArgsForCall = append(fake.getBucketVersioningArgsForCall, struct {
+		arg1 context.Context
+		arg2 *s3.GetBucketVersioningInput
+		arg3 []func(*s3.Options)
+	}{arg1, arg2, arg3})
+	stub := fake.GetBucketVersioningStub
+	fakeReturns := fake.getBucketVersioningReturns
+	fake.recordInvocation("GetBucketVersioning", []interface{}{arg1, arg2, arg3})
+	fake.getBucketVersioningMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeS3Client) GetBucketVersioningCallCount() int {
+	fake.getBucketVersioningMutex.RLock()
+	defer fake.getBucketVersioningMutex.RUnlock()
+	return len(fake.getBucketVersioningArgsForCall)
+}
+
+func (fake *FakeS3Client) GetBucketVersioningCalls(stub func(context.Context, *s3.GetBucketVersioningInput, ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error)) {
+	fake.getBucketVersioningMutex.Lock()
+	defer fake.getBucketVersioningMutex.Unlock()
+	fake.GetBucketVersioningStub = stub
+}
+
+func (fake *FakeS3Client) GetBucketVersioningArgsForCall(i int) (context.Context, *s3.GetBucketVersioningInput, []func(*s3.Options)) {
+	fake.getBucketVersioningMutex.RLock()
+	defer fake.getBucketVersioningMutex.RUnlock()
+	argsForCall := fake.getBucketVersioningArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeS3Client) GetBucketVersioningReturns(result1 *s3.GetBucketVersioningOutput, result2 error) {
+	fake.getBucketVersioningMutex.Lock()
+	defer fake.getBucketVersioningMutex.Unlock()
+	fake.GetBucketVersioningStub = nil
+	fake.getBucketVersioningReturns = struct {
+		result1 *s3.GetBucketVersioningOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) GetBucketVersioningReturnsOnCall(i int, result1 *s3.GetBucketVersioningOutput, result2 error) {
+	fake.getBucketVersioningMutex.Lock()
+	defer fake.getBucketVersioningMutex.Unlock()
+	fake.GetBucketVersioningStub = nil
+	if fake.getBucketVersioningReturnsOnCall == nil {
+		fake.getBucketVersioningReturnsOnCall = make(map[int]struct {
+			result1 *s3.GetBucketVersioningOutput
+			result2 error
+		})
+	}
+	fake.getBucketVersioningReturnsOnCall[i] = struct {
+		result1 *s3.GetBucketVersioningOutput
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeS3Client) GetObject(arg1 context.Context, arg2 *s3.GetObjectInput, arg3 ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
 	fake.getObjectMutex.Lock()
 	ret, specificReturn := fake.getObjectReturnsOnCall[len(fake.getObjectArgsForCall)]
@@ -1244,6 +1340,72 @@ func (fake *FakeS3Client) PutBucketPolicyReturnsOnCall(i int, result1 *s3.PutBuc
 	}{result1, result2}
 }
 
+func (fake *FakeS3Client) PutBucketVersioning(arg1 context.Context, arg2 *s3.PutBucketVersioningInput, arg3 ...func(*s3.Options)) (*s3.PutBucketVersioningOutput, error) {
+	fake.putBucketVersioningMutex.Lock()
+	ret, specificReturn := fake.putBucketVersioningReturnsOnCall[len(fake.putBucketVersioningArgsForCall)]
+	fake.putBucketVersioningArgsForCall = append(fake.putBucketVersioningArgsForCall, struct {
+		arg1 context.Context
+		arg2 *s3.PutBucketVersioningInput
+		arg3 []func(*s3.Options)
+	}{arg1, arg2, arg3})
+	stub := fake.PutBucketVersioningStub
+	fakeReturns := fake.putBucketVersioningReturns
+	fake.recordInvocation("PutBucketVersioning", []interface{}{arg1, arg2, arg3})
+	fake.putBucketVersioningMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeS3Client) PutBucketVersioningCallCount() int {
+	fake.putBucketVersioningMutex.RLock()
+	defer fake.putBucketVersioningMutex.RUnlock()
+	return len(fake.putBucketVersioningArgsForCall)
+}
+
+func (fake *FakeS3Client) PutBucketVersioningCalls(stub func(context.Context, *s3.PutBucketVersioningInput, ...func(*s3.Options)) (*s3.PutBucketVersioningOutput, error)) {
+	fake.putBucketVersioningMutex.Lock()
+	defer fake.putBucketVersioningMutex.Unlock()
+	fake.PutBucketVersioningStub = stub
+}
+
+func (fake *FakeS3Client) PutBucketVersioningArgsForCall(i int) (context.Context, *s3.PutBucketVersioningInput, []func(*s3.Options)) {
+	fake.putBucketVersioningMutex.RLock()
+	defer fake.putBucketVersioningMutex.RUnlock()
+	argsForCall := fake.putBucketVersioningArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeS3Client) PutBucketVersioningReturns(result1 *s3.PutBucketVersioningOutput, result2 error) {
+	fake.putBucketVersioningMutex.Lock()
+	defer fake.putBucketVersioningMutex.Unlock()
+	fake.PutBucketVersioningStub = nil
+	fake.putBucketVersioningReturns = struct {
+		result1 *s3.PutBucketVersioningOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) PutBucketVersioningReturnsOnCall(i int, result1 *s3.PutBucketVersioningOutput, result2 error) {
+	fake.putBucketVersioningMutex.Lock()
+	defer fake.putBucketVersioningMutex.Unlock()
+	fake.PutBucketVersioningStub = nil
+	if fake.putBucketVersioningReturnsOnCall == nil {
+		fake.putBucketVersioningReturnsOnCall = make(map[int]struct {
+			result1 *s3.PutBucketVersioningOutput
+			result2 error
+		})
+	}
+	fake.putBucketVersioningReturnsOnCall[i] = struct {
+		result1 *s3.PutBucketVersioningOutput
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeS3Client) PutObject(arg1 context.Context, arg2 *s3.PutObjectInput, arg3 ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 	fake.putObjectMutex.Lock()
 	ret, specificReturn := fake.putObjectReturnsOnCall[len(fake.putObjectArgsForCall)]
@@ -1329,6 +1491,8 @@ func (fake *FakeS3Client) Invocations() map[string][][]interface{} {
 	defer fake.getBucketLifecycleConfigurationMutex.RUnlock()
 	fake.getBucketPolicyMutex.RLock()
 	defer fake.getBucketPolicyMutex.RUnlock()
+	fake.getBucketVersioningMutex.RLock()
+	defer fake.getBucketVersioningMutex.RUnlock()
 	fake.getObjectMutex.RLock()
 	defer fake.getObjectMutex.RUnlock()
 	fake.headBucketMutex.RLock()
@@ -1343,6 +1507,8 @@ func (fake *FakeS3Client) Invocations() map[string][][]interface{} {
 	defer fake.putBucketLifecycleConfigurationMutex.RUnlock()
 	fake.putBucketPolicyMutex.RLock()
 	defer fake.putBucketPolicyMutex.RUnlock()
+	fake.putBucketVersioningMutex.RLock()
+	defer fake.putBucketVersioningMutex.RUnlock()
 	fake.putObjectMutex.RLock()
 	defer fake.putObjectMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

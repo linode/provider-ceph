@@ -82,6 +82,12 @@ type BucketParameters struct {
 	// +optional
 	LifecycleConfiguration *BucketLifecycleConfiguration `json:"lifecycleConfiguration,omitempty"`
 
+	// VersioningConfiguration describes the desired versioning state of an S3 bucket.
+	// See the API reference guide for PutBucketVersioning for usage and error information.
+	// See also, https://docs.aws.amazon.com/goto/WebAPI/s3-2006-03-01/PutBucketVersioning
+	// +optional
+	VersioningConfiguration *VersioningConfiguration `json:"versioningConfiguration,omitempty"`
+
 	// AssumeRoleTags may be used to add custom values to an AssumeRole request.
 	// +optional
 	AssumeRoleTags []Tag `json:"assumeRoleTags,omitempty"`
@@ -98,10 +104,16 @@ type BucketParameters struct {
 type BackendInfo struct {
 	// BucketCondition is the condition of the Bucket on the S3 backend.
 	BucketCondition xpv1.Condition `json:"bucketCondition,omitempty"`
+	// +optional
 	// LifecycleConfigurationCondition is the condition of the bucket lifecycle
 	// configuration on the S3 backend. Use a pointer to allow nil value when
 	// there is no lifecycle configuration.
 	LifecycleConfigurationCondition *xpv1.Condition `json:"lifecycleConfigurationCondition,omitempty"`
+	// +optional
+	// VersioningConfigurationCondition is the condition of the versioning
+	// configuration on the S3 backend. Use a pointer to allow nil value when
+	// there is no versioning configuration.
+	VersioningConfigurationCondition *xpv1.Condition `json:"versioningConfigurationCondition,omitempty"`
 }
 
 // Backends is a map of the names of the S3 backends to BackendInfo.

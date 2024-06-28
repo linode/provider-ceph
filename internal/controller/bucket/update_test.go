@@ -464,3 +464,619 @@ func TestUpdate(t *testing.T) {
 		})
 	}
 }
+
+//nolint:maintidx // Function requires numerous checks.
+func TestUpdateLifecycleConfigSubResource(t *testing.T) {
+	t.Parallel()
+	someError := errors.New("some error")
+
+	type fields struct {
+		backendStore    *backendstore.BackendStore
+		autoPauseBucket bool
+		roleArn         *string
+		initObjects     []client.Object
+	}
+
+	type args struct {
+		mg resource.Managed
+	}
+
+	type want struct {
+		o            managed.ExternalUpdate
+		err          error
+		specificDiff func(t *testing.T, mg resource.Managed)
+	}
+
+	cases := map[string]struct {
+		reason string
+		fields fields
+		args   args
+		want   want
+	}{
+		"Two backends update lifecycle config successfully": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+						ForProvider: v1alpha1.BucketParameters{
+							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
+								Rules: []v1alpha1.LifecycleRule{
+									{
+										Status: "Enabled",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].LifecycleConfigurationCondition.Equal(v1.Available()),
+						"lifecycle configuration condition on s3-backend-1 is not available")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].LifecycleConfigurationCondition.Equal(v1.Available()),
+						"lifecycle configuration condition on s3-backend-2 is not available")
+				},
+			},
+		},
+		"Two backends fail to update lifecycle config": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						PutBucketLifecycleConfigurationStub: func(ctx context.Context, hbi *s3.PutBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.PutBucketLifecycleConfigurationOutput, error) {
+							return &s3.PutBucketLifecycleConfigurationOutput{}, someError
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+						ForProvider: v1alpha1.BucketParameters{
+							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
+								Rules: []v1alpha1.LifecycleRule{
+									{
+										Status: "Enabled",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				err: someError,
+				o:   managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+					unavailableBackends := []string{"s3-backend-1", "s3-backend-2"}
+					slices.Sort(unavailableBackends)
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].LifecycleConfigurationCondition.Equal(
+							v1.Unavailable().WithMessage(
+								errors.Wrap(
+									errors.Wrap(someError, "failed to put bucket lifecycle configuration"),
+									"failed to handle bucket lifecycle configuration").Error(),
+							),
+						),
+						"unexpected lifecycle configuration condition for s3-backend-1")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].LifecycleConfigurationCondition.Equal(
+							v1.Unavailable().WithMessage(
+								errors.Wrap(
+									errors.Wrap(someError, "failed to put bucket lifecycle configuration"),
+									"failed to handle bucket lifecycle configuration").Error(),
+							),
+						),
+						"unexpected lifecycle configuration condition for s3-backend-2")
+				},
+			},
+		},
+		"One backend updates lifecycle config successfully and one fails to update lifecycle config": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fakeErr := backendstorefakes.FakeS3Client{
+						PutBucketLifecycleConfigurationStub: func(ctx context.Context, hbi *s3.PutBucketLifecycleConfigurationInput, f ...func(*s3.Options)) (*s3.PutBucketLifecycleConfigurationOutput, error) {
+							return &s3.PutBucketLifecycleConfigurationOutput{}, someError
+						},
+					}
+					fakeOK := backendstorefakes.FakeS3Client{}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+						ForProvider: v1alpha1.BucketParameters{
+							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
+								Rules: []v1alpha1.LifecycleRule{
+									{
+										Status: "Enabled",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				err: someError,
+				o:   managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].LifecycleConfigurationCondition.Equal(v1.Available()),
+						"unexpected lifecycle configuration condition for s3-backend-1")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].LifecycleConfigurationCondition.Equal(
+							v1.Unavailable().WithMessage(
+								errors.Wrap(
+									errors.Wrap(someError, "failed to put bucket lifecycle configuration"),
+									"failed to handle bucket lifecycle configuration").Error(),
+							),
+						),
+						"unexpected lifecycle configuration condition for s3-backend-2")
+				},
+			},
+		},
+		"Single backend updates lifecycle configuration successfully and is autopaused": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				autoPauseBucket: true,
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+							Annotations: map[string]string{
+								"test": "test",
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+						Annotations: map[string]string{
+							"test": "test",
+						},
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+						},
+						ForProvider: v1alpha1.BucketParameters{
+							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
+								Rules: []v1alpha1.LifecycleRule{
+									{
+										Status: "Enabled",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+					assert.True(t,
+						bucket.Status.Conditions[0].Equal(v1.Available()),
+						"unexpected bucket ready condition")
+
+					assert.True(t,
+						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
+						"unexpected bucket synced condition")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].LifecycleConfigurationCondition.Equal(v1.Available()),
+						"lifecycle configuration condition on s3-backend-1 is not available")
+
+					assert.Equal(t,
+						map[string]string{
+							meta.AnnotationKeyReconciliationPaused: True,
+							"provider-ceph.backends.s3-backend-1":  True,
+						},
+						bucket.Labels,
+						"unexpected bucket labels",
+					)
+				},
+			},
+		},
+	}
+
+	bk := &v1alpha1.Bucket{}
+	s := scheme.Scheme
+	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, bk)
+
+	for name, tc := range cases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			cl := fake.NewClientBuilder().
+				WithObjects(tc.fields.initObjects...).
+				WithStatusSubresource(tc.fields.initObjects...).
+				WithScheme(s).Build()
+
+			s3ClientHandler := s3clienthandler.NewHandler(
+				s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
+				s3clienthandler.WithBackendStore(tc.fields.backendStore),
+				s3clienthandler.WithKubeClient(cl))
+
+			e := external{
+				kubeClient:         cl,
+				backendStore:       tc.fields.backendStore,
+				s3ClientHandler:    s3ClientHandler,
+				autoPauseBucket:    tc.fields.autoPauseBucket,
+				minReplicas:        2,
+				log:                logging.NewNopLogger(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, logging.NewNopLogger()),
+			}
+
+			got, err := e.Update(context.Background(), tc.args.mg)
+			require.ErrorIs(t, err, tc.want.err, "unexpected err")
+			assert.Equal(t, got, tc.want.o, "unexpected result")
+			if tc.want.specificDiff != nil {
+				tc.want.specificDiff(t, tc.args.mg)
+			}
+		})
+	}
+}
+
+//nolint:maintidx // Function requires numerous checks.
+func TestUpdateVersioningConfigSubResource(t *testing.T) {
+	t.Parallel()
+	someError := errors.New("some error")
+	vEnabled := v1alpha1.VersioningStatusEnabled
+
+	type fields struct {
+		backendStore    *backendstore.BackendStore
+		autoPauseBucket bool
+		roleArn         *string
+		initObjects     []client.Object
+	}
+
+	type args struct {
+		mg resource.Managed
+	}
+
+	type want struct {
+		o            managed.ExternalUpdate
+		err          error
+		specificDiff func(t *testing.T, mg resource.Managed)
+	}
+
+	cases := map[string]struct {
+		reason string
+		fields fields
+		args   args
+		want   want
+	}{
+		"Two backends update versioning configuration successfully": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+						ForProvider: v1alpha1.BucketParameters{
+							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
+								Status: &vEnabled,
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].VersioningConfigurationCondition.Equal(v1.Available()),
+						"versioning configuration condition on s3-backend-1 is not available")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].VersioningConfigurationCondition.Equal(v1.Available()),
+						"versioning configuration condition on s3-backend-2 is not available")
+				},
+			},
+		},
+		"Two backends fail to update versioning config": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						PutBucketVersioningStub: func(ctx context.Context, hbi *s3.PutBucketVersioningInput, f ...func(*s3.Options)) (*s3.PutBucketVersioningOutput, error) {
+							return &s3.PutBucketVersioningOutput{}, someError
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+						ForProvider: v1alpha1.BucketParameters{
+							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
+								Status: &vEnabled,
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				err: someError,
+				o:   managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+					unavailableBackends := []string{"s3-backend-1", "s3-backend-2"}
+					slices.Sort(unavailableBackends)
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].VersioningConfigurationCondition.Equal(
+							v1.Unavailable().WithMessage(
+								errors.Wrap(
+									errors.Wrap(someError, "failed to put bucket versioning"),
+									"failed to handle bucket versioning configuration").Error(),
+							),
+						),
+						"unexpected versioning configuration condition for s3-backend-1")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].VersioningConfigurationCondition.Equal(
+							v1.Unavailable().WithMessage(
+								errors.Wrap(
+									errors.Wrap(someError, "failed to put bucket versioning"),
+									"failed to handle bucket versioning configuration").Error(),
+							),
+						),
+						"unexpected versioning configuration condition for s3-backend-2")
+				},
+			},
+		},
+		"One backend updates versioning configuration successfully and one fails to update": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fakeErr := backendstorefakes.FakeS3Client{
+						PutBucketVersioningStub: func(ctx context.Context, hbi *s3.PutBucketVersioningInput, f ...func(*s3.Options)) (*s3.PutBucketVersioningOutput, error) {
+							return &s3.PutBucketVersioningOutput{}, someError
+						},
+					}
+					fakeOK := backendstorefakes.FakeS3Client{}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+						ForProvider: v1alpha1.BucketParameters{
+							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
+								Status: &vEnabled,
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				err: someError,
+				o:   managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].VersioningConfigurationCondition.Equal(v1.Available()),
+						"unexpected versioning configuration condition for s3-backend-1")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].VersioningConfigurationCondition.Equal(
+							v1.Unavailable().WithMessage(
+								errors.Wrap(
+									errors.Wrap(someError, "failed to put bucket versioning"),
+									"failed to handle bucket versioning configuration").Error(),
+							),
+						),
+						"unexpected versioning configuration condition for s3-backend-2")
+				},
+			},
+		},
+		"Single backend updates versioning configuration successfully and is autopaused": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				autoPauseBucket: true,
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+							Annotations: map[string]string{
+								"test": "test",
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+						Annotations: map[string]string{
+							"test": "test",
+						},
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+						},
+						ForProvider: v1alpha1.BucketParameters{
+							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
+								Status: &vEnabled,
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+					assert.True(t,
+						bucket.Status.Conditions[0].Equal(v1.Available()),
+						"unexpected bucket ready condition")
+
+					assert.True(t,
+						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
+						"unexpected bucket synced condition")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].VersioningConfigurationCondition.Equal(v1.Available()),
+						"versioning configuration condition on s3-backend-1 is not available")
+
+					assert.Equal(t,
+						map[string]string{
+							meta.AnnotationKeyReconciliationPaused: True,
+							"provider-ceph.backends.s3-backend-1":  True,
+						},
+						bucket.Labels,
+						"unexpected bucket labels",
+					)
+				},
+			},
+		},
+	}
+
+	bk := &v1alpha1.Bucket{}
+	s := scheme.Scheme
+	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, bk)
+
+	for name, tc := range cases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			cl := fake.NewClientBuilder().
+				WithObjects(tc.fields.initObjects...).
+				WithStatusSubresource(tc.fields.initObjects...).
+				WithScheme(s).Build()
+
+			s3ClientHandler := s3clienthandler.NewHandler(
+				s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
+				s3clienthandler.WithBackendStore(tc.fields.backendStore),
+				s3clienthandler.WithKubeClient(cl))
+
+			e := external{
+				kubeClient:         cl,
+				backendStore:       tc.fields.backendStore,
+				s3ClientHandler:    s3ClientHandler,
+				autoPauseBucket:    tc.fields.autoPauseBucket,
+				minReplicas:        2,
+				log:                logging.NewNopLogger(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, logging.NewNopLogger()),
+			}
+
+			got, err := e.Update(context.Background(), tc.args.mg)
+			require.ErrorIs(t, err, tc.want.err, "unexpected err")
+			assert.Equal(t, got, tc.want.o, "unexpected result")
+			if tc.want.specificDiff != nil {
+				tc.want.specificDiff(t, tc.args.mg)
+			}
+		})
+	}
+}

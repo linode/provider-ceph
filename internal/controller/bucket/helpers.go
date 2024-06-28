@@ -34,9 +34,11 @@ func isBucketPaused(bucket *v1alpha1.Bucket) bool {
 }
 
 // isPauseRequired determines if the Bucket should be paused.
+//
+//nolint:gocyclo,cyclop // Function requires numerous checks.
 func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, minReplicas uint, c map[string]backendstore.S3Client, bb *bucketBackends, autopauseEnabled bool) bool {
 	// If the number of backends on which the bucket is available is less than the number of providerNames or minReplicas, then the bucket must not be paused.
-	if float64(bb.countBucketsAvailableOnBackends(bucket, providerNames, c)) < math.Min(float64(len(providerNames)), float64(minReplicas)) {
+	if float64(bb.countBucketsAvailableOnBackends(bucket.Name, providerNames, c)) < math.Min(float64(len(providerNames)), float64(minReplicas)) {
 		return false
 	}
 
@@ -49,6 +51,19 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, minReplica
 	// If lifecycle config is disabled, we should only pause once the lifecycle config is
 	// removed from all backends.
 	if bucket.Spec.LifecycleConfigurationDisabled && !bb.isLifecycleConfigRemovedFromBackends(bucket, providerNames, c) {
+		return false
+	}
+
+	// Avoid pausing when a versioning configuration is specified in the spec, but not all
+	// versioning configs are available.
+	if bucket.Spec.ForProvider.VersioningConfiguration != nil && !bb.isVersioningConfigAvailableOnBackends(bucket.Name, providerNames, c) {
+		return false
+	}
+
+	// Avoid pausing when versioning configurations exist on backends, but not all
+	// versioning configs are available. This scenario can occur when the versioning
+	// config has been removed from the Spec (and is therefore suspended).
+	if !bb.isVersioningConfigRemovedFromBackends(bucket.Name, providerNames, c) && !bb.isVersioningConfigAvailableOnBackends(bucket.Name, providerNames, c) {
 		return false
 	}
 

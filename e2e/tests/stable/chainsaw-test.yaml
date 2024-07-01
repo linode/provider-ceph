@@ -568,6 +568,25 @@ spec:
         - local-dev-control-plane:32568
         entrypoint: ../../../hack/expect_bucket.sh
 
+  - name: Delete localstack-b-bucket.
+    try:
+    - command:
+      # We need to "unpause" auto-pause-bucket to allow deletion.
+        args:
+        - patch
+        - --type=merge
+        - buckets
+        - localstack-b-bucket
+        - -p
+        - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - delete
+        - bucket
+        - localstack-b-bucket
+        entrypoint: kubectl
+
   - name: Make localstack-a unreachable and therefore Unhealthy.
     try:
     - command:
@@ -666,7 +685,8 @@ spec:
             autoPause: true
             forProvider: {}
     # Assert auto-pause-bucket is only created on localstack-b
-    # and localstack-c, as localstack-a is currently unhealthy.
+    # and localstack-c, as localstack-a is currently unhealthy
+    # and that it is not paused or Synced.
     - assert:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
@@ -676,7 +696,6 @@ spec:
             finalizers:
             - "finalizer.managedresource.crossplane.io"
             labels:
-              crossplane.io/paused: "true"
               provider-ceph.backends.localstack-a: "true"
               provider-ceph.backends.localstack-b: "true"
               provider-ceph.backends.localstack-c: "true"
@@ -697,8 +716,8 @@ spec:
             - reason: Available
               status: "True"
               type: Ready
-            - reason: ReconcileSuccess
-              status: "True"
+            - reason: ReconcileError
+              status: "False"
               type: Synced
     # Assert avoid-localstack-c-bucket is only created on localstack-b,
     # as localstack-a is currently unhealthy and this bucket is not intended
@@ -752,7 +771,7 @@ spec:
             - reason: HealthCheckSuccess
               status: "True"
               type: Ready
-
+    # Assert auto-pause-bucket is created on localstack-a and that it is Synced and paused.
   - name: Assert auto-pause-bucket and avoid-localstack-c-bucket are created on localstack-a now that it is Healthy.
     try:
     - assert:

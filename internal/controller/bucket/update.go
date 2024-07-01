@@ -108,7 +108,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			// criteria is met before pausing a Bucket CR. Otherwise we check to see if there are
 			// backends that the bucket was not updated on and if so, we set the updateAllErr
 			// which will be returned at the end of this function, triggering a requeue.
-			if isPauseRequired(bucketLatest, allBackendsToUpdateOn, c.minReplicas, cls, bucketBackends, c.autoPauseBucket) {
+			if isPauseRequired(bucketLatest, allBackendsToUpdateOn, cls, bucketBackends, c.autoPauseBucket) {
 				c.log.Info("Auto pausing bucket", consts.KeyBucketName, bucket.Name)
 				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = True
 			} else if updateAllErr == nil && len(activeBackendsToUpdateOn) != len(allBackendsToUpdateOn) {

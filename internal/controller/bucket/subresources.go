@@ -39,6 +39,7 @@ func NewSubresourceClients(b *backendstore.BackendStore, h *s3clienthandler.Hand
 		NewACLClient(b, h, l.WithValues("acl-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
 		NewPolicyClient(b, h, l.WithValues("policy-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
 		NewVersioningConfigurationClient(b, h, l.WithValues("versioning-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
+		NewObjectLockConfigurationClient(b, h, l.WithValues("object-lock-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
 	}
 }
 

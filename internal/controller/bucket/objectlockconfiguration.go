@@ -36,7 +36,6 @@ func NewObjectLockConfigurationClient(b *backendstore.BackendStore, h *s3clienth
 	return &ObjectLockConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
-//nolint:dupl // All subresources require similar Observe method.
 func (l *ObjectLockConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.ObjectLockConfigurationClient.Observe")
 	defer span.End()

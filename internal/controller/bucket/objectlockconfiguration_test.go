@@ -238,7 +238,6 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 	}
 }
 
-//nolint:maintidx // Function requires numerous checks.
 func TestObjectLockConfigurationHandle(t *testing.T) {
 	t.Parallel()
 	bucketName := "bucket"

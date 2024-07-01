@@ -24,6 +24,7 @@ func GenerateObjectLockConfiguration(inputConfig *v1alpha1.ObjectLockConfigurati
 	if inputConfig.ObjectLockEnabled != nil {
 		outputConfig.ObjectLockEnabled = types.ObjectLockEnabled(*inputConfig.ObjectLockEnabled)
 	}
+	//nolint:nestif // Multiple checks required
 	if inputConfig.Rule != nil {
 		outputConfig.Rule = &types.ObjectLockRule{}
 		if inputConfig.Rule.DefaultRetention != nil {

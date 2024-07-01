@@ -1225,6 +1225,177 @@ func TestIsPauseRequired(t *testing.T) {
 				pauseIsRequired: true,
 			},
 		},
+		/**********************************************************/
+		"Object lock config specified but unavailable on one backend - no pause": {
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+						Labels: map[string]string{
+							meta.AnnotationKeyReconciliationPaused: "",
+						},
+					},
+					Spec: v1alpha1.BucketSpec{
+						AutoPause: true,
+						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
+								ObjectLockEnabled: &objLockEnabled,
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
+				},
+				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				clients: map[string]backendstore.S3Client{
+					"s3-backend-1": nil,
+					"s3-backend-2": nil,
+					"s3-backend-3": nil,
+				},
+				bucketBackends: &bucketBackends{
+					backends: map[string]v1alpha1.Backends{
+						"bucket": {
+							"s3-backend-1": &v1alpha1.BackendInfo{
+								BucketCondition:                  xpv1.Available(),
+								ObjectLockConfigurationCondition: &available,
+							},
+							"s3-backend-2": &v1alpha1.BackendInfo{
+								BucketCondition:                  xpv1.Available(),
+								ObjectLockConfigurationCondition: &available,
+							},
+							"s3-backend-3": &v1alpha1.BackendInfo{
+								BucketCondition:                  xpv1.Available(),
+								ObjectLockConfigurationCondition: &unavailable,
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				pauseIsRequired: false,
+			},
+		},
+		"Object lock config specified but missing on one backend - no pause": {
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+						Labels: map[string]string{
+							meta.AnnotationKeyReconciliationPaused: "",
+						},
+					},
+					Spec: v1alpha1.BucketSpec{
+						AutoPause: true,
+						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
+								ObjectLockEnabled: &objLockEnabled,
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
+				},
+				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				clients: map[string]backendstore.S3Client{
+					"s3-backend-1": nil,
+					"s3-backend-2": nil,
+					"s3-backend-3": nil,
+				},
+				bucketBackends: &bucketBackends{
+					backends: map[string]v1alpha1.Backends{
+						"bucket": {
+							"s3-backend-1": &v1alpha1.BackendInfo{
+								BucketCondition:                  xpv1.Available(),
+								ObjectLockConfigurationCondition: &available,
+							},
+							"s3-backend-2": &v1alpha1.BackendInfo{
+								BucketCondition:                  xpv1.Available(),
+								ObjectLockConfigurationCondition: &available,
+							},
+							"s3-backend-3": &v1alpha1.BackendInfo{
+								BucketCondition: xpv1.Available(),
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				pauseIsRequired: false,
+			},
+		},
+		"Object lock config specified and available on all backends - pause": {
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+						Labels: map[string]string{
+							meta.AnnotationKeyReconciliationPaused: "",
+						},
+					},
+					Spec: v1alpha1.BucketSpec{
+						AutoPause: true,
+						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
+								ObjectLockEnabled: &objLockEnabled,
+							},
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
+				},
+				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				clients: map[string]backendstore.S3Client{
+					"s3-backend-1": nil,
+					"s3-backend-2": nil,
+					"s3-backend-3": nil,
+				},
+				bucketBackends: &bucketBackends{
+					backends: map[string]v1alpha1.Backends{
+						"bucket": {
+							"s3-backend-1": &v1alpha1.BackendInfo{
+								BucketCondition:                  xpv1.Available(),
+								ObjectLockConfigurationCondition: &available,
+							},
+							"s3-backend-2": &v1alpha1.BackendInfo{
+								BucketCondition:                  xpv1.Available(),
+								ObjectLockConfigurationCondition: &available,
+							},
+							"s3-backend-3": &v1alpha1.BackendInfo{
+								BucketCondition:                  xpv1.Available(),
+								ObjectLockConfigurationCondition: &available,
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				pauseIsRequired: true,
+			},
+		},
 		"All subresources specified and available on all backends and autopause enabled for bucket - pause": {
 			args: args{
 				bucket: &v1alpha1.Bucket{
@@ -1246,6 +1417,9 @@ func TestIsPauseRequired(t *testing.T) {
 							},
 							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
 								Status: &vEnabled,
+							},
+							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
+								ObjectLockEnabled: &objLockEnabled,
 							},
 						},
 					},
@@ -1273,16 +1447,19 @@ func TestIsPauseRequired(t *testing.T) {
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
 								VersioningConfigurationCondition: &available,
+								ObjectLockConfigurationCondition: &available,
 							},
 							"s3-backend-2": &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
 								VersioningConfigurationCondition: &available,
+								ObjectLockConfigurationCondition: &available,
 							},
 							"s3-backend-3": &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
 								VersioningConfigurationCondition: &available,
+								ObjectLockConfigurationCondition: &available,
 							},
 						},
 					},
@@ -1313,6 +1490,9 @@ func TestIsPauseRequired(t *testing.T) {
 							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
 								Status: &vEnabled,
 							},
+							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
+								ObjectLockEnabled: &objLockEnabled,
+							},
 						},
 					},
 					Status: v1alpha1.BucketStatus{
@@ -1339,16 +1519,19 @@ func TestIsPauseRequired(t *testing.T) {
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
 								VersioningConfigurationCondition: &available,
+								ObjectLockConfigurationCondition: &available,
 							},
 							"s3-backend-2": &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
 								VersioningConfigurationCondition: &available,
+								ObjectLockConfigurationCondition: &available,
 							},
 							"s3-backend-3": &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
 								VersioningConfigurationCondition: &available,
+								ObjectLockConfigurationCondition: &available,
 							},
 						},
 					},

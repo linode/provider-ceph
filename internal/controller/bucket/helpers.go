@@ -72,6 +72,12 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[stri
 		return false
 	}
 
+	// Avoid pausing when an object lock configuration is specified in the spec, but not all
+	// object lock configs are available.
+	if bucket.Spec.ForProvider.ObjectLockConfiguration != nil && !bb.isObjectLockConfigAvailableOnBackends(bucket.Name, providerNames, c) {
+		return false
+	}
+
 	return (bucket.Spec.AutoPause || autopauseEnabled) &&
 		// Only return true if this label value is "".
 		// This is to allow the user to delete a paused bucket with autopause enabled.

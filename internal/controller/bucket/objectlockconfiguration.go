@@ -107,7 +107,7 @@ func (l *ObjectLockConfigurationClient) observeBackend(ctx context.Context, buck
 	}
 
 	external := &s3types.ObjectLockConfiguration{}
-	if response.ObjectLockConfiguration != nil {
+	if response != nil && response.ObjectLockConfiguration != nil {
 		external = response.ObjectLockConfiguration
 	}
 

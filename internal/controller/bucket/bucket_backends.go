@@ -281,3 +281,23 @@ func (b *bucketBackends) isVersioningConfigRemovedFromBackends(bucketName string
 
 	return true
 }
+
+// isObjectLockConfigAvailableOnBackends checks the backends listed in providerNames against
+// bucketBackends to ensure object lock configurations are considered Available on all desired backends.
+func (b *bucketBackends) isObjectLockConfigAvailableOnBackends(bucketName string, providerNames []string, c map[string]backendstore.S3Client) bool {
+	for _, backendName := range providerNames {
+		if _, ok := c[backendName]; !ok {
+			// This backend does not exist in the list of available backends.
+			// The backend may be offline, so it is skipped.
+			continue
+		}
+
+		vCondition := b.getObjectLockConfigCondition(bucketName, backendName)
+		if vCondition == nil || !vCondition.Equal(xpv1.Available()) {
+			// The object lock config is not Available on this backend.
+			return false
+		}
+	}
+
+	return true
+}

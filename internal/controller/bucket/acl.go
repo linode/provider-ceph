@@ -46,7 +46,7 @@ func (l *ACLClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backen
 
 	for i := 0; i < len(backendNames); i++ {
 		observation := <-observationChan
-		if observation != Updated {
+		if observation == NeedsUpdate || observation == NeedsDeletion {
 			return observation, nil
 		}
 	}
@@ -92,9 +92,8 @@ func (l *ACLClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName 
 	defer span.End()
 
 	switch l.observeBackend(b, backendName) {
-	case Updated:
+	case NoAction, Updated:
 		return nil
-
 	case NeedsUpdate, NeedsDeletion:
 		if err := l.createOrUpdate(ctx, b, backendName); err != nil {
 			err = errors.Wrap(err, errHandleAcl)

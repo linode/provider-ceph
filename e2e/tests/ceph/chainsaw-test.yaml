@@ -62,7 +62,9 @@ spec:
           spec:
             providers:
             - ceph-cluster
-            forProvider: {} 
+            forProvider:
+              objectLockEnabledForBucket: true
+
     - apply:
         resource:
           apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
@@ -135,7 +137,7 @@ spec:
         - $CEPH_ADDRESS
         entrypoint: ../../../hack/expect_bucket.sh
 
-  - name: Apply lifecycle configuration and versioning configuration to test-bucket.
+  - name: Apply lifecycle, versioning and object lock configurations to test-bucket.
     try:
     - apply:
         resource: 
@@ -147,6 +149,13 @@ spec:
             providers:
             - ceph-cluster
             forProvider:
+              objectLockEnabledForBucket: true
+              objectLockConfiguration:
+                objectLockEnabled: "Enabled"
+                objectLockRule:
+                  defaultRetention:
+                    days: 1 
+                    mode: "COMPLIANCE"
               versioningConfiguration:
                 status: "Enabled"
               lifecycleConfiguration:
@@ -201,6 +210,10 @@ spec:
                     reason: Available
                     status: "True"
                     type: Ready
+                  objectLockConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
             conditions:
             - reason: Available
               status: "True"
@@ -209,7 +222,7 @@ spec:
               status: "True"
               type: Synced
 
-  - name: Disable lifecycle configuration and remove versioning configuration on test-bucket.
+  - name: Disable lifecycle configuration and edit object lock configuration on test-bucket.
     try:
     - apply:
         resource:
@@ -224,7 +237,11 @@ spec:
             - ceph-cluster
             lifecycleConfigurationDisabled: true
             forProvider:
+              objectLockEnabledForBucket: true
+              objectLockConfiguration:
+                objectLockEnabled: "Enabled"
               versioningConfiguration:
+                status: "Enabled"
               lifecycleConfiguration:
                 # Example rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-configuration-examples.html
                 rules:

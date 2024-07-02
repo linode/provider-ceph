@@ -85,7 +85,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 			return managed.ExternalObservation{}, err
 		}
-		if obs != Updated {
+		if obs == NeedsUpdate || obs == NeedsDeletion {
 			return managed.ExternalObservation{
 				ResourceExists:   true,
 				ResourceUpToDate: false,

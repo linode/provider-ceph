@@ -66,7 +66,7 @@ func (l *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1a
 
 			return NeedsUpdate, err
 		case observation := <-observationChan:
-			if observation != Updated {
+			if observation == NeedsUpdate || observation == NeedsDeletion {
 				return observation, nil
 			}
 		case err := <-errChan:
@@ -84,11 +84,11 @@ func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 	l.log.Info("Observing subresource versioning configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-		// If a backend is marked as unhealthy, we can ignore it for now by returning Updated.
+		// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
 		// The backend may be down for some time and we do not want to block Create/Update/Delete
 		// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
 		// phase until the backend becomes Healthy or Disabled.
-		return Updated, nil
+		return NoAction, nil
 	}
 
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
@@ -100,17 +100,19 @@ func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 		return NeedsUpdate, err
 	}
 
-	if bucket.Spec.ForProvider.VersioningConfiguration == nil {
-		// No versioining config was defined by the user in the Bucket CR Spec.
-		// This is should result in (a) an unversioned bucket remaining unversioned
-		// OR (b) a versioned bucket having versioning suspended.
+	if bucket.Spec.ForProvider.VersioningConfiguration == nil &&
+		(bucket.Spec.ForProvider.ObjectLockEnabledForBucket == nil || !*bucket.Spec.ForProvider.ObjectLockEnabledForBucket) {
+		// No versioining config was defined by the user in the Bucket CR Spec and
+		// object lock was not enabled for the bucket. This is should result in
+		// (a) an unversioned bucket remaining unversioned OR (b) a versioned bucket
+		// having versioning suspended.
 		if response == nil || (response.Status == "" && response.MFADelete == "") {
 			// An empty versioning configuration was returned from the backend, signifying
 			// that versioning was never enabled on this bucket. Therefore versioning is
 			// considered Updated for the bucket and we do nothing.
 			l.log.Info("Versioning is not enabled for bucket on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
-			return Updated, nil
+			return NoAction, nil
 		} else {
 			// A non-empty versioning configuration was returned from the backend, signifying
 			// that versioning was previously enabled for this bucket. A bucket cannot be un-versioned,
@@ -151,7 +153,14 @@ func (l *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 	}
 
 	switch observation {
+	case NoAction:
+		return nil
 	case Updated:
+		// The versioning config is updated, so we can consider this
+		// sub resource Available.
+		available := xpv1.Available()
+		bb.setVersioningConfigCondition(b.Name, backendName, &available)
+
 		return nil
 	case NeedsDeletion:
 		// Versioning Configurations are not deleted, only suspended, which requires an update.
@@ -182,17 +191,38 @@ func (l *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 
 		return nil
 	case NeedsUpdate:
-		if err := l.createOrUpdate(ctx, b, backendName); err != nil {
+		bucketCopy := b.DeepCopy()
+
+		// If no versioning configuration was specified, but object lock is enabled
+		// for the bucket, then versioning should be enabled without mfa delete.
+		// Create a deep copy of bucket and give it an enabled version config.
+		// This will be used in th PutBucketVersioning request to enable versioning.
+		// If objectLockEnabledForBucket was true upon bucket creation, then this
+		// versioning configuration should already exist. But we perform the operation
+		// anyway to make sure, as it is idempotent.
+		if b.Spec.ForProvider.VersioningConfiguration == nil &&
+			b.Spec.ForProvider.ObjectLockEnabledForBucket != nil &&
+			*b.Spec.ForProvider.ObjectLockEnabledForBucket {
+			enabled := v1alpha1.VersioningStatusEnabled
+			disabled := v1alpha1.MFADeleteDisabled
+
+			bucketCopy.Spec.ForProvider.VersioningConfiguration = &v1alpha1.VersioningConfiguration{
+				MFADelete: &disabled,
+				Status:    &enabled,
+			}
+		}
+
+		if err := l.createOrUpdate(ctx, bucketCopy, backendName); err != nil {
 			err = errors.Wrap(err, errHandleVersioningConfig)
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
-			bb.setVersioningConfigCondition(b.Name, backendName, &unavailable)
+			bb.setVersioningConfigCondition(bucketCopy.Name, backendName, &unavailable)
 
 			traces.SetAndRecordError(span, err)
 
 			return err
 		}
 		available := xpv1.Available()
-		bb.setVersioningConfigCondition(b.Name, backendName, &available)
+		bb.setVersioningConfigCondition(bucketCopy.Name, backendName, &available)
 	}
 
 	return nil

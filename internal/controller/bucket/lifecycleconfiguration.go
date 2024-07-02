@@ -66,7 +66,7 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 
 			return NeedsUpdate, err
 		case observation := <-observationChan:
-			if observation != Updated {
+			if observation == NeedsUpdate || observation == NeedsDeletion {
 				return observation, nil
 			}
 		case err := <-errChan:
@@ -85,11 +85,11 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	l.log.Info("Observing subresource lifecycle configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-		// If a backend is marked as unhealthy, we can ignore it for now by returning Updated.
+		// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
 		// The backend may be down for some time and we do not want to block Create/Update/Delete
 		// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
 		// phase until the backend becomes Healthy or Disabled.
-		return Updated, nil
+		return NoAction, nil
 	}
 
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
@@ -108,7 +108,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 			// No lifecycle config found on this backend.
 			l.log.Info("No lifecycle configuration found on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
-			return Updated, nil
+			return NoAction, nil
 		} else {
 			l.log.Info("Lifecycle configuration found on backend - requires deletion", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
@@ -158,8 +158,14 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 	}
 
 	switch observation {
-	case Updated:
+	case NoAction:
 		return nil
+	case Updated:
+		// The lifecycle config is updated, so we can consider this
+		// sub resource Available.
+		available := xpv1.Available()
+		bb.setLifecycleConfigCondition(b.Name, backendName, &available)
+
 	case NeedsDeletion:
 		if err := l.delete(ctx, b, backendName); err != nil {
 			err = errors.Wrap(err, errHandleLifecycleConfig)

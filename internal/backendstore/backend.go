@@ -46,6 +46,8 @@ type S3Client interface {
 	DeleteBucketPolicy(context.Context, *s3.DeleteBucketPolicyInput, ...func(*s3.Options)) (*s3.DeleteBucketPolicyOutput, error)
 	PutBucketVersioning(context.Context, *s3.PutBucketVersioningInput, ...func(*s3.Options)) (*s3.PutBucketVersioningOutput, error)
 	GetBucketVersioning(context.Context, *s3.GetBucketVersioningInput, ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error)
+	PutObjectLockConfiguration(context.Context, *s3.PutObjectLockConfigurationInput, ...func(*s3.Options)) (*s3.PutObjectLockConfigurationOutput, error)
+	GetObjectLockConfiguration(context.Context, *s3.GetObjectLockConfigurationInput, ...func(*s3.Options)) (*s3.GetObjectLockConfigurationOutput, error)
 }
 
 //counterfeiter:generate . STSClient

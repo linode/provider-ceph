@@ -60,7 +60,7 @@ func (p *PolicyClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, bac
 
 			return NeedsUpdate, err
 		case observation := <-observationChan:
-			if observation != Updated {
+			if observation == NeedsUpdate || observation == NeedsDeletion {
 				return observation, nil
 			}
 		case err := <-errChan:
@@ -140,7 +140,7 @@ func (p *PolicyClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendNa
 	}
 
 	switch observation {
-	case Updated:
+	case NoAction, Updated:
 		return nil
 	case NeedsDeletion:
 		if err := p.delete(ctx, b, backendName); err != nil {

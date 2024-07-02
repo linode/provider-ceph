@@ -160,6 +160,21 @@ type FakeS3Client struct {
 		result1 *s3.GetObjectOutput
 		result2 error
 	}
+	GetObjectLockConfigurationStub        func(context.Context, *s3.GetObjectLockConfigurationInput, ...func(*s3.Options)) (*s3.GetObjectLockConfigurationOutput, error)
+	getObjectLockConfigurationMutex       sync.RWMutex
+	getObjectLockConfigurationArgsForCall []struct {
+		arg1 context.Context
+		arg2 *s3.GetObjectLockConfigurationInput
+		arg3 []func(*s3.Options)
+	}
+	getObjectLockConfigurationReturns struct {
+		result1 *s3.GetObjectLockConfigurationOutput
+		result2 error
+	}
+	getObjectLockConfigurationReturnsOnCall map[int]struct {
+		result1 *s3.GetObjectLockConfigurationOutput
+		result2 error
+	}
 	HeadBucketStub        func(context.Context, *s3.HeadBucketInput, ...func(*s3.Options)) (*s3.HeadBucketOutput, error)
 	headBucketMutex       sync.RWMutex
 	headBucketArgsForCall []struct {
@@ -278,6 +293,21 @@ type FakeS3Client struct {
 	}
 	putObjectReturnsOnCall map[int]struct {
 		result1 *s3.PutObjectOutput
+		result2 error
+	}
+	PutObjectLockConfigurationStub        func(context.Context, *s3.PutObjectLockConfigurationInput, ...func(*s3.Options)) (*s3.PutObjectLockConfigurationOutput, error)
+	putObjectLockConfigurationMutex       sync.RWMutex
+	putObjectLockConfigurationArgsForCall []struct {
+		arg1 context.Context
+		arg2 *s3.PutObjectLockConfigurationInput
+		arg3 []func(*s3.Options)
+	}
+	putObjectLockConfigurationReturns struct {
+		result1 *s3.PutObjectLockConfigurationOutput
+		result2 error
+	}
+	putObjectLockConfigurationReturnsOnCall map[int]struct {
+		result1 *s3.PutObjectLockConfigurationOutput
 		result2 error
 	}
 	invocations      map[string][][]interface{}
@@ -944,6 +974,72 @@ func (fake *FakeS3Client) GetObjectReturnsOnCall(i int, result1 *s3.GetObjectOut
 	}{result1, result2}
 }
 
+func (fake *FakeS3Client) GetObjectLockConfiguration(arg1 context.Context, arg2 *s3.GetObjectLockConfigurationInput, arg3 ...func(*s3.Options)) (*s3.GetObjectLockConfigurationOutput, error) {
+	fake.getObjectLockConfigurationMutex.Lock()
+	ret, specificReturn := fake.getObjectLockConfigurationReturnsOnCall[len(fake.getObjectLockConfigurationArgsForCall)]
+	fake.getObjectLockConfigurationArgsForCall = append(fake.getObjectLockConfigurationArgsForCall, struct {
+		arg1 context.Context
+		arg2 *s3.GetObjectLockConfigurationInput
+		arg3 []func(*s3.Options)
+	}{arg1, arg2, arg3})
+	stub := fake.GetObjectLockConfigurationStub
+	fakeReturns := fake.getObjectLockConfigurationReturns
+	fake.recordInvocation("GetObjectLockConfiguration", []interface{}{arg1, arg2, arg3})
+	fake.getObjectLockConfigurationMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeS3Client) GetObjectLockConfigurationCallCount() int {
+	fake.getObjectLockConfigurationMutex.RLock()
+	defer fake.getObjectLockConfigurationMutex.RUnlock()
+	return len(fake.getObjectLockConfigurationArgsForCall)
+}
+
+func (fake *FakeS3Client) GetObjectLockConfigurationCalls(stub func(context.Context, *s3.GetObjectLockConfigurationInput, ...func(*s3.Options)) (*s3.GetObjectLockConfigurationOutput, error)) {
+	fake.getObjectLockConfigurationMutex.Lock()
+	defer fake.getObjectLockConfigurationMutex.Unlock()
+	fake.GetObjectLockConfigurationStub = stub
+}
+
+func (fake *FakeS3Client) GetObjectLockConfigurationArgsForCall(i int) (context.Context, *s3.GetObjectLockConfigurationInput, []func(*s3.Options)) {
+	fake.getObjectLockConfigurationMutex.RLock()
+	defer fake.getObjectLockConfigurationMutex.RUnlock()
+	argsForCall := fake.getObjectLockConfigurationArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeS3Client) GetObjectLockConfigurationReturns(result1 *s3.GetObjectLockConfigurationOutput, result2 error) {
+	fake.getObjectLockConfigurationMutex.Lock()
+	defer fake.getObjectLockConfigurationMutex.Unlock()
+	fake.GetObjectLockConfigurationStub = nil
+	fake.getObjectLockConfigurationReturns = struct {
+		result1 *s3.GetObjectLockConfigurationOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) GetObjectLockConfigurationReturnsOnCall(i int, result1 *s3.GetObjectLockConfigurationOutput, result2 error) {
+	fake.getObjectLockConfigurationMutex.Lock()
+	defer fake.getObjectLockConfigurationMutex.Unlock()
+	fake.GetObjectLockConfigurationStub = nil
+	if fake.getObjectLockConfigurationReturnsOnCall == nil {
+		fake.getObjectLockConfigurationReturnsOnCall = make(map[int]struct {
+			result1 *s3.GetObjectLockConfigurationOutput
+			result2 error
+		})
+	}
+	fake.getObjectLockConfigurationReturnsOnCall[i] = struct {
+		result1 *s3.GetObjectLockConfigurationOutput
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeS3Client) HeadBucket(arg1 context.Context, arg2 *s3.HeadBucketInput, arg3 ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
 	fake.headBucketMutex.Lock()
 	ret, specificReturn := fake.headBucketReturnsOnCall[len(fake.headBucketArgsForCall)]
@@ -1472,6 +1568,72 @@ func (fake *FakeS3Client) PutObjectReturnsOnCall(i int, result1 *s3.PutObjectOut
 	}{result1, result2}
 }
 
+func (fake *FakeS3Client) PutObjectLockConfiguration(arg1 context.Context, arg2 *s3.PutObjectLockConfigurationInput, arg3 ...func(*s3.Options)) (*s3.PutObjectLockConfigurationOutput, error) {
+	fake.putObjectLockConfigurationMutex.Lock()
+	ret, specificReturn := fake.putObjectLockConfigurationReturnsOnCall[len(fake.putObjectLockConfigurationArgsForCall)]
+	fake.putObjectLockConfigurationArgsForCall = append(fake.putObjectLockConfigurationArgsForCall, struct {
+		arg1 context.Context
+		arg2 *s3.PutObjectLockConfigurationInput
+		arg3 []func(*s3.Options)
+	}{arg1, arg2, arg3})
+	stub := fake.PutObjectLockConfigurationStub
+	fakeReturns := fake.putObjectLockConfigurationReturns
+	fake.recordInvocation("PutObjectLockConfiguration", []interface{}{arg1, arg2, arg3})
+	fake.putObjectLockConfigurationMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeS3Client) PutObjectLockConfigurationCallCount() int {
+	fake.putObjectLockConfigurationMutex.RLock()
+	defer fake.putObjectLockConfigurationMutex.RUnlock()
+	return len(fake.putObjectLockConfigurationArgsForCall)
+}
+
+func (fake *FakeS3Client) PutObjectLockConfigurationCalls(stub func(context.Context, *s3.PutObjectLockConfigurationInput, ...func(*s3.Options)) (*s3.PutObjectLockConfigurationOutput, error)) {
+	fake.putObjectLockConfigurationMutex.Lock()
+	defer fake.putObjectLockConfigurationMutex.Unlock()
+	fake.PutObjectLockConfigurationStub = stub
+}
+
+func (fake *FakeS3Client) PutObjectLockConfigurationArgsForCall(i int) (context.Context, *s3.PutObjectLockConfigurationInput, []func(*s3.Options)) {
+	fake.putObjectLockConfigurationMutex.RLock()
+	defer fake.putObjectLockConfigurationMutex.RUnlock()
+	argsForCall := fake.putObjectLockConfigurationArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeS3Client) PutObjectLockConfigurationReturns(result1 *s3.PutObjectLockConfigurationOutput, result2 error) {
+	fake.putObjectLockConfigurationMutex.Lock()
+	defer fake.putObjectLockConfigurationMutex.Unlock()
+	fake.PutObjectLockConfigurationStub = nil
+	fake.putObjectLockConfigurationReturns = struct {
+		result1 *s3.PutObjectLockConfigurationOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) PutObjectLockConfigurationReturnsOnCall(i int, result1 *s3.PutObjectLockConfigurationOutput, result2 error) {
+	fake.putObjectLockConfigurationMutex.Lock()
+	defer fake.putObjectLockConfigurationMutex.Unlock()
+	fake.PutObjectLockConfigurationStub = nil
+	if fake.putObjectLockConfigurationReturnsOnCall == nil {
+		fake.putObjectLockConfigurationReturnsOnCall = make(map[int]struct {
+			result1 *s3.PutObjectLockConfigurationOutput
+			result2 error
+		})
+	}
+	fake.putObjectLockConfigurationReturnsOnCall[i] = struct {
+		result1 *s3.PutObjectLockConfigurationOutput
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeS3Client) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -1495,6 +1657,8 @@ func (fake *FakeS3Client) Invocations() map[string][][]interface{} {
 	defer fake.getBucketVersioningMutex.RUnlock()
 	fake.getObjectMutex.RLock()
 	defer fake.getObjectMutex.RUnlock()
+	fake.getObjectLockConfigurationMutex.RLock()
+	defer fake.getObjectLockConfigurationMutex.RUnlock()
 	fake.headBucketMutex.RLock()
 	defer fake.headBucketMutex.RUnlock()
 	fake.listObjectVersionsMutex.RLock()
@@ -1511,6 +1675,8 @@ func (fake *FakeS3Client) Invocations() map[string][][]interface{} {
 	defer fake.putBucketVersioningMutex.RUnlock()
 	fake.putObjectMutex.RLock()
 	defer fake.putObjectMutex.RUnlock()
+	fake.putObjectLockConfigurationMutex.RLock()
+	defer fake.putObjectLockConfigurationMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

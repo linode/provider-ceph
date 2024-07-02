@@ -39,6 +39,7 @@ func NewSubresourceClients(b *backendstore.BackendStore, h *s3clienthandler.Hand
 		NewACLClient(b, h, l.WithValues("acl-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
 		NewPolicyClient(b, h, l.WithValues("policy-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
 		NewVersioningConfigurationClient(b, h, l.WithValues("versioning-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
+		NewObjectLockConfigurationClient(b, h, l.WithValues("object-lock-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
 	}
 }
 
@@ -46,8 +47,10 @@ func NewSubresourceClients(b *backendstore.BackendStore, h *s3clienthandler.Hand
 type ResourceStatus int
 
 const (
+	// NoAction is returned if the resource requires no action.
+	NoAction ResourceStatus = iota
 	// Updated is returned if the resource is updated.
-	Updated ResourceStatus = iota
+	Updated
 	// NeedsUpdate is returned if the resource required updating.
 	NeedsUpdate
 	// NeedsDeletion is returned if the resource needs to be deleted.

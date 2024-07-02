@@ -28,6 +28,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+var vEnabled = v1alpha1.VersioningStatusEnabled
+var lEnabled = v1alpha1.ObjectLockEnabledEnabled
+
 func TestUpdateBasicErrors(t *testing.T) {
 	t.Parallel()
 
@@ -395,6 +398,22 @@ func TestUpdate(t *testing.T) {
 						Providers: []string{
 							"s3-backend-1",
 						},
+						ForProvider: v1alpha1.BucketParameters{
+							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
+								Rules: []v1alpha1.LifecycleRule{
+									{
+										Status: "Enabled",
+									},
+								},
+							},
+							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
+								Status: &vEnabled,
+							},
+							ObjectLockEnabledForBucket: &enabledTrue,
+							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
+								ObjectLockEnabled: &lEnabled,
+							},
+						},
 					},
 				},
 			},
@@ -414,6 +433,15 @@ func TestUpdate(t *testing.T) {
 					assert.True(t,
 						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
 						"bucket condition on s3-backend-1 is not available")
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].LifecycleConfigurationCondition.Equal(v1.Available()),
+						"lifecycle config condition on s3-backend-1 is not available")
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].VersioningConfigurationCondition.Equal(v1.Available()),
+						"versioning config condition on s3-backend-1 is not available")
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].ObjectLockConfigurationCondition.Equal(v1.Available()),
+						"object lock config condition on s3-backend-1 is not available")
 
 					assert.Equal(t,
 						map[string]string{
@@ -443,16 +471,19 @@ func TestUpdate(t *testing.T) {
 				WithStatusSubresource(tc.fields.initObjects...).
 				WithScheme(s).Build()
 
+			s3ClientHandler := s3clienthandler.NewHandler(
+				s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
+				s3clienthandler.WithBackendStore(tc.fields.backendStore),
+				s3clienthandler.WithKubeClient(cl))
+
 			e := external{
-				kubeClient:   cl,
-				backendStore: tc.fields.backendStore,
-				s3ClientHandler: s3clienthandler.NewHandler(
-					s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
-					s3clienthandler.WithBackendStore(tc.fields.backendStore),
-					s3clienthandler.WithKubeClient(cl)),
-				autoPauseBucket: tc.fields.autoPauseBucket,
-				minReplicas:     1,
-				log:             logging.NewNopLogger(),
+				kubeClient:         cl,
+				backendStore:       tc.fields.backendStore,
+				s3ClientHandler:    s3ClientHandler,
+				autoPauseBucket:    tc.fields.autoPauseBucket,
+				minReplicas:        1,
+				log:                logging.NewNopLogger(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, logging.NewNopLogger()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)
@@ -784,7 +815,6 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 func TestUpdateVersioningConfigSubResource(t *testing.T) {
 	t.Parallel()
 	someError := errors.New("some error")
-	vEnabled := v1alpha1.VersioningStatusEnabled
 
 	type fields struct {
 		backendStore    *backendstore.BackendStore
@@ -1085,7 +1115,6 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 	t.Parallel()
 	someError := errors.New("some error")
-	lEnabled := v1alpha1.ObjectLockEnabledEnabled
 
 	type fields struct {
 		backendStore    *backendstore.BackendStore
@@ -1130,6 +1159,7 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 							"s3-backend-2",
 						},
 						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
 							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
 								ObjectLockEnabled: &lEnabled,
 							},
@@ -1178,6 +1208,7 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 							"s3-backend-2",
 						},
 						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
 							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
 								ObjectLockEnabled: &lEnabled,
 							},
@@ -1241,6 +1272,7 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 							"s3-backend-2",
 						},
 						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
 							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
 								ObjectLockEnabled: &lEnabled,
 							},
@@ -1306,6 +1338,7 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 							"s3-backend-1",
 						},
 						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
 							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
 								ObjectLockEnabled: &lEnabled,
 							},

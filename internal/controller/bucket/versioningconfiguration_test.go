@@ -40,6 +40,7 @@ var (
 	mfaDeleteEnabled = v1alpha1.MFADeleteEnabled
 	vStatusEnabled   = v1alpha1.VersioningStatusEnabled
 	enabledTrue      = true
+	enabledFalse     = false
 )
 
 func TestVersioningConfigObserveBackend(t *testing.T) {

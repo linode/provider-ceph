@@ -264,6 +264,60 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 		args   args
 		want   want
 	}{
+		"Object lock is not enabled for Bucket CR - nil value": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Spec: v1alpha1.BucketSpec{
+						ForProvider: v1alpha1.BucketParameters{},
+					},
+				},
+				backendName: "s3-backend-1",
+			},
+			want: want{
+				err: nil,
+			},
+		},
+		"Object lock is not enabled for Bucket CR - false": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Spec: v1alpha1.BucketSpec{
+						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledFalse,
+						},
+					},
+				},
+				backendName: "s3-backend-1",
+			},
+			want: want{
+				err: nil,
+			},
+		},
 		"Object lock config is up to date so no action required": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
@@ -343,6 +397,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
 							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
 								ObjectLockEnabled: &objLockEnabled,
 								Rule: &v1alpha1.ObjectLockRule{
@@ -400,6 +455,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
 							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
 								ObjectLockEnabled: &objLockEnabled,
 								Rule: &v1alpha1.ObjectLockRule{

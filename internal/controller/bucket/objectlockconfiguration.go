@@ -40,8 +40,8 @@ func (l *ObjectLockConfigurationClient) Observe(ctx context.Context, bucket *v1a
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.ObjectLockConfigurationClient.Observe")
 	defer span.End()
 
-	if bucket.Spec.ForProvider.ObjectLockConfiguration == nil {
-		l.log.Info("No object lock configuration specified in Bucket CR - object lock cannot be disabled so no action required", consts.KeyBucketName, bucket.Name)
+	if bucket.Spec.ForProvider.ObjectLockEnabledForBucket == nil || !*bucket.Spec.ForProvider.ObjectLockEnabledForBucket {
+		l.log.Info("Object lock configuration not enabled in Bucket CR", consts.KeyBucketName, bucket.Name)
 
 		return Updated, nil
 	}
@@ -125,9 +125,7 @@ func (l *ObjectLockConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.ObjectLockConfigurationClient.Handle")
 	defer span.End()
 
-	if b.Spec.ForProvider.ObjectLockConfiguration == nil {
-		l.log.Info("No object lock configuration specified in Bucket CR - object lock cannot be disabled so no action required on backend", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
-
+	if b.Spec.ForProvider.ObjectLockEnabledForBucket == nil || !*b.Spec.ForProvider.ObjectLockEnabledForBucket {
 		return nil
 	}
 
@@ -146,17 +144,29 @@ func (l *ObjectLockConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 		// Object lock configuration, once enabled, cannot be disabled/deleted.
 		return nil
 	case NeedsUpdate:
-		if err := l.createOrUpdate(ctx, b, backendName); err != nil {
+		// Object lock configurations cannot be deleted. However, if object lock
+		// has been enabled for the bucket and no object lock configuration is
+		// specified in the Bucket CR Spec, we should default to a basic "enabled"
+		// object lock configuration.
+		bucketCopy := b.DeepCopy()
+		enabled := v1alpha1.ObjectLockEnabledEnabled
+		if b.Spec.ForProvider.ObjectLockConfiguration == nil {
+			bucketCopy.Spec.ForProvider.ObjectLockConfiguration = &v1alpha1.ObjectLockConfiguration{
+				ObjectLockEnabled: &enabled,
+			}
+		}
+		if err := l.createOrUpdate(ctx, bucketCopy, backendName); err != nil {
 			err = errors.Wrap(err, errHandleObjectLockConfig)
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
-			bb.setObjectLockConfigCondition(b.Name, backendName, &unavailable)
+			bb.setObjectLockConfigCondition(bucketCopy.Name, backendName, &unavailable)
 
 			traces.SetAndRecordError(span, err)
 
 			return err
 		}
+
 		available := xpv1.Available()
-		bb.setObjectLockConfigCondition(b.Name, backendName, &available)
+		bb.setObjectLockConfigCondition(bucketCopy.Name, backendName, &available)
 	}
 
 	return nil

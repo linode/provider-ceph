@@ -38,7 +38,7 @@ func GetObjectLockConfiguration(ctx context.Context, s3Backend backendstore.S3Cl
 	defer span.End()
 
 	resp, err := s3Backend.GetObjectLockConfiguration(ctx, &awss3.GetObjectLockConfigurationInput{Bucket: bucketName})
-	if resource.IgnoreAny(err, IsBucketNotFound) != nil {
+	if resource.IgnoreAny(err, ObjectLockConfigurationNotFound, IsBucketNotFound) != nil {
 		err = errors.Wrap(err, errGetObjectLockConfiguration)
 		traces.SetAndRecordError(span, err)
 

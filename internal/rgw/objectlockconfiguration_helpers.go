@@ -4,6 +4,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 )
 
@@ -40,4 +42,14 @@ func GenerateObjectLockConfiguration(inputConfig *v1alpha1.ObjectLockConfigurati
 	}
 
 	return outputConfig
+}
+
+// ObjectLockConfigurationNotfoundErrCode is the error code sent by Ceph when the object lock config does not exist
+var ObjectLockConfigurationNotFoundErrCode = "ObjectLockConfigurationNotFoundError"
+
+// ObjectLockConfigurationNotFound is parses the error and validates if the object lock configuration does not exist
+func ObjectLockConfigurationNotFound(err error) bool {
+	var awsErr smithy.APIError
+
+	return errors.As(err, &awsErr) && awsErr.ErrorCode() == ObjectLockConfigurationNotFoundErrCode
 }

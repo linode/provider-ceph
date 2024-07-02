@@ -71,7 +71,7 @@ func (l *ObjectLockConfigurationClient) Observe(ctx context.Context, bucket *v1a
 
 			return NeedsUpdate, err
 		case observation := <-observationChan:
-			if observation != Updated {
+			if observation == NeedsUpdate || observation == NeedsDeletion {
 				return observation, nil
 			}
 		case err := <-errChan:
@@ -89,11 +89,11 @@ func (l *ObjectLockConfigurationClient) observeBackend(ctx context.Context, buck
 	l.log.Info("Observing subresource object lock configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-		// If a backend is marked as unhealthy, we can ignore it for now by returning Updated.
+		// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
 		// The backend may be down for some time and we do not want to block Create/Update/Delete
 		// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
 		// phase until the backend becomes Healthy or Disabled.
-		return Updated, nil
+		return NoAction, nil
 	}
 
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
@@ -138,7 +138,14 @@ func (l *ObjectLockConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 	}
 
 	switch observation {
+	case NoAction:
+		return nil
 	case Updated:
+		// The object lock config is updated, so we can consider this
+		// sub resource Available.
+		available := xpv1.Available()
+		bb.setObjectLockConfigCondition(b.Name, backendName, &available)
+
 		return nil
 	case NeedsDeletion:
 		// Object lock configuration, once enabled, cannot be disabled/deleted.

@@ -100,7 +100,7 @@ func TestObserveBackend(t *testing.T) {
 				err:    errExternal,
 			},
 		},
-		"Attempt to observe lifecycle config on unhealthy backend (consider it updated to unblock)": {
+		"Attempt to observe lifecycle config on unhealthy backend (consider it NoAction to unblock)": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{}
@@ -120,7 +120,7 @@ func TestObserveBackend(t *testing.T) {
 				backendName: "s3-backend-1",
 			},
 			want: want{
-				status: Updated,
+				status: NoAction,
 				err:    nil,
 			},
 		},
@@ -162,7 +162,7 @@ func TestObserveBackend(t *testing.T) {
 				err:    nil,
 			},
 		},
-		"Lifecycle config not specified in CR and does exists on backend so is Updated": {
+		"Lifecycle config not specified in CR and does exists on backend so NoAction": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{
@@ -192,7 +192,7 @@ func TestObserveBackend(t *testing.T) {
 				backendName: "s3-backend-1",
 			},
 			want: want{
-				status: Updated,
+				status: NoAction,
 				err:    nil,
 			},
 		},
@@ -245,7 +245,7 @@ func TestObserveBackend(t *testing.T) {
 				err:    nil,
 			},
 		},
-		"Lifecycle config specified in CR and disabled but does not exist on backend so is Updated": {
+		"Lifecycle config specified in CR and disabled but does not exist on backend so is NoAction": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{
@@ -286,7 +286,7 @@ func TestObserveBackend(t *testing.T) {
 				backendName: "s3-backend-1",
 			},
 			want: want{
-				status: Updated,
+				status: NoAction,
 				err:    nil,
 			},
 		},

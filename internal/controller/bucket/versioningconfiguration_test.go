@@ -95,7 +95,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 				err:    errExternal,
 			},
 		},
-		"Attempt to observe versioniong config on unhealthy backend (consider it updated to unblock)": {
+		"Attempt to observe versioniong config on unhealthy backend (consider it NoAction to unblock)": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{}
@@ -115,7 +115,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 				backendName: "s3-backend-1",
 			},
 			want: want{
-				status: Updated,
+				status: NoAction,
 				err:    nil,
 			},
 		},
@@ -175,7 +175,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 				backendName: "s3-backend-1",
 			},
 			want: want{
-				status: Updated,
+				status: NoAction,
 				err:    nil,
 			},
 		},

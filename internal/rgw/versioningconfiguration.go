@@ -1,4 +1,3 @@
-//nolint:dupl // Similarities with objectlockconfiguration.go
 package rgw
 
 import (

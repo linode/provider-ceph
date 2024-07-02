@@ -61,7 +61,7 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 		args   args
 		want   want
 	}{
-		"Attempt to observe object lock config on unhealthy backend (consider it updated to unblock)": {
+		"Attempt to observe object lock config on unhealthy backend (consider it NoAction to unblock)": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{}
@@ -88,7 +88,7 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 				backendName: "s3-backend-1",
 			},
 			want: want{
-				status: Updated,
+				status: NoAction,
 				err:    nil,
 			},
 		},
@@ -238,6 +238,7 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 	}
 }
 
+//nolint:maintidx //Test with lots of cases.
 func TestObjectLockConfigurationHandle(t *testing.T) {
 	t.Parallel()
 	bucketName := "bucket"

@@ -1,4 +1,3 @@
-//nolint:dupl // Similarities with versioningconfiguration.go
 package rgw
 
 import (

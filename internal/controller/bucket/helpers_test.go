@@ -1225,7 +1225,6 @@ func TestIsPauseRequired(t *testing.T) {
 				pauseIsRequired: true,
 			},
 		},
-		/**********************************************************/
 		"Object lock config specified but unavailable on one backend - no pause": {
 			args: args{
 				bucket: &v1alpha1.Bucket{

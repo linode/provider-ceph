@@ -2,7 +2,7 @@ module github.com/linode/provider-ceph
 
 go 1.21
 
-toolchain go1.21.9
+toolchain go1.21.12
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.3.2

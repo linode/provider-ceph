@@ -24,6 +24,10 @@ const (
 	errObserveVersioningConfig = "failed to observe bucket versioning configuration"
 	errHandleVersioningConfig  = "failed to handle bucket versioning configuration"
 
+	// Object lock configuration error messages.
+	errObserveObjectLockConfig = "failed to observe object lock configuration"
+	errHandleObjectLockConfig  = "failed to handle object lock configuration"
+
 	// ACL error messages.
 	errObserveAcl = "failed to observe bucket acl"
 	errHandleAcl  = "failed to handle bucket acl"

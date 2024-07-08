@@ -455,9 +455,60 @@ spec:
                   locationConstraint:
                     description: Specifies the Region where the bucket will be created.
                     type: string
+                  objectLockConfiguration:
+                    description: ObjectLockConfiguration describes the desired object
+                      lock state of an S3 bucket.
+                    properties:
+                      objectLockEnabled:
+                        description: |-
+                          Indicates whether this bucket has an Object Lock configuration enabled. Enable
+                          ObjectLockEnabled when you apply ObjectLockConfiguration to a bucket.
+                        enum:
+                        - Enabled
+                        type: string
+                      objectLockRule:
+                        description: |-
+                          Specifies the Object Lock rule for the specified object. Enable this rule
+                          when you apply ObjectLockConfiguration to a bucket. Bucket settings require
+                          both a mode and a period. The period can be either Days or Years but you must
+                          select one. You cannot specify Days and Years at the same time.
+                        properties:
+                          defaultRetention:
+                            description: |-
+                              The default Object Lock retention mode and period that you want to apply to new
+                              objects placed in the specified bucket. Bucket settings require both a mode and
+                              a period. The period can be either Days or Years but you must select one. You
+                              cannot specify Days and Years at the same time.
+                            properties:
+                              days:
+                                description: |-
+                                  The number of days that you want to specify for the default retention period.
+                                  Must be used with Mode.
+                                format: int32
+                                type: integer
+                              mode:
+                                description: |-
+                                  The default Object Lock retention mode you want to apply to new objects placed
+                                  in the specified bucket. Must be used with either Days or Years.
+                                enum:
+                                - GOVERNANCE
+                                - COMPLIANCE
+                                type: string
+                              years:
+                                description: |-
+                                  The number of years that you want to specify for the default retention period.
+                                  Must be used with Mode.
+                                format: int32
+                                type: integer
+                            type: object
+                        type: object
+                    type: object
                   objectLockEnabledForBucket:
                     description: Specifies whether you want S3 Object Lock to be enabled
                       for the new bucket.
+                    enum:
+                    - true
+                    - "null"
                     type: boolean
                   objectOwnership:
                     description: |-
@@ -741,6 +792,42 @@ spec:
                             LifecycleConfigurationCondition is the condition of the bucket lifecycle
                             configuration on the S3 backend. Use a pointer to allow nil value when
                             there is no lifecycle configuration.
+                          properties:
+                            lastTransitionTime:
+                              description: |-
+                                LastTransitionTime is the last time this condition transitioned from one
+                                status to another.
+                              format: date-time
+                              type: string
+                            message:
+                              description: |-
+                                A Message containing details about this condition's last transition from
+                                one status to another, if any.
+                              type: string
+                            reason:
+                              description: A Reason for this condition's last transition
+                                from one status to another.
+                              type: string
+                            status:
+                              description: Status of this condition; is it currently
+                                True, False, or Unknown?
+                              type: string
+                            type:
+                              description: |-
+                                Type of this condition. At most one of each condition type may apply to
+                                a resource at any point in time.
+                              type: string
+                          required:
+                          - lastTransitionTime
+                          - reason
+                          - status
+                          - type
+                          type: object
+                        objectLockConfigurationCondition:
+                          description: |-
+                            ObjectLockConfigurationCondition is the condition of the object lock
+                            configuration on the S3 backend. Use a pointer to allow nil value when
+                            there is no object lock configuration.
                           properties:
                             lastTransitionTime:
                               description: |-

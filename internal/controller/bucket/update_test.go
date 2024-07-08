@@ -28,6 +28,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+var vEnabled = v1alpha1.VersioningStatusEnabled
+var lEnabled = v1alpha1.ObjectLockEnabledEnabled
+
 func TestUpdateBasicErrors(t *testing.T) {
 	t.Parallel()
 
@@ -395,6 +398,22 @@ func TestUpdate(t *testing.T) {
 						Providers: []string{
 							"s3-backend-1",
 						},
+						ForProvider: v1alpha1.BucketParameters{
+							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
+								Rules: []v1alpha1.LifecycleRule{
+									{
+										Status: "Enabled",
+									},
+								},
+							},
+							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
+								Status: &vEnabled,
+							},
+							ObjectLockEnabledForBucket: &enabledTrue,
+							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
+								ObjectLockEnabled: &lEnabled,
+							},
+						},
 					},
 				},
 			},
@@ -414,6 +433,15 @@ func TestUpdate(t *testing.T) {
 					assert.True(t,
 						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
 						"bucket condition on s3-backend-1 is not available")
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].LifecycleConfigurationCondition.Equal(v1.Available()),
+						"lifecycle config condition on s3-backend-1 is not available")
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].VersioningConfigurationCondition.Equal(v1.Available()),
+						"versioning config condition on s3-backend-1 is not available")
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].ObjectLockConfigurationCondition.Equal(v1.Available()),
+						"object lock config condition on s3-backend-1 is not available")
 
 					assert.Equal(t,
 						map[string]string{
@@ -443,16 +471,19 @@ func TestUpdate(t *testing.T) {
 				WithStatusSubresource(tc.fields.initObjects...).
 				WithScheme(s).Build()
 
+			s3ClientHandler := s3clienthandler.NewHandler(
+				s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
+				s3clienthandler.WithBackendStore(tc.fields.backendStore),
+				s3clienthandler.WithKubeClient(cl))
+
 			e := external{
-				kubeClient:   cl,
-				backendStore: tc.fields.backendStore,
-				s3ClientHandler: s3clienthandler.NewHandler(
-					s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
-					s3clienthandler.WithBackendStore(tc.fields.backendStore),
-					s3clienthandler.WithKubeClient(cl)),
-				autoPauseBucket: tc.fields.autoPauseBucket,
-				minReplicas:     1,
-				log:             logging.NewNopLogger(),
+				kubeClient:         cl,
+				backendStore:       tc.fields.backendStore,
+				s3ClientHandler:    s3ClientHandler,
+				autoPauseBucket:    tc.fields.autoPauseBucket,
+				minReplicas:        1,
+				log:                logging.NewNopLogger(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, logging.NewNopLogger()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)
@@ -784,7 +815,6 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 func TestUpdateVersioningConfigSubResource(t *testing.T) {
 	t.Parallel()
 	someError := errors.New("some error")
-	vEnabled := v1alpha1.VersioningStatusEnabled
 
 	type fields struct {
 		backendStore    *backendstore.BackendStore
@@ -1027,6 +1057,311 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					assert.True(t,
 						bucket.Status.AtProvider.Backends["s3-backend-1"].VersioningConfigurationCondition.Equal(v1.Available()),
 						"versioning configuration condition on s3-backend-1 is not available")
+
+					assert.Equal(t,
+						map[string]string{
+							meta.AnnotationKeyReconciliationPaused: True,
+							"provider-ceph.backends.s3-backend-1":  True,
+						},
+						bucket.Labels,
+						"unexpected bucket labels",
+					)
+				},
+			},
+		},
+	}
+
+	bk := &v1alpha1.Bucket{}
+	s := scheme.Scheme
+	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, bk)
+
+	for name, tc := range cases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			cl := fake.NewClientBuilder().
+				WithObjects(tc.fields.initObjects...).
+				WithStatusSubresource(tc.fields.initObjects...).
+				WithScheme(s).Build()
+
+			s3ClientHandler := s3clienthandler.NewHandler(
+				s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
+				s3clienthandler.WithBackendStore(tc.fields.backendStore),
+				s3clienthandler.WithKubeClient(cl))
+
+			e := external{
+				kubeClient:         cl,
+				backendStore:       tc.fields.backendStore,
+				s3ClientHandler:    s3ClientHandler,
+				autoPauseBucket:    tc.fields.autoPauseBucket,
+				minReplicas:        1,
+				log:                logging.NewNopLogger(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, logging.NewNopLogger()),
+			}
+
+			got, err := e.Update(context.Background(), tc.args.mg)
+			require.ErrorIs(t, err, tc.want.err, "unexpected err")
+			assert.Equal(t, got, tc.want.o, "unexpected result")
+			if tc.want.specificDiff != nil {
+				tc.want.specificDiff(t, tc.args.mg)
+			}
+		})
+	}
+}
+
+//nolint:maintidx // Function requires numerous checks.
+func TestUpdateObjectLockConfigSubResource(t *testing.T) {
+	t.Parallel()
+	someError := errors.New("some error")
+
+	type fields struct {
+		backendStore    *backendstore.BackendStore
+		autoPauseBucket bool
+		roleArn         *string
+		initObjects     []client.Object
+	}
+
+	type args struct {
+		mg resource.Managed
+	}
+
+	type want struct {
+		o            managed.ExternalUpdate
+		err          error
+		specificDiff func(t *testing.T, mg resource.Managed)
+	}
+
+	cases := map[string]struct {
+		reason string
+		fields fields
+		args   args
+		want   want
+	}{
+		"Two backends update object lock configuration successfully": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
+							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
+								ObjectLockEnabled: &lEnabled,
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].ObjectLockConfigurationCondition.Equal(v1.Available()),
+
+						"object lock configuration condition on s3-backend-1 is not available")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].ObjectLockConfigurationCondition.Equal(v1.Available()),
+						"object lock configuration condition on s3-backend-2 is not available")
+				},
+			},
+		},
+		"Two backends fail to update versioning config": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						PutObjectLockConfigurationStub: func(ctx context.Context, hbi *s3.PutObjectLockConfigurationInput, f ...func(*s3.Options)) (*s3.PutObjectLockConfigurationOutput, error) {
+							return &s3.PutObjectLockConfigurationOutput{}, someError
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
+							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
+								ObjectLockEnabled: &lEnabled,
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				err: someError,
+				o:   managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+					unavailableBackends := []string{"s3-backend-1", "s3-backend-2"}
+					slices.Sort(unavailableBackends)
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].ObjectLockConfigurationCondition.Equal(
+							v1.Unavailable().WithMessage(
+								errors.Wrap(
+									errors.Wrap(someError, "failed to put object lock configuration"),
+									"failed to handle object lock configuration").Error(),
+							),
+						),
+						"unexpected object lock configuration condition for s3-backend-1")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].ObjectLockConfigurationCondition.Equal(
+							v1.Unavailable().WithMessage(
+								errors.Wrap(
+									errors.Wrap(someError, "failed to put object lock configuration"),
+									"failed to handle object lock configuration").Error(),
+							),
+						),
+						"unexpected object lock configuration condition for s3-backend-1")
+				},
+			},
+		},
+		"One backend updates object lock configuration successfully and one fails to update": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fakeErr := backendstorefakes.FakeS3Client{
+						PutObjectLockConfigurationStub: func(ctx context.Context, hbi *s3.PutObjectLockConfigurationInput, f ...func(*s3.Options)) (*s3.PutObjectLockConfigurationOutput, error) {
+							return &s3.PutObjectLockConfigurationOutput{}, someError
+						},
+					}
+					fakeOK := backendstorefakes.FakeS3Client{}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+							"s3-backend-2",
+						},
+						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
+							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
+								ObjectLockEnabled: &lEnabled,
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				err: someError,
+				o:   managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].ObjectLockConfigurationCondition.Equal(v1.Available()),
+						"unexpected object lock configuration condition for s3-backend-1")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-2"].ObjectLockConfigurationCondition.Equal(
+							v1.Unavailable().WithMessage(
+								errors.Wrap(
+									errors.Wrap(someError, "failed to put object lock configuration"),
+									"failed to handle object lock configuration").Error(),
+							),
+						),
+						"unexpected object lock configuration condition for s3-backend-1")
+				},
+			},
+		},
+		"Single backend updates object lock configuration successfully and is autopaused": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				autoPauseBucket: true,
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+							Annotations: map[string]string{
+								"test": "test",
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+						Annotations: map[string]string{
+							"test": "test",
+						},
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							"s3-backend-1",
+						},
+						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
+							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
+								ObjectLockEnabled: &lEnabled,
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+					assert.True(t,
+						bucket.Status.Conditions[0].Equal(v1.Available()),
+						"unexpected bucket ready condition")
+
+					assert.True(t,
+						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
+						"unexpected bucket synced condition")
+
+					assert.True(t,
+						bucket.Status.AtProvider.Backends["s3-backend-1"].ObjectLockConfigurationCondition.Equal(v1.Available()),
+						"object lock configuration condition on s3-backend-1 is not available")
 
 					assert.Equal(t,
 						map[string]string{

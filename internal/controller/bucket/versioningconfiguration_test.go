@@ -39,6 +39,8 @@ import (
 var (
 	mfaDeleteEnabled = v1alpha1.MFADeleteEnabled
 	vStatusEnabled   = v1alpha1.VersioningStatusEnabled
+	enabledTrue      = true
+	enabledFalse     = false
 )
 
 func TestVersioningConfigObserveBackend(t *testing.T) {
@@ -93,7 +95,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 				err:    errExternal,
 			},
 		},
-		"Attempt to observe versioniong config on unhealthy backend (consider it updated to unblock)": {
+		"Attempt to observe versioniong config on unhealthy backend (consider it NoAction to unblock)": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{}
@@ -113,7 +115,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 				backendName: "s3-backend-1",
 			},
 			want: want{
-				status: Updated,
+				status: NoAction,
 				err:    nil,
 			},
 		},
@@ -173,7 +175,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 				backendName: "s3-backend-1",
 			},
 			want: want{
-				status: Updated,
+				status: NoAction,
 				err:    nil,
 			},
 		},
@@ -257,6 +259,43 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 				err:    nil,
 			},
 		},
+		"Versioning config not specified in CR but object lock enabled so NeedsUpdate": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+
+						GetBucketVersioningStub: func(ctx context.Context, lci *s3.GetBucketVersioningInput, f ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error) {
+							return &s3.GetBucketVersioningOutput{
+								Status:    "Enabled",
+								MFADelete: "Disabled",
+							}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Spec: v1alpha1.BucketSpec{
+						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
+						},
+					},
+				},
+				backendName: "s3-backend-1",
+			},
+			want: want{
+				status: NeedsUpdate,
+				err:    nil,
+			},
+		},
 	}
 	for name, tc := range cases {
 		tc := tc
@@ -304,6 +343,42 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 		args   args
 		want   want
 	}{
+		"Object lock enabled for bucket but no versioning config so set default enabled versioning": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+
+						GetBucketVersioningStub: func(ctx context.Context, lci *s3.GetBucketVersioningInput, f ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error) {
+							return &s3.GetBucketVersioningOutput{
+								MFADelete: s3types.MFADeleteStatusEnabled,
+								Status:    s3types.BucketVersioningStatusEnabled,
+							}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
+					Spec: v1alpha1.BucketSpec{
+						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
+						},
+					},
+				},
+				backendName: "s3-backend-1",
+			},
+			want: want{
+				err: nil,
+			},
+		},
 		"Versioning config suspends successfully": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {

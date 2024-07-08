@@ -54,6 +54,7 @@ type BucketParameters struct {
 	GrantWriteACP *string `json:"grantWriteACP,omitempty"`
 
 	// Specifies whether you want S3 Object Lock to be enabled for the new bucket.
+	// +kubebuilder:validation:Enum=true;null
 	ObjectLockEnabledForBucket *bool `json:"objectLockEnabledForBucket,omitempty"`
 
 	// The container element for object ownership for a bucket's ownership controls.
@@ -88,6 +89,10 @@ type BucketParameters struct {
 	// +optional
 	VersioningConfiguration *VersioningConfiguration `json:"versioningConfiguration,omitempty"`
 
+	// ObjectLockConfiguration describes the desired object lock state of an S3 bucket.
+	// +optional
+	ObjectLockConfiguration *ObjectLockConfiguration `json:"objectLockConfiguration,omitempty"`
+
 	// AssumeRoleTags may be used to add custom values to an AssumeRole request.
 	// +optional
 	AssumeRoleTags []Tag `json:"assumeRoleTags,omitempty"`
@@ -114,6 +119,11 @@ type BackendInfo struct {
 	// configuration on the S3 backend. Use a pointer to allow nil value when
 	// there is no versioning configuration.
 	VersioningConfigurationCondition *xpv1.Condition `json:"versioningConfigurationCondition,omitempty"`
+	// +optional
+	// ObjectLockConfigurationCondition is the condition of the object lock
+	// configuration on the S3 backend. Use a pointer to allow nil value when
+	// there is no object lock configuration.
+	ObjectLockConfigurationCondition *xpv1.Condition `json:"objectLockConfigurationCondition,omitempty"`
 }
 
 // Backends is a map of the names of the S3 backends to BackendInfo.

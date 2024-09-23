@@ -171,7 +171,7 @@ func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends, pr
 	backends := bucketBackends.getBackends(bucket.Name, providerNames)
 	bucket.Status.AtProvider.Backends = backends
 
-	ok := 0
+	var ok uint = 0
 	unavailableBackends := make([]string, 0)
 	for backendName, backend := range backends {
 		if backend.BucketCondition.Equal(xpv1.Available()) {
@@ -183,13 +183,13 @@ func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends, pr
 	}
 	// The Bucket CR is considered Available if the bucket is available on "minReplicas"
 	// number of backends (default = 1).
-	if ok >= int(minReplicas) {
+	if ok >= minReplicas {
 		bucket.Status.SetConditions(xpv1.Available())
 	}
 	// The Bucket CR is considered Synced (ReconcileSuccess) once the bucket is available
 	// on all backends. We also ensure that the overall Bucket CR is available (in a Ready
 	// state) - this should already be the case.
-	if ok >= len(providerNames) &&
+	if ok >= uint(len(providerNames)) &&
 		bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) {
 		bucket.Status.SetConditions(xpv1.ReconcileSuccess())
 

@@ -21,10 +21,14 @@ import (
 
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
+
 	"go.opentelemetry.io/otel"
 	corev1 "k8s.io/api/core/v1"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	apimachinerymetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -35,10 +39,12 @@ import (
 )
 
 const (
-	errCreateS3Client    = "failed create s3 client"
-	errCreateSTSClient   = "failed create sts client"
+	errCreateS3Client    = "failed to create s3 client"
+	errCreateSTSClient   = "failed to create sts client"
+	errAddCtrlRef        = "failed to add controller reference"
 	errGetProviderConfig = "failed to get ProviderConfig"
 	errGetSecret         = "failed to get Secret"
+	errUpdateSecret      = "failed to update Secret"
 )
 
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -87,6 +93,17 @@ func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 		return errors.Wrap(err, errCreateSTSClient)
 	}
 
+	// Set the ProviderConfig as an owner of the Secret so that any change to the Secret
+	// will trigger a reconcile of the ProviderConfig. This ensures new clients will
+	// be created if the Secret's data (SK/AK pair) are changed.
+	if !apimachinerymetav1.IsControlledBy(secret, pc) {
+		if err := meta.AddControllerReference(secret, meta.AsController(meta.TypedReferenceTo(pc, pc.GroupVersionKind()))); err != nil {
+			return errors.Wrap(err, errAddCtrlRef)
+		}
+		if err := c.kubeClient.Update(ctx, secret); err != nil {
+			return errors.Wrap(err, errUpdateSecret)
+		}
+	}
 	readyCondition := pc.Status.GetCondition(v1.TypeReady)
 	c.backendStore.AddOrUpdateBackend(pc.Name, s3Client, stsClient, true, utils.MapConditionToHealthStatus(readyCondition))
 

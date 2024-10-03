@@ -75,7 +75,7 @@ func (p *PolicyClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, bac
 }
 
 func (p *PolicyClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
-	p.log.Info("Observing subresource policy on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+	p.log.Debug("Observing subresource policy on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	if p.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
 		// If a backend is marked as unhealthy, we can ignore it for now by returning Updated.
@@ -107,11 +107,11 @@ func (p *PolicyClient) observeBackend(ctx context.Context, bucket *v1alpha1.Buck
 		// No policy config is specified.
 		// In that case, it should not exist on any backend.
 		if external == "" {
-			p.log.Info("No bucket policy found on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			p.log.Debug("No bucket policy found on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return Updated, nil
 		} else {
-			p.log.Info("Bucket policy found on backend - requires deletion", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			p.log.Debug("Bucket policy found on backend - requires deletion", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return NeedsDeletion, nil
 		}

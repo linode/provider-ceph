@@ -41,7 +41,7 @@ func (l *ObjectLockConfigurationClient) Observe(ctx context.Context, bucket *v1a
 	defer span.End()
 
 	if bucket.Spec.ForProvider.ObjectLockEnabledForBucket == nil || !*bucket.Spec.ForProvider.ObjectLockEnabledForBucket {
-		l.log.Info("Object lock configuration not enabled in Bucket CR", consts.KeyBucketName, bucket.Name)
+		l.log.Debug("Object lock configuration not enabled in Bucket CR", consts.KeyBucketName, bucket.Name)
 
 		return Updated, nil
 	}
@@ -86,7 +86,7 @@ func (l *ObjectLockConfigurationClient) Observe(ctx context.Context, bucket *v1a
 }
 
 func (l *ObjectLockConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
-	l.log.Info("Observing subresource object lock configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+	l.log.Debug("Observing subresource object lock configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
 		// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.

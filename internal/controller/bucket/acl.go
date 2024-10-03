@@ -73,13 +73,14 @@ func (l *ACLClient) observeBackend(bucket *v1alpha1.Bucket, backendName string) 
 		return Updated
 	}
 
-	if bucket.Spec.ForProvider.AccessControlPolicy == nil &&
+	if bucket.Spec.ForProvider.ACL == nil &&
+		bucket.Spec.ForProvider.AccessControlPolicy == nil &&
 		bucket.Spec.ForProvider.GrantFullControl == nil &&
 		bucket.Spec.ForProvider.GrantWrite == nil &&
 		bucket.Spec.ForProvider.GrantWriteACP == nil &&
 		bucket.Spec.ForProvider.GrantRead == nil &&
 		bucket.Spec.ForProvider.GrantReadACP == nil {
-		l.log.Info("No access control policy or grants requested - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+		l.log.Info("No acl or access control policy or grants requested - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return Updated
 	}

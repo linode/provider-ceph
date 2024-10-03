@@ -16,7 +16,7 @@ LATEST_KUBE_VERSION ?= 1.29
 LATEST_KIND_NODE ?= 1.29.2
 REPO ?= provider-ceph
 
-CROSSPLANE_VERSION ?= 1.15.0
+CROSSPLANE_VERSION ?= 1.16.0
 LOCALSTACK_VERSION ?= 2.2
 CERT_MANAGER_VERSION ?= 1.14.0
 
@@ -44,7 +44,7 @@ GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
 GO111MODULE = on
-GOLANGCILINT_VERSION ?= 1.56.2
+GOLANGCILINT_VERSION ?= 1.61.0
 -include build/makelib/golang.mk
 
 # ====================================================================================
@@ -377,7 +377,7 @@ $(NILAWAY):
 	@mv $(TOOLS_HOST_DIR)/nilaway $(NILAWAY)
 	@$(OK) installing nilaway $(NILAWAY_VERSION)
 
-GOVULNCHECK_VERSION ?= v1.0.4
+GOVULNCHECK_VERSION ?= v1.1.3
 GOVULNCHECK := $(TOOLS_HOST_DIR)/govulncheck-$(GOVULNCHECK_VERSION)
 
 .PHONY: vulncheck

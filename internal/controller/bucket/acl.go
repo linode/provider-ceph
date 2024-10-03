@@ -55,7 +55,7 @@ func (l *ACLClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backen
 }
 
 func (l *ACLClient) observeBackend(bucket *v1alpha1.Bucket, backendName string) ResourceStatus {
-	l.log.Info("Observing subresource acl on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+	l.log.Debug("Observing subresource acl on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
 		// If a backend is marked as unhealthy, we can ignore it for now by returning Updated.
@@ -68,7 +68,7 @@ func (l *ACLClient) observeBackend(bucket *v1alpha1.Bucket, backendName string) 
 	// If your bucket uses the bucket owner enforced setting for S3 Object
 	// Ownership, ACLs are disabled and no longer affect permissions.
 	if s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
-		l.log.Info("Access control limits are disabled - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+		l.log.Debug("Access control limits are disabled - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return Updated
 	}
@@ -80,7 +80,7 @@ func (l *ACLClient) observeBackend(bucket *v1alpha1.Bucket, backendName string) 
 		bucket.Spec.ForProvider.GrantWriteACP == nil &&
 		bucket.Spec.ForProvider.GrantRead == nil &&
 		bucket.Spec.ForProvider.GrantReadACP == nil {
-		l.log.Info("No acl or access control policy or grants requested - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+		l.log.Debug("No acl or access control policy or grants requested - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return Updated
 	}

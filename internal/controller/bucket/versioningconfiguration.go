@@ -81,7 +81,7 @@ func (l *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1a
 }
 
 func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
-	l.log.Info("Observing subresource versioning configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+	l.log.Debug("Observing subresource versioning configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
 		// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
@@ -110,14 +110,14 @@ func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 			// An empty versioning configuration was returned from the backend, signifying
 			// that versioning was never enabled on this bucket. Therefore versioning is
 			// considered Updated for the bucket and we do nothing.
-			l.log.Info("Versioning is not enabled for bucket on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			l.log.Debug("Versioning is not enabled for bucket on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return NoAction, nil
 		} else {
 			// A non-empty versioning configuration was returned from the backend, signifying
 			// that versioning was previously enabled for this bucket. A bucket cannot be un-versioned,
 			// it can only be suspended so we execute this via the NeedsDeletion path.
-			l.log.Info("Versioning is enabled for bucket on backend - requires suspension", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			l.log.Debug("Versioning is enabled for bucket on backend - requires suspension", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return NeedsDeletion, nil
 		}

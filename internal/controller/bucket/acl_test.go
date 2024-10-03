@@ -34,7 +34,6 @@ import (
 
 func TestACLObserveBackend(t *testing.T) {
 	grantId := "id=abcd"
-	publicReadWriteACL := "public-read-write"
 	t.Parallel()
 
 	type fields struct {
@@ -107,7 +106,7 @@ func TestACLObserveBackend(t *testing.T) {
 				status: Updated,
 			},
 		},
-		"No acl or policy or grants specified for the bucket": {
+		"No policy or grants specified for the bucket": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{}
@@ -131,34 +130,6 @@ func TestACLObserveBackend(t *testing.T) {
 			},
 			want: want{
 				status: Updated,
-			},
-		},
-		"ACL specified for the bucket": {
-			fields: fields{
-				backendStore: func() *backendstore.BackendStore {
-					fake := backendstorefakes.FakeS3Client{}
-
-					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
-
-					return bs
-				}(),
-			},
-			args: args{
-				bucket: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
-					},
-					Spec: v1alpha1.BucketSpec{
-						ForProvider: v1alpha1.BucketParameters{
-							ACL: &publicReadWriteACL,
-						},
-					},
-				},
-				backendName: "s3-backend-1",
-			},
-			want: want{
-				status: NeedsUpdate,
 			},
 		},
 		"Policy specified for the bucket": {

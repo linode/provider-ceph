@@ -84,6 +84,7 @@ func main() {
 
 		syncInterval            = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
 		syncTimeout             = app.Flag("sync-timeout", "Cache sync timeout.").Default("10s").Duration()
+		backendMonitorInterval  = app.Flag("backend-monitor-interval", "Interval between backend monitor controller reconciliations.").Default("60s").Duration()
 		pollInterval            = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("30m").Duration()
 		pollStateMetricInterval = app.Flag("poll-state-metric", "State metric recording interval").Default("5s").Duration()
 		bucketExistsCache       = app.Flag("bucket-exists-cache", "How long the provider caches bucket exists result").Short('c').Default("5s").Duration()
@@ -326,6 +327,7 @@ func main() {
 			backendmonitor.WithKubeClient(mgr.GetClient()),
 			backendmonitor.WithBackendStore(backendStore),
 			backendmonitor.WithS3Timeout(*s3Timeout),
+			backendmonitor.WithRequeueInterval(*backendMonitorInterval),
 			backendmonitor.WithLogger(o.Logger)),
 		healthcheck.NewController(
 			healthcheck.WithAutoPause(autoPauseBucket),

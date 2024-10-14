@@ -483,7 +483,7 @@ func TestUpdate(t *testing.T) {
 				autoPauseBucket:    tc.fields.autoPauseBucket,
 				minReplicas:        1,
 				log:                logging.NewNopLogger(),
-				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, logging.NewNopLogger()),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logging.NewNopLogger()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)
@@ -798,7 +798,7 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 				autoPauseBucket:    tc.fields.autoPauseBucket,
 				minReplicas:        1,
 				log:                logging.NewNopLogger(),
-				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, logging.NewNopLogger()),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logging.NewNopLogger()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)
@@ -1098,7 +1098,7 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 				autoPauseBucket:    tc.fields.autoPauseBucket,
 				minReplicas:        1,
 				log:                logging.NewNopLogger(),
-				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, logging.NewNopLogger()),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logging.NewNopLogger()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)
@@ -1403,7 +1403,7 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 				autoPauseBucket:    tc.fields.autoPauseBucket,
 				minReplicas:        1,
 				log:                logging.NewNopLogger(),
-				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, logging.NewNopLogger()),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logging.NewNopLogger()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)

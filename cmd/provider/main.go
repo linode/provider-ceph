@@ -112,6 +112,12 @@ func main() {
 		webhookHost       = app.Flag("webhook-host", "The host of the webhook server.").Default("0.0.0.0").Envar("WEBHOOK_HOST").String()
 		webhookTLSCertDir = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
 		_                 = app.Flag("enable-validation-webhooks", "Enable support for Webhooks. [Deprecated, has no effect]").Default("false").Bool()
+		// Subresource Client Flags.
+		disableACLReconcile              = app.Flag("disable-acl-reconcile", "Disable reconciliation of Bucket ACLs.").Default("false").Envar("DISABLE_ACL_RECONCILE").Bool()
+		disablePolicyReconcile           = app.Flag("disable-policy-reconcile", "Disable reconciliation of Bucket Policies.").Default("false").Envar("DISABLE_POLICY_RECONCILE").Bool()
+		disableLifecycleConfigReconcile  = app.Flag("disable-lifecycle-config-reconcile", "Disable reconciliation of Bucket Lifecycle Configurations.").Default("false").Envar("DISABLE_LIFECYCLE_CONFIG_RECONCILE").Bool()
+		disableVersioningConfigReconcile = app.Flag("disable-versioning-config-reconcile", "Disable reconciliation of Bucket Versioning Configurations.").Default("false").Envar("DISABLE_VERSIONING_CONFIG_RECONCILE").Bool()
+		disableObjectLockConfigReconcile = app.Flag("disable-object-lock-config-reconcile", "Disable reconciliation of Object Lock Configurations.").Default("false").Envar("DISABLE_OBJECT_LOCK_CONFIG_RECONCILE").Bool()
 	)
 
 	var zo zap.Options
@@ -347,7 +353,17 @@ func main() {
 		bucket.WithCreationGracePeriod(*creationGracePeriod),
 		bucket.WithPollInterval(*pollInterval),
 		bucket.WithLog(o.Logger),
-		bucket.WithSubresourceClients(bucket.NewSubresourceClients(backendStore, s3ClientHandler, o.Logger)),
+		bucket.WithSubresourceClients(
+			bucket.NewSubresourceClients(
+				backendStore,
+				s3ClientHandler,
+				bucket.SubresourceClientConfig{
+					LifecycleConfigurationClientDisabled:  *disableLifecycleConfigReconcile,
+					ACLClientDisabled:                     *disableACLReconcile,
+					PolicyClientDisabled:                  *disablePolicyReconcile,
+					VersioningConfigurationClientDisabled: *disableVersioningConfigReconcile,
+					ObjectLockConfigurationClientDisabled: *disableObjectLockConfigReconcile},
+				o.Logger)),
 		bucket.WithS3ClientHandler(s3ClientHandler),
 		bucket.WithUsage(resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{})),
 		bucket.WithNewServiceFn(bucket.NewNoOpService))), "Cannot setup Bucket controller")

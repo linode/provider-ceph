@@ -33,14 +33,26 @@ type SubresourceClient interface {
 }
 
 // NewSubresourceClients creates the array of all sub resource clients.
-func NewSubresourceClients(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) []SubresourceClient {
-	return []SubresourceClient{
-		NewLifecycleConfigurationClient(b, h, l.WithValues("lifecycle-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
-		NewACLClient(b, h, l.WithValues("acl-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
-		NewPolicyClient(b, h, l.WithValues("policy-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
-		NewVersioningConfigurationClient(b, h, l.WithValues("versioning-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
-		NewObjectLockConfigurationClient(b, h, l.WithValues("object-lock-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))),
+func NewSubresourceClients(b *backendstore.BackendStore, h *s3clienthandler.Handler, config SubresourceClientConfig, l logging.Logger) []SubresourceClient {
+	subresourceClients := make([]SubresourceClient, 0)
+
+	if !config.LifecycleConfigurationClientDisabled {
+		subresourceClients = append(subresourceClients, NewLifecycleConfigurationClient(b, h, l.WithValues("lifecycle-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))))
 	}
+	if !config.ACLClientDisabled {
+		subresourceClients = append(subresourceClients, NewACLClient(b, h, l.WithValues("acl-client", managed.ControllerName(v1alpha1.BucketGroupKind))))
+	}
+	if !config.PolicyClientDisabled {
+		subresourceClients = append(subresourceClients, NewPolicyClient(b, h, l.WithValues("policy-client", managed.ControllerName(v1alpha1.BucketGroupKind))))
+	}
+	if !config.VersioningConfigurationClientDisabled {
+		subresourceClients = append(subresourceClients, NewVersioningConfigurationClient(b, h, l.WithValues("versioning-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))))
+	}
+	if !config.ObjectLockConfigurationClientDisabled {
+		subresourceClients = append(subresourceClients, NewObjectLockConfigurationClient(b, h, l.WithValues("object-lock-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))))
+	}
+
+	return subresourceClients
 }
 
 // ResourceStatus represents the current status of the resource.
@@ -56,3 +68,11 @@ const (
 	// NeedsDeletion is returned if the resource needs to be deleted.
 	NeedsDeletion
 )
+
+type SubresourceClientConfig struct {
+	LifecycleConfigurationClientDisabled  bool
+	ACLClientDisabled                     bool
+	PolicyClientDisabled                  bool
+	VersioningConfigurationClientDisabled bool
+	ObjectLockConfigurationClientDisabled bool
+}

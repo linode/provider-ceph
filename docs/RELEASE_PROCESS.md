@@ -14,6 +14,6 @@ Here is a simplified set of steps to create a release for `provider-ceph`.
 5. **tag next pre-release**: Run the **Tag Release Candidate** action on the main development branch with `-rc.0` for the next release (e.g. `v0.0.3-rc.0`).
 
 ## Release Candidate
-Every time there is a merge to `main`, the **Release Candidate Publish and PR** workflow will::
+Every time there is a merge to `main`, the **Release Candidate Publish and PR** workflow will:
 1. Create a release candidate package (eg `v0.0.3-rc.0.1.gcbf3f60is`) and publish it on the Upbound market place (Note: release candidates are not visible to the public on the Upbound marketplace).
-2. Open a PR against the main development branch, updating the controller version and README to point at the latest release candidate.
+2. Open a PR against the main development branch, updating the controller version and README to point at the latest release candidate. Please review/merge this PR to record the release (this PR will not trigger further CI workflows).

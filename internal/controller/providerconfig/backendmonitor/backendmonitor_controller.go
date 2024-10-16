@@ -53,6 +53,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			c.backendStore.ToggleBackendActiveStatus(req.Name, false)
 			c.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
 
+			// The ProviderConfig no longer exists so there is no need to requeue the reconcile key.
 			return ctrl.Result{}, nil
 		}
 		err = errors.Wrap(err, errGetProviderConfig)
@@ -60,15 +61,17 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 		return ctrl.Result{}, err
 	}
-	// ProviderConfig has been created or updated, add or
-	// update its backend in the backend store.
+
 	if err := c.addOrUpdateBackend(ctx, providerConfig); err != nil {
 		traces.SetAndRecordError(span, err)
 
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, nil
+	// Requeue the reconcile key after the interval. We do this because we need to
+	// ensure that if a ProviderConfig's referenced Secret is updated, we also update
+	// the client in the backend store with the new credentials.
+	return ctrl.Result{RequeueAfter: c.requeueInterval}, nil
 }
 
 func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.ProviderConfig) error {

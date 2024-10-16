@@ -12,10 +12,11 @@ import (
 )
 
 type Controller struct {
-	kubeClient   client.Client
-	backendStore *backendstore.BackendStore
-	log          logging.Logger
-	s3Timeout    time.Duration
+	kubeClient      client.Client
+	backendStore    *backendstore.BackendStore
+	log             logging.Logger
+	s3Timeout       time.Duration
+	requeueInterval time.Duration
 }
 
 func NewController(options ...func(*Controller)) *Controller {
@@ -48,6 +49,12 @@ func WithBackendStore(b *backendstore.BackendStore) func(*Controller) {
 func WithS3Timeout(t time.Duration) func(*Controller) {
 	return func(r *Controller) {
 		r.s3Timeout = t
+	}
+}
+
+func WithRequeueInterval(t time.Duration) func(*Controller) {
+	return func(r *Controller) {
+		r.requeueInterval = t
 	}
 }
 

@@ -7,6 +7,8 @@ PROJECT_ROOT = $(shell git rev-parse --show-toplevel)
 PLATFORMS ?= linux_amd64 linux_arm64
 -include build/makelib/common.mk
 
+KIND_VERSION ?= $(shell curl -s https://api.github.com/repos/kubernetes-sigs/kind/releases/latest | jq -r .tag_name)
+
 # Generate chainsaw e2e tests for the following kind node versions
 # TEST_KIND_NODES is not intended to be updated manually.
 # Please edit LATEST_KIND_NODE instead and run 'make update-kind-nodes'.
@@ -31,6 +33,9 @@ WEBHOOK_TUNNEL_PORT ?= 9999
 WEBHOOK_SUBDOMAIN ?= $(PROJECT_NAME)-$(shell git rev-parse --short HEAD)-$(shell date +%s)
 
 WEBHOOK_TYPE ?= stock
+
+# Set this value to enforce use of Helm v3.
+USE_HELM3 ?= true
 
 # ====================================================================================
 # Setup Output

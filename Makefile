@@ -32,6 +32,9 @@ WEBHOOK_SUBDOMAIN ?= $(PROJECT_NAME)-$(shell git rev-parse --short HEAD)-$(shell
 
 WEBHOOK_TYPE ?= stock
 
+# Set this value to enforce use of Helm v3.
+USE_HELM3 ?= true
+
 # ====================================================================================
 # Setup Output
 

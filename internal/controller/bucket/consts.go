@@ -1,5 +1,9 @@
 package bucket
 
+import "github.com/crossplane/crossplane-runtime/pkg/errors"
+
+var errUnhealthyBackend = errors.New("backend marked as unhealthy in backendstore")
+
 const (
 	// k8s error messages.
 	errNotBucket      = "managed resource is not a Bucket custom resource"

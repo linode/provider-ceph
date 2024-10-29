@@ -47,6 +47,16 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 	for _, backendName := range backendNames {
 		beName := backendName
 		go func() {
+			if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
+				// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
+				// The backend may be down for some time and we do not want to block Create/Update/Delete
+				// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
+				// phase until the backend becomes Healthy or Disabled.
+				observationChan <- NoAction
+
+				return
+			}
+
 			observation, err := l.observeBackend(ctx, bucket, beName)
 			if err != nil {
 				errChan <- err
@@ -80,17 +90,8 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 	return Updated, nil
 }
 
-//nolint:gocyclo,cyclop // Function requires multiple checks.
 func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
 	l.log.Debug("Observing subresource lifecycle configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
-
-	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-		// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
-		// The backend may be down for some time and we do not want to block Create/Update/Delete
-		// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
-		// phase until the backend becomes Healthy or Disabled.
-		return NoAction, nil
-	}
 
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 	if err != nil {
@@ -148,6 +149,12 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.LifecycleConfigurationClient.Handle")
 	defer span.End()
+
+	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
+		traces.SetAndRecordError(span, errUnhealthyBackend)
+
+		return errUnhealthyBackend
+	}
 
 	observation, err := l.observeBackend(ctx, b, backendName)
 	if err != nil {

@@ -488,6 +488,31 @@ func TestHandle(t *testing.T) {
 		args   args
 		want   want
 	}{
+		"Unhealthy backend": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusUnhealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: bucketName,
+					},
+					Spec: v1alpha1.BucketSpec{
+						LifecycleConfigurationDisabled: false,
+					},
+				},
+				backendName: beName,
+			},
+			want: want{
+				err: errUnhealthyBackend,
+			},
+		},
 		"Lifecycle config deletes successfully": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {

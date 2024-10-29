@@ -52,6 +52,16 @@ func (l *ObjectLockConfigurationClient) Observe(ctx context.Context, bucket *v1a
 	for _, backendName := range backendNames {
 		beName := backendName
 		go func() {
+			if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
+				// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
+				// The backend may be down for some time and we do not want to block Create/Update/Delete
+				// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
+				// phase until the backend becomes Healthy or Disabled.
+				observationChan <- NoAction
+
+				return
+			}
+
 			observation, err := l.observeBackend(ctx, bucket, beName)
 			if err != nil {
 				errChan <- err
@@ -88,14 +98,6 @@ func (l *ObjectLockConfigurationClient) Observe(ctx context.Context, bucket *v1a
 func (l *ObjectLockConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
 	l.log.Debug("Observing subresource object lock configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
-	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-		// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
-		// The backend may be down for some time and we do not want to block Create/Update/Delete
-		// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
-		// phase until the backend becomes Healthy or Disabled.
-		return NoAction, nil
-	}
-
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 	if err != nil {
 		return NeedsUpdate, err
@@ -127,6 +129,12 @@ func (l *ObjectLockConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 
 	if b.Spec.ForProvider.ObjectLockEnabledForBucket == nil || !*b.Spec.ForProvider.ObjectLockEnabledForBucket {
 		return nil
+	}
+
+	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
+		traces.SetAndRecordError(span, errUnhealthyBackend)
+
+		return errUnhealthyBackend
 	}
 
 	observation, err := l.observeBackend(ctx, b, backendName)

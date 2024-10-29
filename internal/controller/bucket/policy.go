@@ -41,6 +41,16 @@ func (p *PolicyClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, bac
 	for _, backendName := range backendNames {
 		beName := backendName
 		go func() {
+			if p.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
+				// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
+				// The backend may be down for some time and we do not want to block Create/Update/Delete
+				// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
+				// phase until the backend becomes Healthy or Disabled.
+				observationChan <- NoAction
+
+				return
+			}
+
 			observation, err := p.observeBackend(ctx, bucket, beName)
 			if err != nil {
 				errChan <- err
@@ -76,14 +86,6 @@ func (p *PolicyClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, bac
 
 func (p *PolicyClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
 	p.log.Debug("Observing subresource policy on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
-
-	if p.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-		// If a backend is marked as unhealthy, we can ignore it for now by returning Updated.
-		// The backend may be down for some time and we do not want to block Create/Update/Delete
-		// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
-		// phase until the backend becomes Healthy or Disabled.
-		return Updated, nil
-	}
 
 	s3Client, err := p.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 	if err != nil {
@@ -130,6 +132,12 @@ func (p *PolicyClient) observeBackend(ctx context.Context, bucket *v1alpha1.Buck
 func (p *PolicyClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.PolicyClient.Handle")
 	defer span.End()
+
+	if p.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
+		traces.SetAndRecordError(span, errUnhealthyBackend)
+
+		return errUnhealthyBackend
+	}
 
 	observation, err := p.observeBackend(ctx, b, backendName)
 	if err != nil {

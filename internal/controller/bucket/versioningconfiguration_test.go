@@ -343,6 +343,33 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 		args   args
 		want   want
 	}{
+		"Unhealthy backend": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusUnhealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: bucketName,
+					},
+					Spec: v1alpha1.BucketSpec{
+						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
+						},
+					},
+				},
+				backendName: beName,
+			},
+			want: want{
+				err: errUnhealthyBackend,
+			},
+		},
 		"Object lock enabled for bucket but no versioning config so set default enabled versioning": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {

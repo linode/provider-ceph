@@ -61,37 +61,6 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 		args   args
 		want   want
 	}{
-		"Attempt to observe object lock config on unhealthy backend (consider it NoAction to unblock)": {
-			fields: fields{
-				backendStore: func() *backendstore.BackendStore {
-					fake := backendstorefakes.FakeS3Client{}
-
-					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusUnhealthy)
-
-					return bs
-				}(),
-			},
-			args: args{
-				bucket: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
-					},
-					Spec: v1alpha1.BucketSpec{
-						ForProvider: v1alpha1.BucketParameters{
-							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
-								ObjectLockEnabled: &objLockEnabled,
-							},
-						},
-					},
-				},
-				backendName: "s3-backend-1",
-			},
-			want: want{
-				status: NoAction,
-				err:    nil,
-			},
-		},
 		"External error getting object lock": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
@@ -265,6 +234,41 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 		args   args
 		want   want
 	}{
+		"Unhealthy backend": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{}
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend(beName, &fake, nil, true, apisv1alpha1.HealthStatusUnhealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: bucketName,
+					},
+					Spec: v1alpha1.BucketSpec{
+						ForProvider: v1alpha1.BucketParameters{
+							ObjectLockEnabledForBucket: &enabledTrue,
+							ObjectLockConfiguration: &v1alpha1.ObjectLockConfiguration{
+								ObjectLockEnabled: &objLockEnabled,
+								Rule: &v1alpha1.ObjectLockRule{
+									DefaultRetention: &v1alpha1.DefaultRetention{
+										Mode: v1alpha1.ModeGovernance,
+									},
+								},
+							},
+						},
+					},
+				},
+				backendName: beName,
+			},
+			want: want{
+				err: errUnhealthyBackend,
+			},
+		},
 		"Object lock is not enabled for Bucket CR - nil value": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {

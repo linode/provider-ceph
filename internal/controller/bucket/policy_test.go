@@ -71,7 +71,6 @@ func TestPolicyObserveBackend(t *testing.T) {
 				status: Updated,
 			},
 		},
-
 		"s3 error": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {

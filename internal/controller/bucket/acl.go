@@ -43,7 +43,7 @@ func (l *ACLClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backen
 			if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
 				// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
 				// The backend may be down for some time and we do not want to block Create/Update/Delete
-				// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
+				// calls on other backends. By returning NoAction here, we would never pass the Observe
 				// phase until the backend becomes Healthy or Disabled.
 				observationChan <- NoAction
 

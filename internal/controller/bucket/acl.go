@@ -40,6 +40,15 @@ func (l *ACLClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backen
 	for _, backendName := range backendNames {
 		beName := backendName
 		go func() {
+			if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
+				// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
+				// The backend may be down for some time and we do not want to block Create/Update/Delete
+				// calls on other backends. By returning NoAction here, we would never pass the Observe
+				// phase until the backend becomes Healthy or Disabled.
+				observationChan <- NoAction
+
+				return
+			}
 			observationChan <- l.observeBackend(bucket, beName)
 		}()
 	}
@@ -56,14 +65,6 @@ func (l *ACLClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backen
 
 func (l *ACLClient) observeBackend(bucket *v1alpha1.Bucket, backendName string) ResourceStatus {
 	l.log.Debug("Observing subresource acl on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
-
-	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-		// If a backend is marked as unhealthy, we can ignore it for now by returning Updated.
-		// The backend may be down for some time and we do not want to block Create/Update/Delete
-		// calls on other backends. By returning NeedsUpdate here, we would never pass the Observe
-		// phase until the backend becomes Healthy or Disabled.
-		return Updated
-	}
 
 	// If your bucket uses the bucket owner enforced setting for S3 Object
 	// Ownership, ACLs are disabled and no longer affect permissions.
@@ -91,6 +92,12 @@ func (l *ACLClient) observeBackend(bucket *v1alpha1.Bucket, backendName string) 
 func (l *ACLClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.ACLClient.Handle")
 	defer span.End()
+
+	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
+		traces.SetAndRecordError(span, errUnhealthyBackend)
+
+		return errUnhealthyBackend
+	}
 
 	switch l.observeBackend(b, backendName) {
 	case NoAction, Updated:

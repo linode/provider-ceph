@@ -11,6 +11,7 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
@@ -20,7 +21,7 @@ import (
 )
 
 //nolint:gocyclo,cyclop // Function requires numerous checks.
-func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
+func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.Delete")
 	defer span.End()
 
@@ -29,7 +30,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		err := errors.New(errNotBucket)
 		traces.SetAndRecordError(span, err)
 
-		return err
+		return managed.ExternalDelete{}, err
 	}
 	span.SetAttributes(attribute.String(consts.KeyBucketName, bucket.Name))
 
@@ -42,7 +43,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		err := errors.New(errNoS3BackendsStored)
 		traces.SetAndRecordError(span, err)
 
-		return err
+		return managed.ExternalDelete{}, err
 	}
 
 	g := new(errgroup.Group)
@@ -113,7 +114,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 		c.log.Info("Failed to update Bucket Status after attempting to delete bucket from backends", consts.KeyBucketName, bucket.Name, "error", err.Error())
 		traces.SetAndRecordError(span, err)
 
-		return err
+		return managed.ExternalDelete{}, err
 	}
 
 	if deleteErr != nil { //nolint:nestif // Multiple checks required.
@@ -127,7 +128,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 			// we need to unset this value so as not to continue attempting Delete.
 			// Otherwise we can return no error as we do not wish to requeue the Delete.
 			if !bucket.Spec.Disabled {
-				return nil
+				return managed.ExternalDelete{}, nil
 			}
 			if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
 				c.log.Info("Bucket CRs with non-empty buckets should not be disabled - setting 'disabled' flag to false", consts.KeyBucketName, bucket.Name)
@@ -140,16 +141,16 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) error {
 				c.log.Info("Failed to set 'disabled' flag to false", consts.KeyBucketName, bucket.Name, "error", err.Error())
 				traces.SetAndRecordError(span, err)
 
-				return err
+				return managed.ExternalDelete{}, err
 			}
 
-			return nil
+			return managed.ExternalDelete{}, nil
 		}
 		// In all other cases we should return the deletion error for requeue.
-		return deleteErr
+		return managed.ExternalDelete{}, deleteErr
 	}
 
 	c.log.Info("All buckets successfully deleted from backends for Bucket CR", consts.KeyBucketName, bucket.Name)
 
-	return nil
+	return managed.ExternalDelete{}, nil
 }

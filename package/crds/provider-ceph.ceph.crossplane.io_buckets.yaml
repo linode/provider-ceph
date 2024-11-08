@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.16.0
   name: buckets.provider-ceph.ceph.crossplane.io
 spec:
   group: provider-ceph.ceph.crossplane.io
@@ -194,7 +194,6 @@ spec:
                     description: |-
                       Allows grantee to create new objects in the bucket.
 
-
                       For the bucket and object owners of existing objects, also allows deletions
                       and overwrites of those objects.
                     type: string
@@ -212,7 +211,6 @@ spec:
                       rules:
                         description: |-
                           A lifecycle rule for individual objects in a bucket.
-
 
                           Rules is a required field
                         items:
@@ -411,7 +409,6 @@ spec:
                                 If 'Enabled', the rule is currently being applied. If 'Disabled', the rule
                                 is not currently being applied.
 
-
                                 Status is a required field, valid values are Enabled or Disabled
                               enum:
                               - Enabled
@@ -514,15 +511,12 @@ spec:
                     description: |-
                       The container element for object ownership for a bucket's ownership controls.
 
-
                       BucketOwnerPreferred - Objects uploaded to the bucket change ownership to
                       the bucket owner if the objects are uploaded with the bucket-owner-full-control
                       canned ACL.
 
-
                       ObjectWriter - The uploading account will own the object if the object is
                       uploaded with the bucket-owner-full-control canned ACL.
-
 
                       BucketOwnerEnforced - Access control lists (ACLs) are disabled and no longer
                       affect permissions. The bucket owner automatically owns and has full control

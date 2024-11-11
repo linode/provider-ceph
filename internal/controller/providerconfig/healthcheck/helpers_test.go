@@ -48,8 +48,6 @@ func TestErrNoRequestID(t *testing.T) {
 		},
 	}
 	for name, tc := range cases {
-		tc := tc
-
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, tc.want.result, errNoRequestID(tc.args.err), "unexpected string")

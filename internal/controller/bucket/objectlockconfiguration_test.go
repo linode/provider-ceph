@@ -189,7 +189,6 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 		},
 	}
 	for name, tc := range cases {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -488,7 +487,6 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 		},
 	}
 	for name, tc := range cases {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

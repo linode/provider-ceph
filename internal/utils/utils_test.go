@@ -72,13 +72,11 @@ func TestMissingStrings(t *testing.T) {
 		},
 	}
 	for name, tc := range cases {
-		tc := tc
-		n := name
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			missing := MissingStrings(tc.sliceA, tc.sliceB)
 			if diff := cmp.Diff(tc.missing, missing); diff != "" {
-				t.Errorf("\n%s\nMissingStrings(...): -want, +got:\n%s\n", n, diff)
+				t.Errorf("\n%s\nMissingStrings(...): -want, +got:\n%s\n", name, diff)
 			}
 		})
 	}
@@ -112,7 +110,6 @@ func TestMapConditionToHealthStatus(t *testing.T) {
 		},
 	}
 	for name, tc := range cases {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			s := MapConditionToHealthStatus(tc.c)
@@ -163,7 +160,6 @@ func TestResolveHostBase(t *testing.T) {
 		},
 	}
 	for name, tc := range cases {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

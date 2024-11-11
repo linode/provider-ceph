@@ -95,7 +95,6 @@ func TestDeleteBasicErrors(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -744,7 +743,6 @@ func TestDelete(t *testing.T) {
 	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, bk)
 
 	for name, tc := range cases {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			kubeClient := fake.NewClientBuilder().
 				WithScheme(s).

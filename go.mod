@@ -6,7 +6,6 @@ toolchain go1.23.1
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.3.2
-	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/aws/aws-sdk-go-v2 v1.25.2
 	github.com/aws/aws-sdk-go-v2/config v1.27.4
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.4

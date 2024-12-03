@@ -100,8 +100,6 @@ func TestUpdateBasicErrors(t *testing.T) {
 		},
 	}
 	for name, tc := range cases {
-		tc := tc
-
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			e := external{
@@ -461,8 +459,6 @@ func TestUpdate(t *testing.T) {
 	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, bk)
 
 	for name, tc := range cases {
-		tc := tc
-
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -776,8 +772,6 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, bk)
 
 	for name, tc := range cases {
-		tc := tc
-
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1076,8 +1070,6 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, bk)
 
 	for name, tc := range cases {
-		tc := tc
-
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1381,8 +1373,6 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, bk)
 
 	for name, tc := range cases {
-		tc := tc
-
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

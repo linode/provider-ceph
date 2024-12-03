@@ -157,7 +157,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 		c.log.Info("Creating bucket on backend", consts.KeyBucketName, originalBucket.Name, consts.KeyBackendName, beName)
 		// Launch a go routine for each backend, creating buckets concurrently.
-		beName := beName
 		go func() {
 			_, err := rgw.CreateBucket(ctx, cl, rgw.BucketToCreateBucketInput(originalBucket))
 			if err != nil {

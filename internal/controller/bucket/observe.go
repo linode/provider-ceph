@@ -102,8 +102,6 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Check for the bucket on each backend in a separate go routine
 	for beName, backendClient := range backendClients {
-		beName := beName
-		backendClient := backendClient
 		g.Go(func() error {
 			bucketExists, err := rgw.BucketExists(ctxC, backendClient, bucket.Name)
 			if err != nil {

@@ -116,8 +116,6 @@ func TestDeleteBucket(t *testing.T) {
 	bucketName := "test-bucket"
 
 	for name, tt := range testCases {
-		tt := tt
-
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

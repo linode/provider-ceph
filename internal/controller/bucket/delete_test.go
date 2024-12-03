@@ -95,7 +95,6 @@ func TestDeleteBasicErrors(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -104,7 +103,7 @@ func TestDeleteBasicErrors(t *testing.T) {
 				log:          logging.NewNopLogger(),
 			}
 
-			err := e.Delete(context.Background(), tc.args.mg)
+			_, err := e.Delete(context.Background(), tc.args.mg)
 			require.EqualError(t, err, tc.want.err.Error(), "unexpected error")
 		})
 	}
@@ -744,7 +743,6 @@ func TestDelete(t *testing.T) {
 	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, bk)
 
 	for name, tc := range cases {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			kubeClient := fake.NewClientBuilder().
 				WithScheme(s).
@@ -762,7 +760,7 @@ func TestDelete(t *testing.T) {
 				kubeClient: kubeClient,
 			}
 
-			err := e.Delete(context.Background(), tc.args.mg)
+			_, err := e.Delete(context.Background(), tc.args.mg)
 			require.ErrorIs(t, err, tc.want.err, "unexpected err")
 			if tc.want.statusDiff != nil {
 				tc.want.statusDiff(t, tc.args.mg)

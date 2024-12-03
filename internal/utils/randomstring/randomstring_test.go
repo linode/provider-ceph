@@ -43,7 +43,6 @@ func TestStandardGenerator_Generate(t *testing.T) {
 	}
 
 	for name, tt := range tests {
-		tt := tt
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

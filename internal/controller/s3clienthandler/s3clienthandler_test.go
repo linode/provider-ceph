@@ -427,7 +427,6 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, pc)
 
 	for name, tt := range tests {
-		tt := tt
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

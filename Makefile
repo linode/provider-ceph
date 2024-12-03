@@ -16,7 +16,7 @@ LATEST_KUBE_VERSION ?= 1.29
 LATEST_KIND_NODE ?= 1.29.2
 REPO ?= provider-ceph
 
-CROSSPLANE_VERSION ?= 1.16.0
+CROSSPLANE_VERSION ?= 1.18.0
 LOCALSTACK_VERSION ?= 2.2
 CERT_MANAGER_VERSION ?= 1.14.0
 
@@ -31,6 +31,9 @@ WEBHOOK_TUNNEL_PORT ?= 9999
 WEBHOOK_SUBDOMAIN ?= $(PROJECT_NAME)-$(shell git rev-parse --short HEAD)-$(shell date +%s)
 
 WEBHOOK_TYPE ?= stock
+
+# Set this value to enforce use of Helm v3.
+USE_HELM3 ?= true
 
 # ====================================================================================
 # Setup Output

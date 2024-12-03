@@ -10,7 +10,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/otel/traces"
-	"github.com/linode/provider-ceph/internal/rgw/cache"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/sync/errgroup"
 )
@@ -40,8 +39,6 @@ func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *
 		return resp, errors.Wrap(err, errCreateBucket)
 	}
 
-	cache.Set(*bucket.Bucket)
-
 	return resp, err
 }
 
@@ -60,8 +57,6 @@ func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketNa
 
 		return false, errors.Wrap(err, errHeadBucket)
 	}
-
-	cache.Set(bucketName)
 
 	// Bucket exists, return true with no error.
 	return true, nil

@@ -100,8 +100,6 @@ func TestCreateBasicErrors(t *testing.T) {
 		},
 	}
 	for name, tc := range cases {
-		tc := tc
-
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			s := runtime.NewScheme()
@@ -364,8 +362,6 @@ func TestCreate(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		tc := tc
-
 		t.Run(name, func(t *testing.T) {
 			s := runtime.NewScheme()
 			s.AddKnownTypes(v1alpha1.SchemeGroupVersion, &v1alpha1.Bucket{}, &v1alpha1.BucketList{})

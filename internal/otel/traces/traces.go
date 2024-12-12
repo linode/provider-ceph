@@ -33,9 +33,8 @@ func InitTracerProvider(log logging.Logger, otelCollectorAddress string, dialTim
 	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
 	defer cancel()
 
-	conn, err := grpc.DialContext(ctx, otelCollectorAddress,
+	conn, err := grpc.NewClient(otelCollectorAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC connection to otel collector: %w", err)

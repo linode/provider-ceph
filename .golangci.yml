@@ -1,14 +1,11 @@
 run:
   timeout: 3m
 
-  skip-files:
-  - "zz_generated\\..+\\.go$"
-
   issues-exit-code: 1
 
 output:
   # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
-  format: colored-line-number
+  formats: colored-line-number
 
 linters-settings:
   errcheck:
@@ -23,7 +20,7 @@ linters-settings:
     # [deprecated] comma-separated list of pairs of the form pkg:regex
     # the regex is used to ignore names within pkg. (default "fmt:.*").
     # see https://github.com/kisielk/errcheck#the-deprecated-method for details
-    ignore: fmt:.*,io/ioutil:^Read.*
+    exclude-functions: fmt:.*,io/ioutil:^Read.*
 
   govet:
     # report about shadowed variables
@@ -123,6 +120,7 @@ linters:
     - bodyclose
     - containedctx
     - contextcheck
+    - copyloopvar
     - cyclop
     - decorder
     # - depguard
@@ -130,13 +128,12 @@ linters:
     - dupl
     - dupword
     - durationcheck
+    - err113
     - errchkjson
     - errname
     - errorlint
     - errcheck
-    - exportloopref
     - exhaustive
-    - exportloopref
     - forbidigo
     - forcetypeassert
     # - funlen
@@ -147,10 +144,8 @@ linters:
     - gocritic
     # - godot
     # - godox
-    - goerr113
     - gofmt
     - goimports
-    - gomnd
     - gocyclo
     - goprintffuncname
     - gosec
@@ -161,6 +156,7 @@ linters:
     - maintidx
     - makezero
     - misspell
+    - mnd
     - nestif
     - nilerr
     - nilnil
@@ -192,6 +188,9 @@ linters:
 
 
 issues:
+  exclude-files:
+  - "zz_generated\\..+\\.go$"
+
   # Excluding configuration per-path and per-linter
   exclude-rules:
     # Exclude some linters from running on tests files.

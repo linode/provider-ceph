@@ -43,8 +43,9 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	// from all backends without deleting the Bucket CR.
 	if bucket.Spec.Disabled {
 		c.log.Info("Bucket is disabled - remove any existing buckets from backends", "bucket name", bucket.Name)
+		_, err := c.Delete(ctx, mg)
 
-		return managed.ExternalUpdate{}, c.Delete(ctx, mg)
+		return managed.ExternalUpdate{}, err
 	}
 
 	// allBackendNames is a list of the names of all backends from backend store which

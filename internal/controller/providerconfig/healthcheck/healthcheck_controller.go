@@ -244,7 +244,6 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 	}
 
 	for i := range buckets.Items {
-		i := i
 		c.log.Debug("Attempting to unpause bucket", consts.KeyBucketName, buckets.Items[i].Name)
 		err := retry.OnError(wait.Backoff{
 			Steps:    steps,

@@ -12,6 +12,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const controllerName = "health-check-controller"
+
 type Controller struct {
 	kubeClientUncached client.Client
 	kubeClientCached   client.Client
@@ -44,7 +46,7 @@ func WithKubeClientCached(k client.Client) func(*Controller) {
 
 func WithLogger(l logging.Logger) func(*Controller) {
 	return func(r *Controller) {
-		r.log = l.WithValues("health-check-controller", providerconfig.ControllerName(apisv1alpha1.ProviderConfigGroupKind))
+		r.log = l.WithValues(apisv1alpha1.ProviderConfigGroupKind, providerconfig.ControllerName(controllerName))
 	}
 }
 
@@ -71,6 +73,7 @@ func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&apisv1alpha1.ProviderConfig{}).
+		Named(controllerName).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxReconciles,
 		}.ForControllerRuntime()).

@@ -63,7 +63,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	// Of course, this approach does not completely remove the possibility of us finding ourselves in
 	// the above scenario. It only mitigates it. As long as Crossplane persists with its existing logic
 	// then we can only make a "best-effort" to avoid it.
-	if err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+	if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 		meta.RemoveAnnotations(bucket, meta.AnnotationKeyExternalCreatePending)
 
 		return NeedsObjectUpdate
@@ -195,7 +195,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	// Bucket CR while there are no backends for us to create on.
 	if backendCount == 0 {
 		c.log.Info("Failed to find any backend for bucket", consts.KeyBucketName, bucket.Name)
-		if err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+		if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 			// Although no backends were found for the bucket, we still apply the backend
 			// label to the Bucket CR for each backend that the bucket was intended to be
 			// created on. This is to ensure the bucket will eventually be created on these
@@ -243,11 +243,11 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 			// 2. The Bucket CR Status with the Ready condition.
 			// 3. The Bucket CR Status Backends with a Ready condition for the backend the bucket
 			// was created on.
-			err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+			err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 				setAllBackendLabels(bucketLatest, allBackendsToCreateOn)
 
 				return NeedsObjectUpdate
-			}, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+			}, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 				bucketLatest.Status.SetConditions(xpv1.Available())
 				bucketLatest.Status.AtProvider.Backends = v1alpha1.Backends{
 					beName: &v1alpha1.BackendInfo{
@@ -281,7 +281,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 	// Update the Bucket CR Status condition to Unavailable. This means the Bucket CR will
 	// not be seen as Ready. If that update is successful, we return the createErr which will
 	// be the most recent error receieved from a backend's failed creation.
-	if err := c.updateBucketCR(ctx, bucket, func(_, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+	if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 		bucketLatest.Status.SetConditions(xpv1.Unavailable())
 
 		return NeedsStatusUpdate

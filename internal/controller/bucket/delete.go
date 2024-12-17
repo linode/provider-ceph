@@ -105,7 +105,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	// the bucket CR. This is done by setting the Disabled flag on the bucket
 	// CR spec. If the deletion is successful or unsuccessful, the bucket CR status must be
 	// updated.
-	if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+	if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 		setBucketStatus(bucketLatest, bucketBackends, providerNames, c.minReplicas)
 
 		return NeedsStatusUpdate
@@ -130,7 +130,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 			if !bucket.Spec.Disabled {
 				return managed.ExternalDelete{}, nil
 			}
-			if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+			if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 				c.log.Info("Bucket CRs with non-empty buckets should not be disabled - setting 'disabled' flag to false", consts.KeyBucketName, bucket.Name)
 
 				bucketLatest.Spec.Disabled = false

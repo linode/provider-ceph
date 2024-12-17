@@ -219,23 +219,23 @@ const (
 // Callback example, updating the latest version of bucket Status with a string, so NeedsStatusUpdate is
 // returned to enabled updateBucketCR to perform kubeClient.Status().Update().
 //
-//		func(bucketLatest *v1alpha1.Bucket) {
-//		  bucketLatest.Status.SomeOtherField = "some-value"
+//	func(bucketLatest *v1alpha1.Bucket) {
+//	  bucketLatest.Status.SomeOtherField = "some-value"
 //
-//	      return NeedsStatusUpdate
-//		},
+//	  return NeedsStatusUpdate
+//	},
 //
 // Example usage with above callback example:
 //
-//		err := updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) {
-//		  bucketLatest.Status.SomeOtherField = "some-value"
+//	err := updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) {
+//	  bucketLatest.Status.SomeOtherField = "some-value"
 //
-//	      return NeedsStatusUpdate
-//		})
+//	  return NeedsStatusUpdate
+//	})
 //
-//		if err != nil {
-//		  // Handle error
-//		}
+//	if err != nil {
+//	  // Handle error
+//	}
 func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, callbacks ...func(*v1alpha1.Bucket) UpdateRequired) error {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.updateBucketCR")
 	defer span.End()

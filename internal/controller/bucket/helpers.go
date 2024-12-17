@@ -240,11 +240,9 @@ func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, 
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.updateBucketCR")
 	defer span.End()
 
-	nn := types.NamespacedName{Name: bucket.GetName()}
-
 	for _, cb := range callbacks {
 		err := retry.OnError(retry.DefaultRetry, resource.IsAPIError, func() error {
-			if err := c.kubeClient.Get(ctx, nn, bucket); err != nil {
+			if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: bucket.GetName()}, bucket); err != nil {
 				return err
 			}
 			switch cb(bucket) {

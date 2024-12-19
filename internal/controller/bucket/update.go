@@ -86,7 +86,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	// Bucket CR Status in all cases to represent the conditions of each individual bucket.
 	cls := c.backendStore.GetBackendS3Clients(allBackendsToUpdateOn)
 	if err := c.updateBucketCR(ctx, bucket,
-		func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+		func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 			setBucketStatus(bucketLatest, bucketBackends, allBackendsToUpdateOn, c.minReplicas)
 
 			return NeedsStatusUpdate
@@ -100,7 +100,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	// The buckets have been updated successfully on all backends, so we need to update the
 	// Bucket CR Spec accordingly.
 	err := c.updateBucketCR(ctx, bucket,
-		func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+		func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 			if bucketLatest.ObjectMeta.Labels == nil {
 				bucketLatest.ObjectMeta.Labels = map[string]string{}
 			}

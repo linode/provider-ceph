@@ -97,11 +97,11 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, err
 	}
 
-	// allBackendNames is a list of the names of all backends from backend store which
-	// are Healthy. These backends can be active or inactive. A backend is marked
-	// as inactive in the backend store when its ProviderConfig object has been deleted.
-	// Inactive backends are included in this list so that we can attempt to recreate
-	// this bucket on those backends should they become active again.
+	// allBackendNames is a list of the names of all backends. These backends can be
+	// active or inactive. A backend is marked as inactive in the backend store when
+	// its ProviderConfig object has been deleted. Inactive backends are included in
+	// this list so that we can attempt to recreate this bucket on those backends
+	// should they become active again.
 	allBackendNames := c.backendStore.GetAllBackendNames(false)
 
 	// allBackendsToCreateOn is a list of names of all backends on which this S3 bucket

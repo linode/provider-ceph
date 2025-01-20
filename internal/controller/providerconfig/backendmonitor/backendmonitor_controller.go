@@ -62,6 +62,8 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
+	c.backendStore.ToggleBackendActiveStatus(req.Name, true)
+
 	if err := c.addOrUpdateBackend(ctx, providerConfig); err != nil {
 		traces.SetAndRecordError(span, err)
 

@@ -66,6 +66,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	providerConfig := &apisv1alpha1.ProviderConfig{}
 	if err := c.kubeClientCached.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
+			c.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
 			// ProviderConfig has been deleted, perform cleanup.
 			if err := c.cleanup(ctx, req); err != nil {
 				err = errors.Wrap(err, errHealthCheckCleanup)
@@ -82,8 +83,6 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	if providerConfig.Spec.DisableHealthCheck {
 		c.log.Debug("Health check is disabled for s3 backend", consts.KeyBackendName, providerConfig.Name)
-
-		c.backendStore.ToggleBackendActiveStatus(req.Name, true)
 
 		c.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
 		if providerConfig.Status.GetCondition(v1.TypeReady).Equal(v1alpha1.HealthCheckDisabled()) {
@@ -112,8 +111,6 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	defer func() {
 		health := utils.MapConditionToHealthStatus(providerConfig.Status.GetCondition(v1.TypeReady))
 		c.backendStore.SetBackendHealthStatus(req.Name, health)
-
-		c.backendStore.ToggleBackendActiveStatus(req.Name, health == apisv1alpha1.HealthStatusHealthy)
 
 		if providerConfig.Status.GetCondition(v1.TypeReady).Equal(conditionBeforeCheck) {
 			return

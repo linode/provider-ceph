@@ -126,12 +126,11 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	// It is used to prevent go routines from sending duplicated messages to `readyChan`.
 	bucketAlreadyCreated := atomic.Bool{}
 	backendCount := 0
-	backendsToCreateOn := c.backendStore.GetBackends(backendsToCreateOnNames)
-	errChan := make(chan error, len(backendsToCreateOn))
+	errChan := make(chan error, len(backendsToCreateOnNames))
 	readyChan := make(chan string)
 
 	// Now we're ready to start creating S3 buckets on our desired backends.
-	for beName := range backendsToCreateOn {
+	for _, beName := range backendsToCreateOnNames {
 		originalBucket := bucket.DeepCopy()
 
 		// Attempt to get an S3 client for the backend. This will either be the default

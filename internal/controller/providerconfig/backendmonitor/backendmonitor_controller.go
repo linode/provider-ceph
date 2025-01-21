@@ -49,9 +49,8 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	providerConfig := &apisv1alpha1.ProviderConfig{}
 	if err := c.kubeClient.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
-			c.log.Info("Marking s3 backend as inactive on backend store", "name", req.Name)
-			c.backendStore.ToggleBackendActiveStatus(req.Name, false)
-			c.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
+			c.log.Info("Removing s3 backend as from backend store", "name", req.Name)
+			c.backendStore.DeleteBackend(req.Name)
 
 			// The ProviderConfig no longer exists so there is no need to requeue the reconcile key.
 			return ctrl.Result{}, nil
@@ -61,8 +60,6 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 		return ctrl.Result{}, err
 	}
-
-	c.backendStore.ToggleBackendActiveStatus(req.Name, true)
 
 	if err := c.addOrUpdateBackend(ctx, providerConfig); err != nil {
 		traces.SetAndRecordError(span, err)
@@ -93,7 +90,7 @@ func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 	}
 
 	readyCondition := pc.Status.GetCondition(v1.TypeReady)
-	c.backendStore.AddOrUpdateBackend(pc.Name, s3Client, stsClient, true, utils.MapConditionToHealthStatus(readyCondition))
+	c.backendStore.AddOrUpdateBackend(pc.Name, s3Client, stsClient, utils.MapConditionToHealthStatus(readyCondition))
 
 	return nil
 }

@@ -503,7 +503,7 @@ func TestReconcile(t *testing.T) {
 				tc.fields.fakeS3Client(&fakeS3Client)
 			}
 			bs := backendstore.NewBackendStore()
-			bs.AddOrUpdateBackend(backendName, &fakeS3Client, nil, tc.fields.autopause, apisv1alpha1.HealthStatusHealthy)
+			bs.AddOrUpdateBackend(backendName, &fakeS3Client, nil, apisv1alpha1.HealthStatusHealthy)
 
 			r := NewController(
 				WithAutoPause(&tc.fields.autopause),

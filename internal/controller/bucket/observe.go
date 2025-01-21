@@ -58,10 +58,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		}, nil
 	}
 
-	// If no Providers are specified in the Bucket Spec, the bucket is to be created on all backends.
-	providerNames := getBucketProvidersFilterDisabledLabel(bucket, c.backendStore.GetAllBackendNames(true))
+	providerNames := getBucketProvidersFilterDisabledLabel(bucket, c.backendStore.GetAllBackendNames())
 	if len(providerNames) == 0 {
-		err := errors.New(errNoActiveS3Backends)
+		err := errors.New(errAllS3BackendsDisabled)
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalObservation{}, err

@@ -151,7 +151,7 @@ func getBucketProvidersFilterDisabledLabel(bucket *v1alpha1.Bucket, providerName
 
 	okProviders := []string{}
 	for i := range providers {
-		// Skip explicitly disableds
+		// Skip explicitly disabled backends
 		beLabel := utils.GetBackendLabel(providers[i])
 		if status, ok := bucket.Labels[beLabel]; ok && status != True {
 			continue

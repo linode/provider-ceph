@@ -97,14 +97,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, err
 	}
 
-	// allBackendNames is a list of the names of all backends from backend store which
-	// are Healthy. These backends can be active or inactive. A backend is marked
-	// as inactive in the backend store when its ProviderConfig object has been deleted.
-	// Inactive backends are included in this list so that we can attempt to recreate
-	// this bucket on those backends should they become active again.
-	allBackendNames := c.backendStore.GetAllBackendNames(false)
+	// allBackendNames is a list of the names of all backends in the backend store.
+	allBackendNames := c.backendStore.GetAllBackendNames()
 
-	// allBackendsToCreateOn is a list of names of all backends on which this S3 bucket
+	// backendsToCreateOnNames is a list of names of all backends on which this S3 bucket
 	// is to be created. This will either be:
 	// 1. The list of bucket.Spec.Providers, if specified.
 	// 2. Otherwise, the allBackendNames list.
@@ -112,32 +108,29 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	// disabled on the Bucket CR. A backend is specified as disabled for a given bucket
 	// if it has been given the backend label (eg 'provider-ceph.backends.<backend-name>: "false"').
 	// This means that Provider Ceph will NOT create the bucket on this backend.
-	allBackendsToCreateOn := getBucketProvidersFilterDisabledLabel(bucket, allBackendNames)
-
-	// If none of the backends on which we wish to create the bucket are active then we
-	// return an error in order to requeue until backends become active.
-	// Otherwise we do a quick sanity check to see if there are backends
-	// that the bucket will not be created on and log these backends.
-	activeBackendsToCreateOn := c.backendStore.GetActiveBackends(allBackendsToCreateOn)
-	if len(activeBackendsToCreateOn) == 0 {
-		err := errors.New(errNoActiveS3Backends)
+	backendsToCreateOnNames := getBucketProvidersFilterDisabledLabel(bucket, allBackendNames)
+	if len(backendsToCreateOnNames) == 0 {
+		err := errors.New(errAllS3BackendsDisabled)
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalCreation{}, err
-	} else if len(activeBackendsToCreateOn) != len(allBackendsToCreateOn) {
-		c.log.Info("Bucket will not be created on the following S3 backends", consts.KeyBucketName, bucket.Name, "backends", utils.MissingStrings(allBackendsToCreateOn, allBackendNames))
-		traces.SetAndRecordError(span, errors.New(errMissingS3Backend))
+	}
+
+	// Quick sanity check to see if there are backends that the bucket will not be created
+	// on and log these backends.
+	if len(allBackendNames) != len(backendsToCreateOnNames) {
+		c.log.Info("Bucket will not be created on the following S3 backends", consts.KeyBucketName, bucket.Name, "backends", utils.MissingStrings(allBackendNames, backendsToCreateOnNames))
 	}
 
 	// This value shows a bucket on the given backend is already created.
 	// It is used to prevent go routines from sending duplicated messages to `readyChan`.
 	bucketAlreadyCreated := atomic.Bool{}
 	backendCount := 0
-	errChan := make(chan error, len(activeBackendsToCreateOn))
+	errChan := make(chan error, len(backendsToCreateOnNames))
 	readyChan := make(chan string)
 
-	// Now we're ready to start creating S3 buckets on our desired active backends.
-	for beName := range activeBackendsToCreateOn {
+	// Now we're ready to start creating S3 buckets on our desired backends.
+	for _, beName := range backendsToCreateOnNames {
 		originalBucket := bucket.DeepCopy()
 
 		// Attempt to get an S3 client for the backend. This will either be the default
@@ -199,10 +192,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			// Although no backends were found for the bucket, we still apply the backend
 			// label to the Bucket CR for each backend that the bucket was intended to be
 			// created on. This is to ensure the bucket will eventually be created on these
-			// backends whenever they become active again.
-			setAllBackendLabels(bucketLatest, allBackendsToCreateOn)
+			// backends.
+			setAllBackendLabels(bucketLatest, backendsToCreateOnNames)
 			// Pause the Bucket CR because there is no backend for it to be created on.
-			// If a backend for which it was intended becomes active, the health-check
+			// If a backend for which it was intended becomes healthy, the health-check
 			// controller will un-pause the Bucket CR (identifying it by its backend label)
 			// and it will be re-reconciled.
 			bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = True
@@ -219,10 +212,10 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, nil
 	}
 
-	return c.waitForCreationAndUpdateBucketCR(ctx, bucket, allBackendsToCreateOn, readyChan, errChan, backendCount)
+	return c.waitForCreationAndUpdateBucketCR(ctx, bucket, backendsToCreateOnNames, readyChan, errChan, backendCount)
 }
 
-func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, allBackendsToCreateOn []string, readyChan <-chan string, errChan <-chan error, backendCount int) (managed.ExternalCreation, error) {
+func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, backendsToCreateOnNames []string, readyChan <-chan string, errChan <-chan error, backendCount int) (managed.ExternalCreation, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "waitForCreationAndUpdateBucketCR")
 	defer span.End()
 
@@ -244,7 +237,7 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 			// 3. The Bucket CR Status Backends with a Ready condition for the backend the bucket
 			// was created on.
 			err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
-				setAllBackendLabels(bucketLatest, allBackendsToCreateOn)
+				setAllBackendLabels(bucketLatest, backendsToCreateOnNames)
 
 				return NeedsObjectUpdate
 			}, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {

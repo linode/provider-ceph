@@ -19,6 +19,7 @@ package backendmonitor
 import (
 	"context"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"go.opentelemetry.io/otel"
@@ -28,17 +29,21 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/rgw"
 	"github.com/linode/provider-ceph/internal/utils"
 )
 
 const (
-	errCreateS3Client    = "failed create s3 client"
-	errCreateSTSClient   = "failed create sts client"
-	errGetProviderConfig = "failed to get ProviderConfig"
-	errGetSecret         = "failed to get Secret"
+	errCreateS3Client           = "failed create s3 client"
+	errCreateSTSClient          = "failed create sts client"
+	errGetProviderConfig        = "failed to get ProviderConfig"
+	errGetSecret                = "failed to get Secret"
+	errCleanup                  = "failed to perform cleanup"
+	errDeleteLCValidationBucket = "failed to delete lifecycle configuration validation bucket"
 )
 
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -49,9 +54,16 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	providerConfig := &apisv1alpha1.ProviderConfig{}
 	if err := c.kubeClient.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
-			c.log.Info("Marking s3 backend as inactive on backend store", "name", req.Name)
-			c.backendStore.ToggleBackendActiveStatus(req.Name, false)
-			c.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
+			// ProviderConfig has been deleted, perform cleanup.
+			if err := c.cleanup(ctx, req); err != nil {
+				err = errors.Wrap(err, errCleanup)
+				traces.SetAndRecordError(span, err)
+
+				return ctrl.Result{}, err
+			}
+
+			c.log.Info("Removing s3 backend as from backend store", "name", req.Name)
+			c.backendStore.DeleteBackend(req.Name)
 
 			// The ProviderConfig no longer exists so there is no need to requeue the reconcile key.
 			return ctrl.Result{}, nil
@@ -91,7 +103,7 @@ func (c *Controller) addOrUpdateBackend(ctx context.Context, pc *apisv1alpha1.Pr
 	}
 
 	readyCondition := pc.Status.GetCondition(v1.TypeReady)
-	c.backendStore.AddOrUpdateBackend(pc.Name, s3Client, stsClient, true, utils.MapConditionToHealthStatus(readyCondition))
+	c.backendStore.AddOrUpdateBackend(pc.Name, s3Client, stsClient, utils.MapConditionToHealthStatus(readyCondition))
 
 	return nil
 }
@@ -104,4 +116,22 @@ func (c *Controller) getProviderConfigSecret(ctx context.Context, secretNamespac
 	}
 
 	return secret, nil
+}
+
+// cleanup deletes the lifecycle configuration validation bucket from the backend.
+// This function is only called when a ProviderConfig has been deleted.
+func (c *Controller) cleanup(ctx context.Context, req ctrl.Request) error {
+	backendClient := c.backendStore.GetBackendS3Client(req.Name)
+	if backendClient == nil {
+		c.log.Info("Backend client not found during validation bucket cleanup - aborting cleanup", consts.KeyBackendName, req.Name)
+
+		return nil
+	}
+
+	c.log.Info("Deleting lifecycle configuration validation bucket", consts.KeyBucketName, v1alpha1.LifecycleConfigValidationBucketName, consts.KeyBackendName, req.Name)
+	if err := rgw.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName), true); err != nil {
+		return errors.Wrap(err, errDeleteLCValidationBucket)
+	}
+
+	return nil
 }

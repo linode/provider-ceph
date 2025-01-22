@@ -86,6 +86,42 @@ func TestObserveBasicErrors(t *testing.T) {
 				err: errors.New(errNoS3BackendsStored),
 			},
 		},
+		"S3 backend exists but is disabled for bucket": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{v1alpha1.BackendLabelPrefix + "s3-backend-1": "false"},
+					},
+					Status: v1alpha1.BucketStatus{
+						AtProvider: v1alpha1.BucketObservation{
+							Backends: v1alpha1.Backends{
+								"s3-backend-1": &v1alpha1.BackendInfo{
+									BucketCondition: v1.Available(),
+								},
+							},
+						},
+						ResourceStatus: v1.ResourceStatus{
+							ConditionedStatus: v1.ConditionedStatus{
+								Conditions: []v1.Condition{
+									v1.Available(),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				err: errors.New(errAllS3BackendsDisabled),
+			},
+		},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -122,47 +158,11 @@ func TestObserve(t *testing.T) {
 		args   args
 		want   want
 	}{
-		"Bucket doesn't have any living backend": {
-			fields: fields{
-				backendStore: func() *backendstore.BackendStore {
-					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, true, apisv1alpha1.HealthStatusHealthy)
-
-					return bs
-				}(),
-			},
-			args: args{
-				mg: &v1alpha1.Bucket{
-					Spec: v1alpha1.BucketSpec{
-						ResourceSpec: v1.ResourceSpec{
-							ProviderConfigReference: &v1.Reference{
-								Name: "s3-backend-1",
-							},
-						},
-					},
-					Status: v1alpha1.BucketStatus{
-						AtProvider: v1alpha1.BucketObservation{
-							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
-									BucketCondition: v1.Available(),
-								},
-							},
-						},
-					},
-				},
-			},
-			want: want{
-				o: managed.ExternalObservation{
-					ResourceExists:   true,
-					ResourceUpToDate: false,
-				},
-			},
-		},
 		"Bucket status is not available": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -205,7 +205,7 @@ func TestObserve(t *testing.T) {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -255,7 +255,7 @@ func TestObserve(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -309,7 +309,7 @@ func TestObserve(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -363,7 +363,7 @@ func TestObserve(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -417,7 +417,7 @@ func TestObserve(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),

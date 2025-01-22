@@ -149,8 +149,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -225,8 +225,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -301,8 +301,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -364,8 +364,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -421,8 +421,8 @@ func TestDelete(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -492,8 +492,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClientOK, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClientOK, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -579,8 +579,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClientOK, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClientOK, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -671,8 +671,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClientOK, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(s3Backend2, fakeClientOK, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),

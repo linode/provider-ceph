@@ -13,15 +13,13 @@ import (
 type backend struct {
 	s3Client  S3Client
 	stsClient STSClient
-	active    bool
 	health    v1alpha1.HealthStatus
 }
 
-func newBackend(s3Client S3Client, stsClient STSClient, active bool, health v1alpha1.HealthStatus) *backend {
+func newBackend(s3Client S3Client, stsClient STSClient, health v1alpha1.HealthStatus) *backend {
 	return &backend{
 		s3Client:  s3Client,
 		stsClient: stsClient,
-		active:    active,
 		health:    health,
 	}
 }

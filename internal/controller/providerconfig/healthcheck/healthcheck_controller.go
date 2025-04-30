@@ -219,8 +219,10 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 			}
 
 			listOptions.Continue = pageBuckets.Continue
+
 			continue
 		}
+
 		return nil
 	})
 	if err != nil {

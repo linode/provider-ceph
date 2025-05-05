@@ -185,7 +185,7 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 		duration          = time.Second
 		factor            = 5
 		jitter            = 0.1
-		bucketsPerRequest = 1000
+		bucketsPerRequest = 50
 	)
 
 	// Only list Buckets that (a) were created on s3BackendName

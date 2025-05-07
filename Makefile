@@ -10,10 +10,10 @@ PLATFORMS ?= linux_amd64 linux_arm64
 # Generate chainsaw e2e tests for the following kind node versions
 # TEST_KIND_NODES is not intended to be updated manually.
 # Please edit LATEST_KIND_NODE instead and run 'make update-kind-nodes'.
-TEST_KIND_NODES ?= 1.26.14,1.27.11,1.28.7,1.29.2
+TEST_KIND_NODES ?= 1.28.7,1.29.2,1.30.8,1.31.4
 
-LATEST_KUBE_VERSION ?= 1.29
-LATEST_KIND_NODE ?= 1.29.2
+LATEST_KUBE_VERSION ?= 1.31
+LATEST_KIND_NODE ?= 1.31.4
 REPO ?= provider-ceph
 
 CROSSPLANE_VERSION ?= 1.18.0

@@ -71,7 +71,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if providerConfig.Spec.DisableHealthCheck {
-		c.log.Debug("Health check is disabled for s3 backend", consts.KeyBackendName, providerConfig.Name)
+		c.log.V(1).Info("Health check is disabled for s3 backend", consts.KeyBackendName, providerConfig.Name)
 
 		c.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
 		if providerConfig.Status.GetCondition(v1.TypeReady).Equal(v1alpha1.HealthCheckDisabled()) {
@@ -232,7 +232,7 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 	}
 
 	for i := range buckets.Items {
-		c.log.Debug("Attempting to unpause bucket", consts.KeyBucketName, buckets.Items[i].Name)
+		c.log.V(1).Info("Attempting to unpause bucket", consts.KeyBucketName, buckets.Items[i].Name)
 		err := retry.OnError(wait.Backoff{
 			Steps:    steps,
 			Duration: duration,

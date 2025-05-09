@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	ststypes "github.com/aws/aws-sdk-go-v2/service/sts/types"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -33,7 +33,7 @@ type Handler struct {
 	assumeRoleArn *string
 	backendStore  *backendstore.BackendStore
 	s3Timeout     time.Duration
-	log           logging.Logger
+	log           logr.Logger
 }
 
 func NewHandler(options ...func(*Handler)) *Handler {
@@ -69,7 +69,7 @@ func WithS3Timeout(t time.Duration) func(*Handler) {
 	}
 }
 
-func WithLog(l logging.Logger) func(*Handler) {
+func WithLog(l logr.Logger) func(*Handler) {
 	return func(h *Handler) {
 		h.log = l
 	}

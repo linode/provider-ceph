@@ -6,10 +6,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/document"
+	"github.com/go-logr/logr"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
@@ -29,10 +29,10 @@ import (
 type VersioningConfigurationClient struct {
 	backendStore    *backendstore.BackendStore
 	s3ClientHandler *s3clienthandler.Handler
-	log             logging.Logger
+	log             logr.Logger
 }
 
-func NewVersioningConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *VersioningConfigurationClient {
+func NewVersioningConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logr.Logger) *VersioningConfigurationClient {
 	return &VersioningConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
@@ -91,7 +91,7 @@ func (l *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1a
 }
 
 func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
-	l.log.Debug("Observing subresource versioning configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+	l.log.V(1).Info("Observing subresource versioning configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 	if err != nil {
@@ -113,14 +113,14 @@ func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 			// An empty versioning configuration was returned from the backend, signifying
 			// that versioning was never enabled on this bucket. Therefore versioning is
 			// considered Updated for the bucket and we do nothing.
-			l.log.Debug("Versioning is not enabled for bucket on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			l.log.V(1).Info("Versioning is not enabled for bucket on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return NoAction, nil
 		} else {
 			// A non-empty versioning configuration was returned from the backend, signifying
 			// that versioning was previously enabled for this bucket. A bucket cannot be un-versioned,
 			// it can only be suspended so we execute this via the NeedsDeletion path.
-			l.log.Debug("Versioning is enabled for bucket on backend - requires suspension", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			l.log.V(1).Info("Versioning is enabled for bucket on backend - requires suspension", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return NeedsDeletion, nil
 		}

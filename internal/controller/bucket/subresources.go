@@ -19,8 +19,8 @@ package bucket
 import (
 	"context"
 
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
+	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
@@ -33,7 +33,7 @@ type SubresourceClient interface {
 }
 
 // NewSubresourceClients creates the array of all sub resource clients.
-func NewSubresourceClients(b *backendstore.BackendStore, h *s3clienthandler.Handler, config SubresourceClientConfig, l logging.Logger) []SubresourceClient {
+func NewSubresourceClients(b *backendstore.BackendStore, h *s3clienthandler.Handler, config SubresourceClientConfig, l logr.Logger) []SubresourceClient {
 	subresourceClients := make([]SubresourceClient, 0)
 
 	if !config.LifecycleConfigurationClientDisabled {

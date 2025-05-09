@@ -6,10 +6,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/document"
+	"github.com/go-logr/logr"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
@@ -29,10 +29,10 @@ import (
 type ObjectLockConfigurationClient struct {
 	backendStore    *backendstore.BackendStore
 	s3ClientHandler *s3clienthandler.Handler
-	log             logging.Logger
+	log             logr.Logger
 }
 
-func NewObjectLockConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *ObjectLockConfigurationClient {
+func NewObjectLockConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logr.Logger) *ObjectLockConfigurationClient {
 	return &ObjectLockConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
@@ -41,7 +41,7 @@ func (l *ObjectLockConfigurationClient) Observe(ctx context.Context, bucket *v1a
 	defer span.End()
 
 	if bucket.Spec.ForProvider.ObjectLockEnabledForBucket == nil || !*bucket.Spec.ForProvider.ObjectLockEnabledForBucket {
-		l.log.Debug("Object lock configuration not enabled in Bucket CR", consts.KeyBucketName, bucket.Name)
+		l.log.V(1).Info("Object lock configuration not enabled in Bucket CR", consts.KeyBucketName, bucket.Name)
 
 		return Updated, nil
 	}
@@ -96,7 +96,7 @@ func (l *ObjectLockConfigurationClient) Observe(ctx context.Context, bucket *v1a
 }
 
 func (l *ObjectLockConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
-	l.log.Debug("Observing subresource object lock configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+	l.log.V(1).Info("Observing subresource object lock configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 	if err != nil {

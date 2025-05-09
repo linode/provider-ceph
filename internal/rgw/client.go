@@ -36,7 +36,10 @@ func NewS3Client(ctx context.Context, data map[string][]byte, pcSpec *apisv1alph
 
 	return s3.NewFromConfig(sessionConfig, func(o *s3.Options) {
 		o.UsePathStyle = true
-		o.HTTPClient = &http.Client{Timeout: s3Timeout}
+		o.HTTPClient = &http.Client{
+			Timeout:   s3Timeout,
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		}
 		o.BaseEndpoint = &resolvedAddress
 		if sessionToken != nil {
 			o.APIOptions = []func(*middleware.Stack) error{

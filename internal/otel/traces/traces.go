@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/go-logr/logr"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel"
 
 	otelsdk "go.opentelemetry.io/otel"
@@ -18,6 +20,23 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+type ctxKeyLogger struct{}
+
+// InjectTraceAndLogger returns a context and logger enriched with trace ID (if available).
+// If a logger already exists in the context, it returns it directly.
+func InjectTraceAndLogger(ctx context.Context, baseLogger logr.Logger) (context.Context, logr.Logger) {
+	if logger, ok := ctx.Value(ctxKeyLogger{}).(logr.Logger); ok {
+		return ctx, logger
+	}
+
+	span := trace.SpanFromContext(ctx)
+	if span.SpanContext().IsValid() {
+		baseLogger = baseLogger.WithValues(consts.TraceID, span.SpanContext().TraceID().String())
+	}
+
+	return context.WithValue(ctx, ctxKeyLogger{}, baseLogger), baseLogger
+}
 
 // InitTracerProvider configures a global tracer provider and dials to the OTEL Collector.
 // Failing in doing so returns an error since service actively export their traces and

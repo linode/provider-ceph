@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,7 +23,7 @@ type Connector struct {
 	backendStore          *backendstore.BackendStore
 	subresourceClients    []SubresourceClient
 	s3ClientHandler       *s3clienthandler.Handler
-	log                   logging.Logger
+	log                   logr.Logger
 	operationTimeout      time.Duration
 	creationGracePeriod   time.Duration
 	pollInterval          time.Duration
@@ -106,7 +106,7 @@ func WithS3ClientHandler(h *s3clienthandler.Handler) func(*Connector) {
 	}
 }
 
-func WithLog(l logging.Logger) func(*Connector) {
+func WithLog(l logr.Logger) func(*Connector) {
 	return func(c *Connector) {
 		c.log = l
 	}
@@ -132,7 +132,8 @@ func (c *Connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 			backendStore:          c.backendStore,
 			subresourceClients:    c.subresourceClients,
 			s3ClientHandler:       c.s3ClientHandler,
-			log:                   c.log},
+			log:                   c.log,
+		},
 		nil
 }
 
@@ -147,5 +148,5 @@ type external struct {
 	backendStore          *backendstore.BackendStore
 	subresourceClients    []SubresourceClient
 	s3ClientHandler       *s3clienthandler.Handler
-	log                   logging.Logger
+	log                   logr.Logger
 }

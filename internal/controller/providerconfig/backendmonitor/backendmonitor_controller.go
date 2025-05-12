@@ -49,8 +49,9 @@ const (
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "backendmonitor.Controller.Reconcile")
 	defer span.End()
+	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
-	c.log.Info("Reconciling backend store", "name", req.Name)
+	log.V(1).Info("Reconciling backend store", "name", req.Name)
 	providerConfig := &apisv1alpha1.ProviderConfig{}
 	if err := c.kubeClient.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
@@ -62,7 +63,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 				return ctrl.Result{}, err
 			}
 
-			c.log.Info("Removing s3 backend as from backend store", "name", req.Name)
+			log.Info("Removing s3 backend as from backend store", "name", req.Name)
 			c.backendStore.DeleteBackend(req.Name)
 
 			// The ProviderConfig no longer exists so there is no need to requeue the reconcile key.
@@ -121,14 +122,16 @@ func (c *Controller) getProviderConfigSecret(ctx context.Context, secretNamespac
 // cleanup deletes the lifecycle configuration validation bucket from the backend.
 // This function is only called when a ProviderConfig has been deleted.
 func (c *Controller) cleanup(ctx context.Context, req ctrl.Request) error {
+	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
+
 	backendClient := c.backendStore.GetBackendS3Client(req.Name)
 	if backendClient == nil {
-		c.log.Info("Backend client not found during validation bucket cleanup - aborting cleanup", consts.KeyBackendName, req.Name)
+		log.Info("Backend client not found during validation bucket cleanup - aborting cleanup", consts.KeyBackendName, req.Name)
 
 		return nil
 	}
 
-	c.log.Info("Deleting lifecycle configuration validation bucket", consts.KeyBucketName, v1alpha1.LifecycleConfigValidationBucketName, consts.KeyBackendName, req.Name)
+	log.Info("Deleting lifecycle configuration validation bucket", consts.KeyBucketName, v1alpha1.LifecycleConfigValidationBucketName, consts.KeyBackendName, req.Name)
 	if err := rgw.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName), true); err != nil {
 		return errors.Wrap(err, errDeleteLCValidationBucket)
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel"
@@ -43,7 +42,7 @@ func InjectTraceAndLogger(ctx context.Context, baseLogger logr.Logger) (context.
 // require the Collector to be up.
 // Returns a shutdown function that should be called at the end of the program to flush
 // all in-momory traces.
-func InitTracerProvider(log logging.Logger, otelCollectorAddress string, dialTimeout, exportInterval time.Duration) (func(context.Context), error) {
+func InitTracerProvider(log logr.Logger, otelCollectorAddress string, dialTimeout, exportInterval time.Duration) (func(context.Context), error) {
 	runtimeResources, err := otel.RuntimeResources()
 	if err != nil {
 		return nil, fmt.Errorf("failed to gather runtime resources for traces provider: %w", err)
@@ -74,7 +73,7 @@ func InitTracerProvider(log logging.Logger, otelCollectorAddress string, dialTim
 
 	flushFunction := func(ctx context.Context) {
 		if err := tp.Shutdown(ctx); err != nil {
-			log.Debug("failed to shutdown tracer provider and flush in-memory records", "error", err.Error())
+			log.Error(err, "failed to shutdown tracer provider and flush in-memory records")
 		}
 	}
 

@@ -13,6 +13,7 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
+	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/utils"
 	"go.opentelemetry.io/otel"
 
@@ -239,6 +240,7 @@ const (
 func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, callbacks ...func(*v1alpha1.Bucket) UpdateRequired) error {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.updateBucketCR")
 	defer span.End()
+	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
 	for _, cb := range callbacks {
 		err := retry.OnError(retry.DefaultRetry, resource.IsAPIError, func() error {
@@ -257,7 +259,7 @@ func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, 
 
 		if err != nil {
 			if kerrors.IsNotFound(err) {
-				c.log.Info("Bucket doesn't exists", consts.KeyBucketName, bucket.Name)
+				log.Info("Bucket doesn't exists", consts.KeyBucketName, bucket.Name)
 
 				break
 			}

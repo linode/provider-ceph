@@ -9,9 +9,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -133,7 +133,7 @@ func TestCreateBasicErrors(t *testing.T) {
 			e := external{
 				kubeClient:   cl.Build(),
 				backendStore: tc.fields.backendStore,
-				log:          logging.NewNopLogger(),
+				log:          logr.Discard(),
 			}
 
 			_, err := e.Create(context.Background(), tc.args.mg)
@@ -402,7 +402,7 @@ func TestCreate(t *testing.T) {
 				s3ClientHandler: s3clienthandler.NewHandler(
 					s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
 					s3clienthandler.WithBackendStore(tc.fields.backendStore)),
-				log:              logging.NewNopLogger(),
+				log:              logr.Discard(),
 				operationTimeout: time.Second * 5,
 			}
 

@@ -6,10 +6,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/document"
+	"github.com/go-logr/logr"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
@@ -29,10 +29,10 @@ import (
 type LifecycleConfigurationClient struct {
 	backendStore    *backendstore.BackendStore
 	s3ClientHandler *s3clienthandler.Handler
-	log             logging.Logger
+	log             logr.Logger
 }
 
-func NewLifecycleConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *LifecycleConfigurationClient {
+func NewLifecycleConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logr.Logger) *LifecycleConfigurationClient {
 	return &LifecycleConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
@@ -40,6 +40,7 @@ func NewLifecycleConfigurationClient(b *backendstore.BackendStore, h *s3clientha
 func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.LifecycleConfigurationClient.Observe")
 	defer span.End()
+	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
 
 	observationChan := make(chan ResourceStatus)
 	errChan := make(chan error)
@@ -70,7 +71,7 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 	for i := 0; i < len(backendNames); i++ {
 		select {
 		case <-ctx.Done():
-			l.log.Info("Context timeout during bucket lifecycle configuration observation", consts.KeyBucketName, bucket.Name)
+			log.Info("Context timeout during bucket lifecycle configuration observation", consts.KeyBucketName, bucket.Name)
 			err := errors.Wrap(ctx.Err(), errObserveLifecycleConfig)
 			traces.SetAndRecordError(span, err)
 
@@ -91,7 +92,9 @@ func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1al
 }
 
 func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
-	l.log.Debug("Observing subresource lifecycle configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
+
+	log.V(1).Info("Observing subresource lifecycle configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 	if err != nil {
@@ -107,11 +110,11 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 		// Either way, it should not exist on any backend.
 		if response == nil || len(response.Rules) == 0 {
 			// No lifecycle config found on this backend.
-			l.log.Debug("No lifecycle configuration found on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			log.V(1).Info("No lifecycle configuration found on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return NoAction, nil
 		} else {
-			l.log.Debug("Lifecycle configuration found on backend - requires deletion", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			log.V(1).Info("Lifecycle configuration found on backend - requires deletion", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return NeedsDeletion, nil
 		}
@@ -138,7 +141,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	// is almost never expected.
 	if !cmp.Equal(external, rgw.GenerateLifecycleRules(local),
 		cmpopts.IgnoreFields(s3types.LifecycleRule{}, "ID"), cmpopts.IgnoreTypes(document.NoSerde{})) {
-		l.log.Debug("Lifecycle configuration requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+		log.V(1).Info("Lifecycle configuration requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return NeedsUpdate, nil
 	}
@@ -203,7 +206,9 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 }
 
 func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
-	l.log.Info("Updating lifecycle configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
+	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
+
+	log.Info("Updating lifecycle configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {
 		return err
@@ -218,7 +223,9 @@ func (l *LifecycleConfigurationClient) createOrUpdate(ctx context.Context, b *v1
 }
 
 func (l *LifecycleConfigurationClient) delete(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
-	l.log.Info("Deleting lifecycle configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
+	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
+
+	log.Info("Deleting lifecycle configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {
 		return err

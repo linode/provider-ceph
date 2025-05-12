@@ -6,10 +6,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/document"
+	"github.com/go-logr/logr"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
@@ -29,19 +29,20 @@ import (
 type ObjectLockConfigurationClient struct {
 	backendStore    *backendstore.BackendStore
 	s3ClientHandler *s3clienthandler.Handler
-	log             logging.Logger
+	log             logr.Logger
 }
 
-func NewObjectLockConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *ObjectLockConfigurationClient {
+func NewObjectLockConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logr.Logger) *ObjectLockConfigurationClient {
 	return &ObjectLockConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
 func (l *ObjectLockConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.ObjectLockConfigurationClient.Observe")
 	defer span.End()
+	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
 
 	if bucket.Spec.ForProvider.ObjectLockEnabledForBucket == nil || !*bucket.Spec.ForProvider.ObjectLockEnabledForBucket {
-		l.log.Debug("Object lock configuration not enabled in Bucket CR", consts.KeyBucketName, bucket.Name)
+		log.V(1).Info("Object lock configuration not enabled in Bucket CR", consts.KeyBucketName, bucket.Name)
 
 		return Updated, nil
 	}
@@ -75,7 +76,7 @@ func (l *ObjectLockConfigurationClient) Observe(ctx context.Context, bucket *v1a
 	for i := 0; i < len(backendNames); i++ {
 		select {
 		case <-ctx.Done():
-			l.log.Info("Context timeout during object lock configuration observation", consts.KeyBucketName, bucket.Name)
+			log.Info("Context timeout during object lock configuration observation", consts.KeyBucketName, bucket.Name)
 			err := errors.Wrap(ctx.Err(), errObserveObjectLockConfig)
 			traces.SetAndRecordError(span, err)
 
@@ -96,7 +97,9 @@ func (l *ObjectLockConfigurationClient) Observe(ctx context.Context, bucket *v1a
 }
 
 func (l *ObjectLockConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
-	l.log.Debug("Observing subresource object lock configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
+
+	log.V(1).Info("Observing subresource object lock configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 	if err != nil {
@@ -115,7 +118,7 @@ func (l *ObjectLockConfigurationClient) observeBackend(ctx context.Context, buck
 	desiredVersioningConfig := rgw.GenerateObjectLockConfiguration(bucket.Spec.ForProvider.ObjectLockConfiguration)
 
 	if !cmp.Equal(external, desiredVersioningConfig, cmpopts.IgnoreTypes(document.NoSerde{})) {
-		l.log.Info("Object lock configuration requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+		log.Info("Object lock configuration requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return NeedsUpdate, nil
 	}
@@ -188,7 +191,9 @@ func (l *ObjectLockConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 }
 
 func (l *ObjectLockConfigurationClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
-	l.log.Info("Updating object lock configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
+	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
+
+	log.Info("Updating object lock configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {
 		return err

@@ -11,10 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -125,7 +125,7 @@ func TestUpdateBasicErrors(t *testing.T) {
 			t.Parallel()
 			e := external{
 				backendStore: tc.fields.backendStore,
-				log:          logging.NewNopLogger(),
+				log:          logr.Discard(),
 			}
 
 			_, err := e.Update(context.Background(), tc.args.mg)
@@ -499,8 +499,8 @@ func TestUpdate(t *testing.T) {
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
 				minReplicas:        1,
-				log:                logging.NewNopLogger(),
-				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logging.NewNopLogger()),
+				log:                logr.Discard(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logr.Discard()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)
@@ -812,8 +812,8 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
 				minReplicas:        1,
-				log:                logging.NewNopLogger(),
-				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logging.NewNopLogger()),
+				log:                logr.Discard(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logr.Discard()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)
@@ -1110,8 +1110,8 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
 				minReplicas:        1,
-				log:                logging.NewNopLogger(),
-				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logging.NewNopLogger()),
+				log:                logr.Discard(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logr.Discard()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)
@@ -1413,8 +1413,8 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
 				minReplicas:        1,
-				log:                logging.NewNopLogger(),
-				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logging.NewNopLogger()),
+				log:                logr.Discard(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logr.Discard()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)

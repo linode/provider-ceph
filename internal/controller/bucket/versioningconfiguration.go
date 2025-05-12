@@ -6,10 +6,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/document"
+	"github.com/go-logr/logr"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
@@ -29,17 +29,18 @@ import (
 type VersioningConfigurationClient struct {
 	backendStore    *backendstore.BackendStore
 	s3ClientHandler *s3clienthandler.Handler
-	log             logging.Logger
+	log             logr.Logger
 }
 
-func NewVersioningConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *VersioningConfigurationClient {
+func NewVersioningConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logr.Logger) *VersioningConfigurationClient {
 	return &VersioningConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
 //nolint:dupl // VersioningConfiguration and Policy are different feature.
-func (l *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
+func (v *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.VersioningConfigurationClient.Observe")
 	defer span.End()
+	ctx, log := traces.InjectTraceAndLogger(ctx, v.log)
 
 	observationChan := make(chan ResourceStatus)
 	errChan := make(chan error)
@@ -47,7 +48,7 @@ func (l *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1a
 	for _, backendName := range backendNames {
 		beName := backendName
 		go func() {
-			if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
+			if v.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
 				// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
 				// The backend may be down for some time and we do not want to block Create/Update/Delete
 				// calls on other backends. By returning NoAction here, we would never pass the Observe
@@ -57,7 +58,7 @@ func (l *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1a
 				return
 			}
 
-			observation, err := l.observeBackend(ctx, bucket, beName)
+			observation, err := v.observeBackend(ctx, bucket, beName)
 			if err != nil {
 				errChan <- err
 
@@ -70,7 +71,7 @@ func (l *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1a
 	for i := 0; i < len(backendNames); i++ {
 		select {
 		case <-ctx.Done():
-			l.log.Info("Context timeout during bucket versioning configuration observation", consts.KeyBucketName, bucket.Name)
+			log.Info("Context timeout during bucket versioning configuration observation", consts.KeyBucketName, bucket.Name)
 			err := errors.Wrap(ctx.Err(), errObserveVersioningConfig)
 			traces.SetAndRecordError(span, err)
 
@@ -90,10 +91,12 @@ func (l *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1a
 	return Updated, nil
 }
 
-func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
-	l.log.Debug("Observing subresource versioning configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+func (v *VersioningConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
+	ctx, log := traces.InjectTraceAndLogger(ctx, v.log)
 
-	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
+	log.V(1).Info("Observing subresource versioning configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+
+	s3Client, err := v.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 	if err != nil {
 		return NeedsUpdate, err
 	}
@@ -113,14 +116,14 @@ func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 			// An empty versioning configuration was returned from the backend, signifying
 			// that versioning was never enabled on this bucket. Therefore versioning is
 			// considered Updated for the bucket and we do nothing.
-			l.log.Debug("Versioning is not enabled for bucket on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			log.V(1).Info("Versioning is not enabled for bucket on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return NoAction, nil
 		} else {
 			// A non-empty versioning configuration was returned from the backend, signifying
 			// that versioning was previously enabled for this bucket. A bucket cannot be un-versioned,
 			// it can only be suspended so we execute this via the NeedsDeletion path.
-			l.log.Debug("Versioning is enabled for bucket on backend - requires suspension", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			log.V(1).Info("Versioning is enabled for bucket on backend - requires suspension", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return NeedsDeletion, nil
 		}
@@ -135,7 +138,7 @@ func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 	desiredVersioningConfig := rgw.GenerateVersioningConfiguration(bucket.Spec.ForProvider.VersioningConfiguration)
 
 	if !cmp.Equal(external, desiredVersioningConfig, cmpopts.IgnoreTypes(document.NoSerde{})) {
-		l.log.Info("Versioning configuration requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+		log.Info("Versioning configuration requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return NeedsUpdate, nil
 	}
@@ -143,17 +146,17 @@ func (l *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 	return Updated, nil
 }
 
-func (l *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+func (v *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.VersioningConfigurationClient.Handle")
 	defer span.End()
 
-	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
+	if v.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
 		traces.SetAndRecordError(span, errUnhealthyBackend)
 
 		return errUnhealthyBackend
 	}
 
-	observation, err := l.observeBackend(ctx, b, backendName)
+	observation, err := v.observeBackend(ctx, b, backendName)
 	if err != nil {
 		err = errors.Wrap(err, errHandleVersioningConfig)
 		traces.SetAndRecordError(span, err)
@@ -183,7 +186,7 @@ func (l *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 			MFADelete: &disabled,
 			Status:    &suspended,
 		}
-		if err := l.createOrUpdate(ctx, bucketCopy, backendName); err != nil {
+		if err := v.createOrUpdate(ctx, bucketCopy, backendName); err != nil {
 			err = errors.Wrap(err, errHandleVersioningConfig)
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
 			bb.setVersioningConfigCondition(b.Name, backendName, &unavailable)
@@ -221,7 +224,7 @@ func (l *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 			}
 		}
 
-		if err := l.createOrUpdate(ctx, bucketCopy, backendName); err != nil {
+		if err := v.createOrUpdate(ctx, bucketCopy, backendName); err != nil {
 			err = errors.Wrap(err, errHandleVersioningConfig)
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
 			bb.setVersioningConfigCondition(bucketCopy.Name, backendName, &unavailable)
@@ -237,9 +240,11 @@ func (l *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 	return nil
 }
 
-func (l *VersioningConfigurationClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
-	l.log.Info("Updating versioniong configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
-	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, b, backendName)
+func (v *VersioningConfigurationClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
+	ctx, log := traces.InjectTraceAndLogger(ctx, v.log)
+
+	log.Info("Updating versioniong configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
+	s3Client, err := v.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {
 		return err
 	}

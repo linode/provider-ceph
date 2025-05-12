@@ -17,13 +17,14 @@ limitations under the License.
 package bucket
 
 import (
+	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -236,9 +237,9 @@ func TestACLObserveBackend(t *testing.T) {
 				s3clienthandler.NewHandler(
 					s3clienthandler.WithAssumeRoleArn(nil),
 					s3clienthandler.WithBackendStore(tc.fields.backendStore)),
-				logging.NewNopLogger())
+				logr.Discard())
 
-			got := c.observeBackend(tc.args.bucket, tc.args.backendName)
+			got := c.observeBackend(context.Background(), tc.args.bucket, tc.args.backendName)
 			assert.Equal(t, tc.want.status, got, "unexpected status")
 		})
 	}

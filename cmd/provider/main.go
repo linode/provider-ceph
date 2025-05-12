@@ -184,11 +184,10 @@ func main() {
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
-	zl := zap.New(zapOpts...)
-	ctrl.SetLogger(zl)
-	klog.SetLogger(zl)
+	log := zap.New(zapOpts...).WithName("provider-ceph")
+	ctrl.SetLogger(log)
+	klog.SetLogger(log)
 
-	log := logging.NewLogrLogger(zl.WithName("provider-ceph"))
 	// Init otel tracer provider if the user sets the flag
 	if *tracesEnabled {
 		flush, err := traces.InitTracerProvider(log, *tracesExportAddress, *tracesExportTimeout, *tracesExportInterval)
@@ -271,7 +270,7 @@ func main() {
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 
 	o := controller.Options{
-		Logger:                  log,
+		Logger:                  logging.NewLogrLogger(log),
 		MaxConcurrentReconciles: *reconcileConcurrency,
 		PollInterval:            *pollInterval,
 		GlobalRateLimiter:       ratelimiter.NewGlobal(*maxReconcileRate),
@@ -324,14 +323,14 @@ func main() {
 			backendmonitor.WithBackendStore(backendStore),
 			backendmonitor.WithS3Timeout(*s3Timeout),
 			backendmonitor.WithRequeueInterval(*backendMonitorInterval),
-			backendmonitor.WithLogger(o.Logger)),
+			backendmonitor.WithLogger(log)),
 		healthcheck.NewController(
 			healthcheck.WithAutoPause(autoPauseBucket),
 			healthcheck.WithBackendStore(backendStore),
 			healthcheck.WithKubeClientUncached(kubeClientUncached),
 			healthcheck.WithKubeClientCached(mgr.GetClient()),
 			healthcheck.WithHttpClient(&http.Client{Timeout: *s3Timeout}),
-			healthcheck.WithLogger(o.Logger))),
+			healthcheck.WithLogger(log))),
 		"Cannot setup ProviderConfig controllers")
 
 	s3ClientHandler := s3clienthandler.NewHandler(
@@ -339,7 +338,7 @@ func main() {
 		s3clienthandler.WithBackendStore(backendStore),
 		s3clienthandler.WithKubeClient(mgr.GetClient()),
 		s3clienthandler.WithS3Timeout(*s3Timeout),
-		s3clienthandler.WithLog(o.Logger))
+		s3clienthandler.WithLog(log))
 
 	kingpin.FatalIfError(bucket.Setup(mgr, o, bucket.NewConnector(
 		bucket.WithAutoPause(autoPauseBucket),
@@ -350,7 +349,7 @@ func main() {
 		bucket.WithOperationTimeout(*reconcileTimeout),
 		bucket.WithCreationGracePeriod(*creationGracePeriod),
 		bucket.WithPollInterval(*pollInterval),
-		bucket.WithLog(o.Logger),
+		bucket.WithLog(log),
 		bucket.WithSubresourceClients(
 			bucket.NewSubresourceClients(
 				backendStore,
@@ -361,7 +360,7 @@ func main() {
 					PolicyClientDisabled:                  *disablePolicyReconcile,
 					VersioningConfigurationClientDisabled: *disableVersioningConfigReconcile,
 					ObjectLockConfigurationClientDisabled: *disableObjectLockConfigReconcile},
-				o.Logger)),
+				log)),
 		bucket.WithS3ClientHandler(s3ClientHandler),
 		bucket.WithUsage(resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{})),
 		bucket.WithNewServiceFn(bucket.NewNoOpService))), "Cannot setup Bucket controller")

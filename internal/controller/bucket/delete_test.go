@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -100,7 +100,7 @@ func TestDeleteBasicErrors(t *testing.T) {
 
 			e := external{
 				backendStore: tc.fields.backendStore,
-				log:          logging.NewNopLogger(),
+				log:          logr.Discard(),
 			}
 
 			_, err := e.Delete(context.Background(), tc.args.mg)
@@ -756,7 +756,7 @@ func TestDelete(t *testing.T) {
 					s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
 					s3clienthandler.WithBackendStore(tc.fields.backendStore),
 					s3clienthandler.WithKubeClient(kubeClient)),
-				log:        logging.NewNopLogger(),
+				log:        logr.Discard(),
 				kubeClient: kubeClient,
 			}
 

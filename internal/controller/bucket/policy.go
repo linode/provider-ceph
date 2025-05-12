@@ -5,9 +5,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/smithy-go"
+	"github.com/go-logr/logr"
 
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
@@ -23,10 +23,10 @@ import (
 type PolicyClient struct {
 	backendStore    *backendstore.BackendStore
 	s3ClientHandler *s3clienthandler.Handler
-	log             logging.Logger
+	log             logr.Logger
 }
 
-func NewPolicyClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *PolicyClient {
+func NewPolicyClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logr.Logger) *PolicyClient {
 	return &PolicyClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
@@ -34,6 +34,7 @@ func NewPolicyClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l
 func (p *PolicyClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.PolicyClient.Observe")
 	defer span.End()
+	ctx, log := traces.InjectTraceAndLogger(ctx, p.log)
 
 	observationChan := make(chan ResourceStatus)
 	errChan := make(chan error)
@@ -64,7 +65,7 @@ func (p *PolicyClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, bac
 	for i := 0; i < len(backendNames); i++ {
 		select {
 		case <-ctx.Done():
-			p.log.Info("Context timeout during bucket policy observation", consts.KeyBucketName, bucket.Name)
+			log.Info("Context timeout during bucket policy observation", consts.KeyBucketName, bucket.Name)
 			err := errors.Wrap(ctx.Err(), errObservePolicy)
 			traces.SetAndRecordError(span, err)
 
@@ -85,7 +86,9 @@ func (p *PolicyClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, bac
 }
 
 func (p *PolicyClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
-	p.log.Debug("Observing subresource policy on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+	ctx, log := traces.InjectTraceAndLogger(ctx, p.log)
+
+	log.V(1).Info("Observing subresource policy on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	s3Client, err := p.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 	if err != nil {
@@ -109,11 +112,11 @@ func (p *PolicyClient) observeBackend(ctx context.Context, bucket *v1alpha1.Buck
 		// No policy config is specified.
 		// In that case, it should not exist on any backend.
 		if external == "" {
-			p.log.Debug("No bucket policy found on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			log.V(1).Info("No bucket policy found on backend - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return Updated, nil
 		} else {
-			p.log.Debug("Bucket policy found on backend - requires deletion", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			log.V(1).Info("Bucket policy found on backend - requires deletion", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			return NeedsDeletion, nil
 		}
@@ -121,7 +124,7 @@ func (p *PolicyClient) observeBackend(ctx context.Context, bucket *v1alpha1.Buck
 
 	local := bucket.Spec.ForProvider.Policy
 	if local != external {
-		p.log.Info("Bucket policy requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+		log.Info("Bucket policy requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return NeedsUpdate, nil
 	}
@@ -172,7 +175,9 @@ func (p *PolicyClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendNa
 }
 
 func (p *PolicyClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
-	p.log.Info("Updating bucket policy", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
+	ctx, log := traces.InjectTraceAndLogger(ctx, p.log)
+
+	log.Info("Updating bucket policy", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
 	s3Client, err := p.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {
 		return err
@@ -187,7 +192,9 @@ func (p *PolicyClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, b
 }
 
 func (p *PolicyClient) delete(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
-	p.log.Info("Deleting bucket policy", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
+	ctx, log := traces.InjectTraceAndLogger(ctx, p.log)
+
+	log.Info("Deleting bucket policy", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
 	s3Client, err := p.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {
 		return err

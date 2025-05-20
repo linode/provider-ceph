@@ -54,8 +54,9 @@ const (
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "healthcheck.Controller.Reconcile")
 	defer span.End()
+	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
-	c.log.Info("Reconciling health of s3 backend", consts.KeyBackendName, req.Name)
+	log.V(1).Info("Reconciling health of s3 backend", consts.KeyBackendName, req.Name)
 
 	bucketName := req.Name + healthCheckSuffix
 
@@ -71,7 +72,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if providerConfig.Spec.DisableHealthCheck {
-		c.log.Debug("Health check is disabled for s3 backend", consts.KeyBackendName, providerConfig.Name)
+		log.V(1).Info("Health check is disabled for s3 backend", consts.KeyBackendName, providerConfig.Name)
 
 		c.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
 		if providerConfig.Status.GetCondition(v1.TypeReady).Equal(v1alpha1.HealthCheckDisabled()) {
@@ -116,7 +117,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// Perform the health check. By calling this function, we are implicitly updating
 	// the health status of the ProviderConfig with whatever the health check reports.
 	if err := c.doHealthCheck(ctx, providerConfig); err != nil {
-		c.log.Info("Failed to do health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
+		log.Info("Failed to do health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
 		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(errNoRequestID(err)))
 		traces.SetAndRecordError(span, err)
@@ -130,7 +131,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	conditionAfterCheck := providerConfig.Status.GetCondition(v1.TypeReady)
 
 	if conditionAfterCheck.Equal(v1alpha1.HealthCheckSuccess()) && !conditionBeforeCheck.Equal(conditionAfterCheck) {
-		c.log.Info("Backend is healthy where previously it was unhealthy - unpausing all Buckets on backend to allow Observation", consts.KeyBackendName, providerConfig.Name)
+		log.Info("Backend is healthy where previously it was unhealthy - unpausing all Buckets on backend to allow Observation", consts.KeyBackendName, providerConfig.Name)
 		go c.unpauseBuckets(ctx, providerConfig.Name)
 	}
 
@@ -187,6 +188,7 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 		jitter            = 0.1
 		bucketsPerRequest = 50
 	)
+	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
 	// Only list Buckets that (a) were created on s3BackendName
 	// and (b) are already paused.
@@ -226,13 +228,13 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 		return nil
 	})
 	if err != nil {
-		c.log.Info("Error attempting to list Buckets on backend", "error", err.Error(), consts.KeyBackendName, s3BackendName)
+		log.Info("Error attempting to list Buckets on backend", "error", err.Error(), consts.KeyBackendName, s3BackendName)
 
 		return
 	}
 
 	for i := range buckets.Items {
-		c.log.Debug("Attempting to unpause bucket", consts.KeyBucketName, buckets.Items[i].Name)
+		log.V(1).Info("Attempting to unpause bucket", consts.KeyBucketName, buckets.Items[i].Name)
 		err := retry.OnError(wait.Backoff{
 			Steps:    steps,
 			Duration: duration,
@@ -250,7 +252,7 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 		})
 
 		if err != nil {
-			c.log.Info("Error attempting to unpause bucket", "error", err.Error(), "bucket", buckets.Items[i].Name)
+			log.Info("Error attempting to unpause bucket", "error", err.Error(), "bucket", buckets.Items[i].Name)
 		}
 	}
 }

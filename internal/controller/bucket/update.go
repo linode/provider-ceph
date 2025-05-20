@@ -24,6 +24,7 @@ import (
 func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.Update")
 	defer span.End()
+	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
@@ -41,7 +42,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	// A disabled Bucket CR means we perform the Delete flow to remove buckets
 	// from all backends without deleting the Bucket CR.
 	if bucket.Spec.Disabled {
-		c.log.Info("Bucket is disabled - remove any existing buckets from backends", "bucket name", bucket.Name)
+		log.Info("Bucket is disabled - remove any existing buckets from backends", "bucket name", bucket.Name)
 		_, err := c.Delete(ctx, mg)
 
 		return managed.ExternalUpdate{}, err
@@ -75,7 +76,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	bucketBackends := newBucketBackends()
 	updateAllErr := c.updateOnAllBackends(ctx, bucket, bucketBackends, backendsToUpdateOnNames)
 	if updateAllErr != nil {
-		c.log.Info("Failed to update on all backends", consts.KeyBucketName, bucket.Name, "error", updateAllErr.Error())
+		log.Info("Failed to update on all backends", consts.KeyBucketName, bucket.Name, "error", updateAllErr.Error())
 		traces.SetAndRecordError(span, updateAllErr)
 	}
 
@@ -87,7 +88,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			return NeedsStatusUpdate
 		}); err != nil {
-		c.log.Info("Failed to update Bucket CR Status", consts.KeyBucketName, bucket.Name, "error", err.Error())
+		log.Info("Failed to update Bucket CR Status", consts.KeyBucketName, bucket.Name, "error", err.Error())
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalUpdate{}, err
@@ -110,7 +111,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 				bucketBackends,
 				c.autoPauseBucket,
 			) {
-				c.log.Info("Auto pausing bucket", consts.KeyBucketName, bucket.Name)
+				log.Info("Auto pausing bucket", consts.KeyBucketName, bucket.Name)
 				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = True
 			}
 			// Apply the backend label to the Bucket CR for each backend that the bucket was
@@ -120,7 +121,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			return NeedsObjectUpdate
 		})
 	if err != nil {
-		c.log.Info("Failed to update Bucket CR Spec", consts.KeyBucketName, bucket.Name, "error", err.Error())
+		log.Info("Failed to update Bucket CR Spec", consts.KeyBucketName, bucket.Name, "error", err.Error())
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalUpdate{}, err
@@ -132,6 +133,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Bucket, bb *bucketBackends, backendsToUpdateOnNames []string) error {
 	ctx, span := otel.Tracer("").Start(ctx, "updateOnAllBackends")
 	defer span.End()
+	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
 	defer setBucketStatus(bucket, bb, backendsToUpdateOnNames, c.minReplicas)
 
@@ -147,7 +149,7 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 		cl, err := c.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 		if err != nil {
 			traces.SetAndRecordError(span, err)
-			c.log.Info("Failed to get client for backend - bucket cannot be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName, "error", err.Error())
+			log.Info("Failed to get client for backend - bucket cannot be updated on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName, "error", err.Error())
 			bb.setBucketCondition(bucket.Name, backendName, xpv1.Unavailable().WithMessage(err.Error()))
 
 			continue
@@ -166,11 +168,13 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 }
 
 func (c *external) updateOnBackend(ctx context.Context, beName string, bucket *v1alpha1.Bucket, cl backendstore.S3Client, bb *bucketBackends) func() error {
+	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
+
 	return func() error {
-		c.log.Info("Updating bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+		log.Info("Updating bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 		bucketExists, err := rgw.BucketExists(ctx, cl, bucket.Name)
 		if err != nil {
-			c.log.Info("Error occurred attempting HeadBucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+			log.Info("Error occurred attempting HeadBucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 			bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
 
 			return err
@@ -184,16 +188,16 @@ func (c *external) updateOnBackend(ctx context.Context, beName string, bucket *v
 
 			_, err := rgw.CreateBucket(ctx, cl, rgw.BucketToCreateBucketInput(bucket))
 			if err != nil {
-				c.log.Info("Failed to recreate missing bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName, "err", err.Error())
+				log.Info("Failed to recreate missing bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName, "err", err.Error())
 
 				return err
 			}
-			c.log.Info("Recreated missing bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+			log.Info("Recreated missing bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 		}
 
 		err = c.doUpdateOnBackend(ctx, bucket, beName, bb)
 		if err != nil {
-			c.log.Info("Error occurred attempting to update bucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+			log.Info("Error occurred attempting to update bucket", "err", err.Error(), consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 			bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
 
 			return err

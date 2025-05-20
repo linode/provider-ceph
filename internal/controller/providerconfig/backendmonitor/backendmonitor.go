@@ -3,8 +3,8 @@ package backendmonitor
 import (
 	"time"
 
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
+	"github.com/go-logr/logr"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -16,7 +16,7 @@ const controllerName = "backend-store-controller"
 type Controller struct {
 	kubeClient      client.Client
 	backendStore    *backendstore.BackendStore
-	log             logging.Logger
+	log             logr.Logger
 	s3Timeout       time.Duration
 	requeueInterval time.Duration
 }
@@ -36,7 +36,7 @@ func WithKubeClient(k client.Client) func(*Controller) {
 	}
 }
 
-func WithLogger(l logging.Logger) func(*Controller) {
+func WithLogger(l logr.Logger) func(*Controller) {
 	return func(r *Controller) {
 		r.log = l.WithValues(apisv1alpha1.ProviderConfigGroupKind, providerconfig.ControllerName(controllerName))
 	}

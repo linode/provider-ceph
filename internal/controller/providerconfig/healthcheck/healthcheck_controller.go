@@ -61,7 +61,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	bucketName := req.Name + healthCheckSuffix
 
 	providerConfig := &apisv1alpha1.ProviderConfig{}
-	if err := c.kubeClientCached.Get(ctx, req.NamespacedName, providerConfig); err != nil {
+	if err := c.kubeClient.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
 			// ProviderConfig has been deleted so there is nothing to do and no need to requeue.
 			// The backend monitor controller will remove the backend from the backend store.
@@ -79,7 +79,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return ctrl.Result{}, nil
 		}
 
-		if err := UpdateProviderConfigStatus(ctx, c.kubeClientCached, providerConfig, func(_, pcLatest *apisv1alpha1.ProviderConfig) {
+		if err := UpdateProviderConfigStatus(ctx, c.kubeClient, providerConfig, func(_, pcLatest *apisv1alpha1.ProviderConfig) {
 			pcLatest.Status.SetConditions(v1alpha1.HealthCheckDisabled())
 		}); err != nil {
 			err = errors.Wrap(err, errUpdateHealthStatus)
@@ -106,7 +106,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return
 		}
 
-		if err := UpdateProviderConfigStatus(ctx, c.kubeClientCached, providerConfig, func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
+		if err := UpdateProviderConfigStatus(ctx, c.kubeClient, providerConfig, func(pcDeepCopy, pcLatest *apisv1alpha1.ProviderConfig) {
 			pcLatest.Status.SetConditions(pcDeepCopy.Status.Conditions...)
 		}); err != nil {
 			err = errors.Wrap(err, errUpdateHealthStatus)
@@ -203,7 +203,7 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 		Factor:   factor,
 		Jitter:   jitter,
 	}, resource.IsAPIError, func() error {
-		return c.kubeClientUncached.List(ctx, buckets, &client.ListOptions{
+		return c.cachedReader.List(ctx, buckets, &client.ListOptions{
 			LabelSelector: listLabels,
 		})
 	})
@@ -225,7 +225,7 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] == True {
 				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] = ""
 
-				return c.kubeClientCached.Update(ctx, &buckets.Items[i])
+				return c.kubeClient.Update(ctx, &buckets.Items[i])
 			}
 
 			return nil

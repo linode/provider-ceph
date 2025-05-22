@@ -15,12 +15,12 @@ import (
 const controllerName = "health-check-controller"
 
 type Controller struct {
-	kubeClientUncached client.Client
-	kubeClientCached   client.Client
-	backendStore       *backendstore.BackendStore
-	httpClient         *http.Client
-	log                logr.Logger
-	autoPauseBucket    bool
+	kubeClient      client.Client
+	cachedReader    client.Reader
+	backendStore    *backendstore.BackendStore
+	httpClient      *http.Client
+	log             logr.Logger
+	autoPauseBucket bool
 }
 
 func NewController(options ...func(*Controller)) *Controller {
@@ -32,43 +32,43 @@ func NewController(options ...func(*Controller)) *Controller {
 	return r
 }
 
-func WithKubeClientUncached(k client.Client) func(*Controller) {
-	return func(r *Controller) {
-		r.kubeClientUncached = k
+func WithCachedReader(r client.Reader) func(*Controller) {
+	return func(c *Controller) {
+		c.cachedReader = r
 	}
 }
 
-func WithKubeClientCached(k client.Client) func(*Controller) {
-	return func(r *Controller) {
-		r.kubeClientCached = k
+func WithKubeClient(k client.Client) func(*Controller) {
+	return func(c *Controller) {
+		c.kubeClient = k
 	}
 }
 
 func WithLogger(l logr.Logger) func(*Controller) {
-	return func(r *Controller) {
-		r.log = l.WithValues(apisv1alpha1.ProviderConfigGroupKind, providerconfig.ControllerName(controllerName))
+	return func(c *Controller) {
+		c.log = l.WithValues(apisv1alpha1.ProviderConfigGroupKind, providerconfig.ControllerName(controllerName))
 	}
 }
 
 func WithBackendStore(b *backendstore.BackendStore) func(*Controller) {
-	return func(r *Controller) {
-		r.backendStore = b
+	return func(c *Controller) {
+		c.backendStore = b
 	}
 }
 
 func WithAutoPause(autoPause *bool) func(*Controller) {
-	return func(r *Controller) {
-		r.autoPauseBucket = *autoPause
+	return func(c *Controller) {
+		c.autoPauseBucket = *autoPause
 	}
 }
 
 func WithHttpClient(httpClient *http.Client) func(*Controller) {
-	return func(r *Controller) {
-		r.httpClient = httpClient
+	return func(c *Controller) {
+		c.httpClient = httpClient
 	}
 }
 
-func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
+func (c *Controller) SetupWithManager(mgr ctrl.Manager) error {
 	const maxReconciles = 5
 
 	return ctrl.NewControllerManagedBy(mgr).
@@ -77,5 +77,5 @@ func (r *Controller) SetupWithManager(mgr ctrl.Manager) error {
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxReconciles,
 		}.ForControllerRuntime()).
-		Complete(r)
+		Complete(c)
 }

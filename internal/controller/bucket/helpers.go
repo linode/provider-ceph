@@ -37,9 +37,9 @@ func isBucketPaused(bucket *v1alpha1.Bucket) bool {
 //
 //nolint:gocyclo,cyclop // Function requires numerous checks.
 func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client, bb *bucketBackends, autopauseEnabled bool) bool {
-	// Avoid pausing if the Bucket CR is not Ready and Synced.
-	if !(bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) &&
-		bucket.Status.GetCondition(xpv1.TypeSynced).Equal(xpv1.ReconcileSuccess())) {
+	// Avoid pausing if the Bucket CR is not Ready or not Synced.
+	if !bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) ||
+		!bucket.Status.GetCondition(xpv1.TypeSynced).Equal(xpv1.ReconcileSuccess()) {
 		return false
 	}
 

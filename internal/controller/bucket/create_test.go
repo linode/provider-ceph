@@ -9,9 +9,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -64,7 +64,6 @@ func TestCreateBasicErrors(t *testing.T) {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-0", nil, nil, false, apisv1alpha1.HealthStatusUnknown)
 
 					return bs
 				}(),
@@ -80,7 +79,7 @@ func TestCreateBasicErrors(t *testing.T) {
 				},
 			},
 			want: want{
-				err: errors.New(errNoActiveS3Backends),
+				err: errors.New(errNoS3BackendsStored),
 			},
 		},
 		"S3 backend not referenced and none exist": {
@@ -98,6 +97,27 @@ func TestCreateBasicErrors(t *testing.T) {
 				err: errors.New(errNoS3BackendsStored),
 			},
 		},
+		"S3 backend exists but is disabled for bucket": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{v1alpha1.BackendLabelPrefix + "s3-backend-1": "false"},
+						Name:   "test-bucket",
+					},
+				},
+			},
+			want: want{
+				err: errors.New(errAllS3BackendsDisabled),
+			},
+		},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -113,7 +133,7 @@ func TestCreateBasicErrors(t *testing.T) {
 			e := external{
 				kubeClient:   cl.Build(),
 				backendStore: tc.fields.backendStore,
-				log:          logging.NewNopLogger(),
+				log:          logr.Discard(),
 			}
 
 			_, err := e.Create(context.Background(), tc.args.mg)
@@ -168,7 +188,7 @@ func TestCreate(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -206,8 +226,8 @@ func TestCreate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -273,9 +293,9 @@ func TestCreate(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeClientError, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeClientError, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-3", &fakeClientOK, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-3", &fakeClientOK, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -333,9 +353,9 @@ func TestCreate(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeClientError, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeClientError, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-3", &fakeClientError, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-3", &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -382,7 +402,7 @@ func TestCreate(t *testing.T) {
 				s3ClientHandler: s3clienthandler.NewHandler(
 					s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),
 					s3clienthandler.WithBackendStore(tc.fields.backendStore)),
-				log:              logging.NewNopLogger(),
+				log:              logr.Discard(),
 				operationTimeout: time.Second * 5,
 			}
 

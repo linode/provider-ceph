@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/go-logr/logr"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
@@ -23,11 +23,11 @@ import (
 type ACLClient struct {
 	backendStore    *backendstore.BackendStore
 	s3ClientHandler *s3clienthandler.Handler
-	log             logging.Logger
+	log             logr.Logger
 }
 
 // NewACLClient creates the client for ACL
-func NewACLClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logging.Logger) *ACLClient {
+func NewACLClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logr.Logger) *ACLClient {
 	return &ACLClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
@@ -49,7 +49,7 @@ func (l *ACLClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backen
 
 				return
 			}
-			observationChan <- l.observeBackend(bucket, beName)
+			observationChan <- l.observeBackend(ctx, bucket, beName)
 		}()
 	}
 
@@ -63,13 +63,15 @@ func (l *ACLClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backen
 	return Updated, nil
 }
 
-func (l *ACLClient) observeBackend(bucket *v1alpha1.Bucket, backendName string) ResourceStatus {
-	l.log.Debug("Observing subresource acl on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+func (l *ACLClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) ResourceStatus {
+	_, log := traces.InjectTraceAndLogger(ctx, l.log)
+
+	log.V(1).Info("Observing subresource acl on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 	// If your bucket uses the bucket owner enforced setting for S3 Object
 	// Ownership, ACLs are disabled and no longer affect permissions.
 	if s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
-		l.log.Debug("Access control limits are disabled - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+		log.V(1).Info("Access control limits are disabled - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return Updated
 	}
@@ -81,7 +83,7 @@ func (l *ACLClient) observeBackend(bucket *v1alpha1.Bucket, backendName string) 
 		bucket.Spec.ForProvider.GrantWriteACP == nil &&
 		bucket.Spec.ForProvider.GrantRead == nil &&
 		bucket.Spec.ForProvider.GrantReadACP == nil {
-		l.log.Debug("No acl or access control policy or grants requested - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+		log.V(1).Info("No acl or access control policy or grants requested - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return Updated
 	}
@@ -99,7 +101,7 @@ func (l *ACLClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName 
 		return errUnhealthyBackend
 	}
 
-	switch l.observeBackend(b, backendName) {
+	switch l.observeBackend(ctx, b, backendName) {
 	case NoAction, Updated:
 		return nil
 	case NeedsUpdate, NeedsDeletion:
@@ -115,7 +117,9 @@ func (l *ACLClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName 
 }
 
 func (l *ACLClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
-	l.log.Info("Updating acl", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
+	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
+
+	log.Info("Updating acl", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
 	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {
 		return err

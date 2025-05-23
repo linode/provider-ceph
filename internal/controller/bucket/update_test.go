@@ -11,10 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -80,7 +80,7 @@ func TestUpdateBasicErrors(t *testing.T) {
 				err: errors.New(errNoS3BackendsStored),
 			},
 		},
-		"No active backend": {
+		"No backend stored": {
 			fields: fields{
 				backendStore: backendstore.NewBackendStore(),
 			},
@@ -95,7 +95,28 @@ func TestUpdateBasicErrors(t *testing.T) {
 			},
 			want: want{
 				o:   managed.ExternalUpdate{},
-				err: errors.New(errNoActiveS3Backends),
+				err: errors.New(errNoS3BackendsStored),
+			},
+		},
+		"S3 backend exists but is disabled for bucket": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{v1alpha1.BackendLabelPrefix + "s3-backend-1": "false"},
+						Name:   "test-bucket",
+					},
+				},
+			},
+			want: want{
+				err: errors.New(errAllS3BackendsDisabled),
 			},
 		},
 	}
@@ -104,7 +125,7 @@ func TestUpdateBasicErrors(t *testing.T) {
 			t.Parallel()
 			e := external{
 				backendStore: tc.fields.backendStore,
-				log:          logging.NewNopLogger(),
+				log:          logr.Discard(),
 			}
 
 			_, err := e.Update(context.Background(), tc.args.mg)
@@ -152,8 +173,8 @@ func TestUpdate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -202,8 +223,8 @@ func TestUpdate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -256,8 +277,8 @@ func TestUpdate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -314,8 +335,8 @@ func TestUpdate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -368,7 +389,7 @@ func TestUpdate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -478,8 +499,8 @@ func TestUpdate(t *testing.T) {
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
 				minReplicas:        1,
-				log:                logging.NewNopLogger(),
-				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logging.NewNopLogger()),
+				log:                logr.Discard(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logr.Discard()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)
@@ -526,8 +547,8 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -577,8 +598,8 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -643,8 +664,8 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 					fakeOK := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -697,7 +718,7 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -791,8 +812,8 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
 				minReplicas:        1,
-				log:                logging.NewNopLogger(),
-				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logging.NewNopLogger()),
+				log:                logr.Discard(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logr.Discard()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)
@@ -839,8 +860,8 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -886,8 +907,8 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -949,8 +970,8 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					fakeOK := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -999,7 +1020,7 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -1089,8 +1110,8 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
 				minReplicas:        1,
-				log:                logging.NewNopLogger(),
-				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logging.NewNopLogger()),
+				log:                logr.Discard(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logr.Discard()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)
@@ -1137,8 +1158,8 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -1186,8 +1207,8 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -1250,8 +1271,8 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 					fakeOK := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, true, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -1301,7 +1322,7 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -1392,8 +1413,8 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
 				minReplicas:        1,
-				log:                logging.NewNopLogger(),
-				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logging.NewNopLogger()),
+				log:                logr.Discard(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logr.Discard()),
 			}
 
 			got, err := e.Update(context.Background(), tc.args.mg)

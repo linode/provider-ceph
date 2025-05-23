@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"go.opentelemetry.io/otel"
@@ -40,15 +39,12 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/otel/traces"
-	"github.com/linode/provider-ceph/internal/rgw"
 	"github.com/linode/provider-ceph/internal/utils"
 )
 
 const (
-	errHealthCheckCleanup       = "failed to perform health check cleanup"
-	errDeleteLCValidationBucket = "failed to delete lifecycle configuration validation bucket"
-	errUpdateHealthStatus       = "failed to update health status of provider config"
-	errFailedHealthCheckReq     = "failed to forward health check request"
+	errUpdateHealthStatus   = "failed to update health status of provider config"
+	errFailedHealthCheckReq = "failed to forward health check request"
 
 	healthCheckSuffix = "-health-check"
 
@@ -58,22 +54,17 @@ const (
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "healthcheck.Controller.Reconcile")
 	defer span.End()
+	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
-	c.log.Info("Reconciling health of s3 backend", consts.KeyBackendName, req.Name)
+	log.V(1).Info("Reconciling health of s3 backend", consts.KeyBackendName, req.Name)
 
 	bucketName := req.Name + healthCheckSuffix
 
 	providerConfig := &apisv1alpha1.ProviderConfig{}
 	if err := c.kubeClientCached.Get(ctx, req.NamespacedName, providerConfig); err != nil {
 		if kerrors.IsNotFound(err) {
-			// ProviderConfig has been deleted, perform cleanup.
-			if err := c.cleanup(ctx, req); err != nil {
-				err = errors.Wrap(err, errHealthCheckCleanup)
-				traces.SetAndRecordError(span, err)
-
-				return ctrl.Result{}, err
-			}
-
+			// ProviderConfig has been deleted so there is nothing to do and no need to requeue.
+			// The backend monitor controller will remove the backend from the backend store.
 			return ctrl.Result{}, nil
 		}
 
@@ -81,9 +72,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if providerConfig.Spec.DisableHealthCheck {
-		c.log.Debug("Health check is disabled for s3 backend", consts.KeyBackendName, providerConfig.Name)
-
-		c.backendStore.ToggleBackendActiveStatus(req.Name, true)
+		log.V(1).Info("Health check is disabled for s3 backend", consts.KeyBackendName, providerConfig.Name)
 
 		c.backendStore.SetBackendHealthStatus(req.Name, apisv1alpha1.HealthStatusUnknown)
 		if providerConfig.Status.GetCondition(v1.TypeReady).Equal(v1alpha1.HealthCheckDisabled()) {
@@ -113,8 +102,6 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		health := utils.MapConditionToHealthStatus(providerConfig.Status.GetCondition(v1.TypeReady))
 		c.backendStore.SetBackendHealthStatus(req.Name, health)
 
-		c.backendStore.ToggleBackendActiveStatus(req.Name, health == apisv1alpha1.HealthStatusHealthy)
-
 		if providerConfig.Status.GetCondition(v1.TypeReady).Equal(conditionBeforeCheck) {
 			return
 		}
@@ -130,7 +117,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// Perform the health check. By calling this function, we are implicitly updating
 	// the health status of the ProviderConfig with whatever the health check reports.
 	if err := c.doHealthCheck(ctx, providerConfig); err != nil {
-		c.log.Info("Failed to do health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
+		log.Info("Failed to do health check on s3 backend", consts.KeyBucketName, bucketName, consts.KeyBackendName, providerConfig.Name)
 
 		providerConfig.Status.SetConditions(v1alpha1.HealthCheckFail().WithMessage(errNoRequestID(err)))
 		traces.SetAndRecordError(span, err)
@@ -144,7 +131,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	conditionAfterCheck := providerConfig.Status.GetCondition(v1.TypeReady)
 
 	if conditionAfterCheck.Equal(v1alpha1.HealthCheckSuccess()) && !conditionBeforeCheck.Equal(conditionAfterCheck) {
-		c.log.Info("Backend is healthy where previously it was unhealthy - unpausing all Buckets on backend to allow Observation", consts.KeyBackendName, providerConfig.Name)
+		log.Info("Backend is healthy where previously it was unhealthy - unpausing all Buckets on backend to allow Observation", consts.KeyBackendName, providerConfig.Name)
 		go c.unpauseBuckets(ctx, providerConfig.Name)
 	}
 
@@ -154,24 +141,6 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	return ctrl.Result{
 		RequeueAfter: time.Duration(providerConfig.Spec.HealthCheckIntervalSeconds) * time.Second,
 	}, nil
-}
-
-// cleanup deletes the lifecycle configuration validation bucket from the backend.
-// This function is only called when a ProviderConfig has been deleted.
-func (c *Controller) cleanup(ctx context.Context, req ctrl.Request) error {
-	backendClient := c.backendStore.GetBackendS3Client(req.Name)
-	if backendClient == nil {
-		c.log.Info("Backend client not found during validation bucket cleanup - aborting cleanup", consts.KeyBackendName, req.Name)
-
-		return nil
-	}
-
-	c.log.Info("Deleting lifecycle configuration validation bucket", consts.KeyBucketName, v1alpha1.LifecycleConfigValidationBucketName, consts.KeyBackendName, req.Name)
-	if err := rgw.DeleteBucket(ctx, backendClient, aws.String(v1alpha1.LifecycleConfigValidationBucketName), true); err != nil {
-		return errors.Wrap(err, errDeleteLCValidationBucket)
-	}
-
-	return nil
 }
 
 // doHealthCheck performs a basic http request to the hostbase address.
@@ -213,11 +182,13 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 // by unsetting the Pause label.
 func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 	const (
-		steps    = 4
-		duration = time.Second
-		factor   = 5
-		jitter   = 0.1
+		steps             = 4
+		duration          = time.Second
+		factor            = 5
+		jitter            = 0.1
+		bucketsPerRequest = 50
 	)
+	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
 	// Only list Buckets that (a) were created on s3BackendName
 	// and (b) are already paused.
@@ -233,18 +204,37 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 		Factor:   factor,
 		Jitter:   jitter,
 	}, resource.IsAPIError, func() error {
-		return c.kubeClientUncached.List(ctx, buckets, &client.ListOptions{
+		listOptions := &client.ListOptions{
 			LabelSelector: listLabels,
-		})
+			Limit:         bucketsPerRequest,
+		}
+		for {
+			pageBuckets := &v1alpha1.BucketList{}
+			if err := c.kubeClientUncached.List(ctx, pageBuckets, listOptions); err != nil {
+				return err
+			}
+
+			buckets.Items = append(buckets.Items, pageBuckets.Items...)
+
+			if pageBuckets.Continue == "" {
+				break
+			}
+
+			listOptions.Continue = pageBuckets.Continue
+
+			continue
+		}
+
+		return nil
 	})
 	if err != nil {
-		c.log.Info("Error attempting to list Buckets on backend", "error", err.Error(), consts.KeyBackendName, s3BackendName)
+		log.Info("Error attempting to list Buckets on backend", "error", err.Error(), consts.KeyBackendName, s3BackendName)
 
 		return
 	}
 
 	for i := range buckets.Items {
-		c.log.Debug("Attempting to unpause bucket", consts.KeyBucketName, buckets.Items[i].Name)
+		log.V(1).Info("Attempting to unpause bucket", consts.KeyBucketName, buckets.Items[i].Name)
 		err := retry.OnError(wait.Backoff{
 			Steps:    steps,
 			Duration: duration,
@@ -262,7 +252,7 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 		})
 
 		if err != nil {
-			c.log.Info("Error attempting to unpause bucket", "error", err.Error(), "bucket", buckets.Items[i].Name)
+			log.Info("Error attempting to unpause bucket", "error", err.Error(), "bucket", buckets.Items[i].Name)
 		}
 	}
 }

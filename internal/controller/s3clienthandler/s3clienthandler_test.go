@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	ststypes "github.com/aws/aws-sdk-go-v2/service/sts/types"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -92,7 +92,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -129,7 +129,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -168,7 +168,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -210,7 +210,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -252,7 +252,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -294,7 +294,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -336,7 +336,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -391,7 +391,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -440,7 +440,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 				WithAssumeRoleArn(tt.fields.roleArn),
 				WithKubeClient(cl),
 				WithS3Timeout(time.Second*5),
-				WithLog(logging.NewNopLogger()))
+				WithLog(logr.Discard()))
 
 			_, err := h.createAssumeRoleS3Client(context.TODO(), tt.args.bucket, tt.args.backendName)
 			if tt.want.requireErr != nil {

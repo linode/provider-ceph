@@ -4,6 +4,7 @@ const (
 	// Logging keys.
 	KeyBucketName  = "bucket-name"
 	KeyBackendName = "backend-name"
+	TraceID        = "trace_id"
 
 	// Secret keys.
 	KeyAccessKey = "access_key"

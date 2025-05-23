@@ -9,7 +9,7 @@ import (
 // s3Backends is a map of S3 backend name (eg ceph cluster name) to backend.
 type s3Backends map[string]*backend
 
-// BackendStore stores the active s3 backends.
+// BackendStore stores the s3 backends.
 type BackendStore struct {
 	s3Backends s3Backends
 	mu         sync.RWMutex
@@ -77,24 +77,13 @@ func (b *BackendStore) GetBackendS3Clients(beNames []string) map[string]S3Client
 	return clients
 }
 
-func (b *BackendStore) IsBackendActive(backendName string) bool {
+func (b *BackendStore) BackendExists(backendName string) bool {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	if _, ok := b.s3Backends[backendName]; ok {
-		return b.s3Backends[backendName].active
-	}
+	_, exists := b.s3Backends[backendName]
 
-	return false
-}
-
-func (b *BackendStore) ToggleBackendActiveStatus(backendName string, active bool) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if _, ok := b.s3Backends[backendName]; ok {
-		b.s3Backends[backendName].active = active
-	}
+	return exists
 }
 
 func (b *BackendStore) GetBackendHealthStatus(backendName string) v1alpha1.HealthStatus {
@@ -124,11 +113,11 @@ func (b *BackendStore) DeleteBackend(backendName string) {
 	delete(b.s3Backends, backendName)
 }
 
-func (b *BackendStore) AddOrUpdateBackend(backendName string, s3C S3Client, stsC STSClient, active bool, health v1alpha1.HealthStatus) {
+func (b *BackendStore) AddOrUpdateBackend(backendName string, s3C S3Client, stsC STSClient, health v1alpha1.HealthStatus) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	b.s3Backends[backendName] = newBackend(s3C, stsC, active, health)
+	b.s3Backends[backendName] = newBackend(s3C, stsC, health)
 }
 
 func (b *BackendStore) GetBackend(backendName string) *backend {
@@ -155,7 +144,7 @@ func (b *BackendStore) GetAllBackends() s3Backends {
 	return backends
 }
 
-func (b *BackendStore) GetActiveBackends(beNames []string) s3Backends {
+func (b *BackendStore) GetBackends(beNames []string) s3Backends {
 	requestedBackends := map[string]bool{}
 	for p := range beNames {
 		requestedBackends[beNames[p]] = true
@@ -167,7 +156,7 @@ func (b *BackendStore) GetActiveBackends(beNames []string) s3Backends {
 	// Create a new s3Backends to hold a copy of the backends
 	backends := make(s3Backends, 0)
 	for k, v := range b.s3Backends {
-		if _, ok := requestedBackends[k]; !ok || !v.active || v.health == v1alpha1.HealthStatusUnhealthy {
+		if _, ok := requestedBackends[k]; !ok {
 			continue
 		}
 
@@ -177,16 +166,12 @@ func (b *BackendStore) GetActiveBackends(beNames []string) s3Backends {
 	return backends
 }
 
-func (b *BackendStore) GetAllBackendNames(activeBackendsOnly bool) []string {
+func (b *BackendStore) GetAllBackendNames() []string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
 	backends := make([]string, 0)
-	for k, v := range b.s3Backends {
-		if activeBackendsOnly && !v.active || v.health == v1alpha1.HealthStatusUnhealthy {
-			continue
-		}
-
+	for k := range b.s3Backends {
 		backends = append(backends, k)
 	}
 

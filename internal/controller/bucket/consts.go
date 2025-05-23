@@ -12,9 +12,8 @@ const (
 	errUpdateBucketCR = "failed to update Bucket CR"
 
 	// Backend store error messages.
-	errNoS3BackendsStored = "no s3 backends stored in backendstore"
-	errNoActiveS3Backends = "no active s3 backends in backendstore"
-	errMissingS3Backend   = "one or more desired providers are inactive or unhealthy"
+	errNoS3BackendsStored    = "no s3 backends stored in backendstore"
+	errAllS3BackendsDisabled = "all s3 backends have been disabled for this bucket - please check cr labels"
 
 	// Subresource error messages.
 	errObserveSubresource = "failed to observe bucket subresource"

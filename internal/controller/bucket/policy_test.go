@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
@@ -54,7 +54,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusUnhealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusUnhealthy)
 
 					return bs
 				}(),
@@ -81,7 +81,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -109,7 +109,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -141,7 +141,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -173,7 +173,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -201,7 +201,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -233,7 +233,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -261,7 +261,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, true, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -295,7 +295,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					s3clienthandler.WithAssumeRoleArn(nil),
 					s3clienthandler.WithBackendStore(tc.fields.backendStore),
 				),
-				logging.NewNopLogger(),
+				logr.Discard(),
 			)
 
 			got, err := c.observeBackend(context.Background(), tc.args.bucket, tc.args.backendName)

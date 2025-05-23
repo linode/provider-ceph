@@ -24,6 +24,7 @@ import (
 func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.Delete")
 	defer span.End()
+	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
@@ -52,7 +53,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	for backendName, value := range getAllBackendLabels(bucket, true) {
 		// Skip disabled backends
 		if value != True {
-			c.log.Info("Skipping deletion of bucket on backend, disabled", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			log.Info("Skipping deletion of bucket on backend, disabled", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			continue
 		}
@@ -60,18 +61,18 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		providerNames = append(providerNames, backendName)
 
 		if backend, ok := bucket.Status.AtProvider.Backends[backendName]; !ok || backend == nil {
-			c.log.Info("Skipping deletion of bucket on backend, missing status", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			log.Info("Skipping deletion of bucket on backend, missing status", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			continue
 		} else if reason := backend.BucketCondition.Reason; reason != xpv1.ReasonAvailable {
-			c.log.Info("Skipping deletion of bucket on backend, not available", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+			log.Info("Skipping deletion of bucket on backend, not available", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			continue
 		}
 
 		bucketBackends.setBucketCondition(bucket.Name, backendName, xpv1.Deleting())
 
-		c.log.Info("Deleting bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
+		log.Info("Deleting bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 		beName := backendName
 		g.Go(func() error {
 			cl, err := c.s3ClientHandler.GetS3Client(ctx, bucket, beName)
@@ -105,24 +106,24 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	// the bucket CR. This is done by setting the Disabled flag on the bucket
 	// CR spec. If the deletion is successful or unsuccessful, the bucket CR status must be
 	// updated.
-	if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
+	if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 		setBucketStatus(bucketLatest, bucketBackends, providerNames, c.minReplicas)
 
 		return NeedsStatusUpdate
 	}); err != nil {
 		err = errors.Wrap(err, errUpdateBucketCR)
-		c.log.Info("Failed to update Bucket Status after attempting to delete bucket from backends", consts.KeyBucketName, bucket.Name, "error", err.Error())
+		log.Info("Failed to update Bucket Status after attempting to delete bucket from backends", consts.KeyBucketName, bucket.Name, "error", err.Error())
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalDelete{}, err
 	}
 
 	if deleteErr != nil { //nolint:nestif // Multiple checks required.
-		c.log.Info("Failed to delete bucket on one or more backends", "error", deleteErr.Error())
+		log.Info("Failed to delete bucket on one or more backends", "error", deleteErr.Error())
 		traces.SetAndRecordError(span, deleteErr)
 
 		if errors.Is(deleteErr, rgw.ErrBucketNotEmpty) {
-			c.log.Info("Cannot delete non-empty bucket - this error will not be requeued", consts.KeyBucketName, bucket.Name)
+			log.Info("Cannot delete non-empty bucket - this error will not be requeued", consts.KeyBucketName, bucket.Name)
 			// An error occurred attempting to delete the bucket because it is not empty.
 			// If this Delete operation was triggered because the Bucket CR was "Disabled",
 			// we need to unset this value so as not to continue attempting Delete.
@@ -130,15 +131,15 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 			if !bucket.Spec.Disabled {
 				return managed.ExternalDelete{}, nil
 			}
-			if err := c.updateBucketCR(ctx, bucket, func(bucketDeepCopy, bucketLatest *v1alpha1.Bucket) UpdateRequired {
-				c.log.Info("Bucket CRs with non-empty buckets should not be disabled - setting 'disabled' flag to false", consts.KeyBucketName, bucket.Name)
+			if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
+				log.Info("Bucket CRs with non-empty buckets should not be disabled - setting 'disabled' flag to false", consts.KeyBucketName, bucket.Name)
 
 				bucketLatest.Spec.Disabled = false
 
 				return NeedsObjectUpdate
 			}); err != nil {
 				err = errors.Wrap(err, errUpdateBucketCR)
-				c.log.Info("Failed to set 'disabled' flag to false", consts.KeyBucketName, bucket.Name, "error", err.Error())
+				log.Info("Failed to set 'disabled' flag to false", consts.KeyBucketName, bucket.Name, "error", err.Error())
 				traces.SetAndRecordError(span, err)
 
 				return managed.ExternalDelete{}, err
@@ -150,7 +151,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalDelete{}, deleteErr
 	}
 
-	c.log.Info("All buckets successfully deleted from backends for Bucket CR", consts.KeyBucketName, bucket.Name)
+	log.Info("All buckets successfully deleted from backends for Bucket CR", consts.KeyBucketName, bucket.Name)
 
 	return managed.ExternalDelete{}, nil
 }

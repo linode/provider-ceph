@@ -21,6 +21,7 @@ import (
 func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.external.Observe")
 	defer span.End()
+	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
 	bucket, ok := mg.(*v1alpha1.Bucket)
 	if !ok {
@@ -58,10 +59,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		}, nil
 	}
 
-	// If no Providers are specified in the Bucket Spec, the bucket is to be created on all backends.
-	providerNames := getBucketProvidersFilterDisabledLabel(bucket, c.backendStore.GetAllBackendNames(true))
+	providerNames := getBucketProvidersFilterDisabledLabel(bucket, c.backendStore.GetAllBackendNames())
 	if len(providerNames) == 0 {
-		err := errors.New(errNoActiveS3Backends)
+		err := errors.New(errAllS3BackendsDisabled)
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalObservation{}, err
@@ -107,13 +107,13 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			if err != nil {
 				traces.SetAndRecordError(span, err)
 
-				c.log.Info("Error observing bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName, "error", err.Error())
+				log.Info("Error observing bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName, "error", err.Error())
 
 				// If we have a connectivity issue it doesn't make sense to reconcile the bucket immediately.
 				return nil
 			} else if !bucketExists {
 				err := errors.New("bucket does not exist")
-				c.log.Info("Bucket not found on backend during observation", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
+				log.Info("Bucket not found on backend during observation", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName)
 				traces.SetAndRecordError(span, err)
 
 				return err

@@ -112,8 +112,8 @@ func isBucketAvailableFromStatus(bucket *v1alpha1.Bucket, providerNames []string
 // getAllBackendLabels returns all "provider-ceph.backends.<backend-name>" labels.
 func getAllBackendLabels(bucket *v1alpha1.Bucket, enabledOnly bool) map[string]string {
 	backends := map[string]string{}
-	for k, v := range bucket.ObjectMeta.Labels {
-		if !enabledOnly || strings.HasPrefix(k, v1alpha1.BackendLabelPrefix) && bucket.ObjectMeta.Labels[k] == True {
+	for k, v := range bucket.Labels {
+		if !enabledOnly || strings.HasPrefix(k, v1alpha1.BackendLabelPrefix) && bucket.Labels[k] == True {
 			backends[strings.Replace(k, v1alpha1.BackendLabelPrefix, "", 1)] = v
 		}
 	}
@@ -123,22 +123,22 @@ func getAllBackendLabels(bucket *v1alpha1.Bucket, enabledOnly bool) map[string]s
 
 // setAllBackendLabels adds label "provider-ceph.backends.<backend-name>" to the Bucket for each backend.
 func setAllBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
-	if bucket.ObjectMeta.Labels == nil {
-		bucket.ObjectMeta.Labels = map[string]string{}
+	if bucket.Labels == nil {
+		bucket.Labels = map[string]string{}
 	}
 
 	// Delete existing labels except explicitly disabled backend labels.
 	for k := range getAllBackendLabels(bucket, true) {
-		delete(bucket.ObjectMeta.Labels, k)
+		delete(bucket.Labels, k)
 	}
 
 	for _, beName := range providerNames {
 		beLabel := utils.GetBackendLabel(beName)
-		if _, ok := bucket.ObjectMeta.Labels[beLabel]; ok {
+		if _, ok := bucket.Labels[beLabel]; ok {
 			continue
 		}
 
-		bucket.ObjectMeta.Labels[beLabel] = True
+		bucket.Labels[beLabel] = True
 	}
 }
 

@@ -60,7 +60,7 @@ func (b *BucketValidator) ValidateUpdate(ctx context.Context, oldObj, newObj run
 		return nil, errors.New(errNotBucket)
 	}
 
-	if bucket.ObjectMeta.DeletionTimestamp != nil {
+	if bucket.DeletionTimestamp != nil {
 		return nil, nil
 	}
 

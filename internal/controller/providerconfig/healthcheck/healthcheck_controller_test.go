@@ -526,7 +526,7 @@ func TestReconcile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to get ProviderConfig after reconcile: %s", err.Error())
 			}
-			assert.True(t, tc.want.pc.Status.ConditionedStatus.Equal(&pc.Status.ConditionedStatus), "unexpected condition")
+			assert.True(t, tc.want.pc.Status.Equal(&pc.Status.ConditionedStatus), "unexpected condition")
 
 			// Now check that the correct buckets have been unpaused.
 			if tc.want.bucketList == nil {

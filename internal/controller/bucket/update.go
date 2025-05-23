@@ -98,8 +98,8 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	// Bucket CR Spec accordingly.
 	err := c.updateBucketCR(ctx, bucket,
 		func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
-			if bucketLatest.ObjectMeta.Labels == nil {
-				bucketLatest.ObjectMeta.Labels = map[string]string{}
+			if bucketLatest.Labels == nil {
+				bucketLatest.Labels = map[string]string{}
 			}
 
 			// Auto pause the Bucket CR if required - ie if auto-pause has been enabled and the

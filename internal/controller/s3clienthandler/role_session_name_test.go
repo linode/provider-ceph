@@ -38,7 +38,7 @@ func TestRoleSessionNameGenerator_Generate(t *testing.T) {
 				t.Helper()
 				require.Equal(t, 1, fake.GenerateCallCount())
 				prefix, length, charset := fake.GenerateArgsForCall(0)
-				require.Equal(t, "", prefix)
+				require.Empty(t, prefix)
 				require.Equal(t, roleSessionNameSuffixLength, length)
 				require.Same(t, charset, roleSessionNameSuffixCharset)
 			},

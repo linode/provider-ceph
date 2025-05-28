@@ -1018,6 +1018,8 @@ spec:
           kind: Bucket
           metadata:
             name: edge-case-bucket
+            annotations:
+              crossplane.io/external-name-is-deterministic: "true"
           spec:
             autoPause: true
             forProvider: {}
@@ -1029,6 +1031,8 @@ spec:
           kind: Bucket
           metadata:
             name: edge-case-bucket
+            annotations:
+              crossplane.io/external-name-is-deterministic: "true"
           status:
             conditions:
             - reason: Creating

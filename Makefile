@@ -47,7 +47,8 @@ GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
 GO111MODULE = on
-GOLANGCILINT_VERSION ?= 1.61.0
+GOLANGCILINT_VERSION := $(shell grep 'GOLANGCI_VERSION' .github/workflows/ci.yml | sed -n 's/.*: *["'\'']*v\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')
+
 -include build/makelib/golang.mk
 
 # ====================================================================================

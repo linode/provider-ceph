@@ -56,12 +56,6 @@ GOLANGCILINT_VERSION := $(shell grep 'GOLANGCI_VERSION' .github/workflows/ci.yml
 
 -include build/makelib/k8s_tools.mk
 
-# Husky git hook manager tasks.
--include .husky/husky.mk
-
-# Mirrord local dev tasks.
--include .mirrord/mirrord.mk
-
 # ====================================================================================
 # Setup Images
 

@@ -51,6 +51,7 @@ func Setup(mgr ctrl.Manager, o controller.Options, c *Connector) error {
 		managed.WithLogger(o.Logger.WithValues("bucket reconciler", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
 		managed.WithCreationGracePeriod(c.creationGracePeriod),
+		managed.WithDeterministicExternalName(true),
 	}
 
 	if o.Features.Enabled(features.EnableAlphaManagementPolicies) {

@@ -28,6 +28,6 @@ In either case, after you've made some changes, kill (Ctrl+C) the existing `prov
 make run
 ```
 
-### Webhook Supportfor Local Development
+### Webhook Support for Local Development
 Running the validation webhook locally is a bit tricky, but it works out of the box.
 Under the hood, a [localtunnel](https://github.com/localtunnel/localtunnel) instance is created and the `ValidatingWebhookConfiguration` is updated to point to the localtunnel. This endpoint has a valid TLS certification approved by Kubernetes, so validation requests are served by the local process.

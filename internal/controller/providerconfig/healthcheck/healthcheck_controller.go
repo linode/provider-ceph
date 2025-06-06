@@ -182,11 +182,10 @@ func (c *Controller) doHealthCheck(ctx context.Context, providerConfig *apisv1al
 // by unsetting the Pause label.
 func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 	const (
-		steps             = 4
-		duration          = time.Second
-		factor            = 5
-		jitter            = 0.1
-		bucketsPerRequest = 50
+		steps    = 4
+		duration = time.Second
+		factor   = 5
+		jitter   = 0.1
 	)
 	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
@@ -204,28 +203,9 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 		Factor:   factor,
 		Jitter:   jitter,
 	}, resource.IsAPIError, func() error {
-		listOptions := &client.ListOptions{
+		return c.kubeClientUncached.List(ctx, buckets, &client.ListOptions{
 			LabelSelector: listLabels,
-			Limit:         bucketsPerRequest,
-		}
-		for {
-			pageBuckets := &v1alpha1.BucketList{}
-			if err := c.kubeClientUncached.List(ctx, pageBuckets, listOptions); err != nil {
-				return err
-			}
-
-			buckets.Items = append(buckets.Items, pageBuckets.Items...)
-
-			if pageBuckets.Continue == "" {
-				break
-			}
-
-			listOptions.Continue = pageBuckets.Continue
-
-			continue
-		}
-
-		return nil
+		})
 	})
 	if err != nil {
 		log.Info("Error attempting to list Buckets on backend", "error", err.Error(), consts.KeyBackendName, s3BackendName)

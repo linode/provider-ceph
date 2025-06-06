@@ -20,6 +20,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"net/http"
 	"os"
@@ -27,19 +28,21 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap/zapcore"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
-	kcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -74,6 +77,10 @@ var defaultZapConfig = map[string]string{
 	"zap-time-encoding":    "rfc3339nano",
 }
 
+var (
+	errFailedToSyncCache = errors.New("failed to sync kube client cache reader")
+)
+
 //nolint:maintidx // Function requires a lot of setup operations.
 func main() {
 	var (
@@ -82,7 +89,6 @@ func main() {
 		leaderRenew    = app.Flag("leader-renew", "Set leader election renewal.").Short('r').Default("10s").OverrideDefaultFromEnvar("LEADER_ELECTION_RENEW").Duration()
 
 		syncInterval            = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Duration()
-		syncTimeout             = app.Flag("sync-timeout", "Cache sync timeout.").Default("10s").Duration()
 		backendMonitorInterval  = app.Flag("backend-monitor-interval", "Interval between backend monitor controller reconciliations.").Default("60s").Duration()
 		pollInterval            = app.Flag("poll", "How often individual resources will be checked for drift from the desired state").Short('p').Default("30m").Duration()
 		pollStateMetricInterval = app.Flag("poll-state-metric", "State metric recording interval").Default("5s").Duration()
@@ -96,7 +102,9 @@ func main() {
 		tracesExportInterval    = app.Flag("otel-traces-export-interval", "Interval at which traces are exported").Default("5s").Duration()
 		tracesExportAddress     = app.Flag("otel-traces-export-address", "Address of otel collector").Default("opentelemetry-collector.opentelemetry:4317").String()
 
-		kubeClientRate = app.Flag("kube-client-rate", "The global maximum rate per second at how many requests the client can do.").Default("1000").Int()
+		kubeClientRate       = app.Flag("kube-client-rate", "The global maximum rate per second at how many requests the client can do.").Default("1000").Int()
+		kubeClientTimeout    = app.Flag("kube-client-timeout", "Kube client request timeout.").Default("10s").Duration()
+		kubeCacheSyncTimeout = app.Flag("cache-sync-timeout", "Kube client cache sync timeout.").Default("60s").Duration()
 
 		namespace                  = app.Flag("namespace", "Namespace used to set as default scope in default secret store config.").Default("crossplane-system").Envar("POD_NAMESPACE").String()
 		enableExternalSecretStores = app.Flag("enable-external-secret-stores", "Enable support for ExternalSecretStores.").Default("false").Envar("ENABLE_EXTERNAL_SECRET_STORES").Bool()
@@ -227,7 +235,7 @@ func main() {
 	kingpin.FatalIfError(err, "Cannot create HTTP client")
 
 	httpClient.Transport = otelhttp.NewTransport(httpClient.Transport)
-	httpClient.Timeout = *syncTimeout
+	httpClient.Timeout = *kubeClientTimeout
 
 	mm := managed.NewMRMetricRecorder()
 	sm := statemetrics.NewMRStateMetrics()
@@ -254,18 +262,18 @@ func main() {
 			CertDir: *webhookTLSCertDir,
 		}),
 		Scheme: providerScheme,
-		Cache: kcache.Options{
+		Cache: cache.Options{
 			HTTPClient: httpClient,
 			SyncPeriod: syncInterval,
 			Scheme:     providerScheme,
-			ByObject: map[client.Object]kcache.ByObject{
+			ByObject: map[client.Object]cache.ByObject{
 				&providercephv1alpha1.Bucket{}: {
 					Label: labels.NewSelector().Add(*pausedSelector),
 				},
 				&v1alpha1.ProviderConfig{}: {},
 			},
 		},
-		NewCache: kcache.New,
+		NewCache: cache.New,
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 
@@ -304,13 +312,9 @@ func main() {
 
 	backendStore := backendstore.NewBackendStore()
 
-	kubeClientUncached, err := client.New(cfg, client.Options{
-		Scheme: providerScheme,
-		HTTPClient: &http.Client{
-			Transport: httpClient.Transport,
-		},
-	})
-	kingpin.FatalIfError(err, "Cannot create Kube client")
+	// Create a cached reader for use in the health check controller when performing List Buckets.
+	cachedReader, err := newCachedReader(cfg, providerScheme, *kubeCacheSyncTimeout, log)
+	kingpin.FatalIfError(err, "Cannot setup cached reader")
 
 	kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
 		For(&providercephv1alpha1.Bucket{}).
@@ -327,8 +331,8 @@ func main() {
 		healthcheck.NewController(
 			healthcheck.WithAutoPause(autoPauseBucket),
 			healthcheck.WithBackendStore(backendStore),
-			healthcheck.WithKubeClientUncached(kubeClientUncached),
-			healthcheck.WithKubeClientCached(mgr.GetClient()),
+			healthcheck.WithCachedReader(cachedReader),
+			healthcheck.WithKubeClient(mgr.GetClient()),
 			healthcheck.WithHttpClient(&http.Client{Timeout: *s3Timeout}),
 			healthcheck.WithLogger(log))),
 		"Cannot setup ProviderConfig controllers")
@@ -366,4 +370,29 @@ func main() {
 		bucket.WithNewServiceFn(bucket.NewNoOpService))), "Cannot setup Bucket controller")
 
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
+}
+
+func newCachedReader(cfg *rest.Config, s *runtime.Scheme, syncTimeout time.Duration, l logr.Logger) (client.Reader, error) {
+	informerCache, err := cache.New(cfg, cache.Options{
+		Scheme: s,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), syncTimeout)
+	defer cancel()
+
+	go func() {
+		if err := informerCache.Start(ctx); err != nil {
+			l.Error(err, "failed to start informer for cached reader")
+		}
+	}()
+
+	if !informerCache.WaitForCacheSync(ctx) {
+		return nil, errFailedToSyncCache
+	}
+	var cachedReader client.Reader = informerCache
+
+	return cachedReader, nil
 }

@@ -28,20 +28,6 @@ In either case, after you've made some changes, kill (Ctrl+C) the existing `prov
 make run
 ```
 
-### Webhook Support
+### Webhook Support for Local Development
 Running the validation webhook locally is a bit tricky, but it works out of the box.
-Firt of all cluster provisioner script changes `ValidatingWebhookConfiguration`, to point to a
-[localtunnel](https://github.com/localtunnel/localtunnel) instance (created by the script).
-This endpoint has a valid TLS certification aprooved by Kubernetes, so validation requests should be served by the local process.
-
-## Debugging Locally
-Spin up the test environment, but with `provider-ceph` running locally in your terminal:
-
-```
-make mirrord.cluster mirrord.run
-```
-
-For debugging please install `mirrord` plugin in your IDE of choice.
-
-### Webhook Support
-Works out of the box. Validation requests goes to the original instance of the operator, but mirrord sends every network traffic to the local process instead.
+Under the hood, a [localtunnel](https://github.com/localtunnel/localtunnel) instance is created and the `ValidatingWebhookConfiguration` is updated to point to the localtunnel. This endpoint has a valid TLS certification approved by Kubernetes, so validation requests are served by the local process.

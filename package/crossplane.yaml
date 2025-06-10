@@ -12,4 +12,4 @@ metadata:
     friendly-name.meta.crossplane.io: Provider Ceph
 spec:
   controller:
-    image: xpkg.upbound.io/linode/provider-ceph:v1.0.5-rc.0.10.g2e8d85a
+    image: xpkg.upbound.io/linode/provider-ceph:v1.0.5

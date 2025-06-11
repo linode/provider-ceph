@@ -163,14 +163,6 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 		return err
 	}
 
-	// observation
-	// NoAction      0
-	// Updated       1
-	// NeedsUpdate   2
-	// NeedsDeletion 3
-	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
-	log.Info("DEBUG: observeBackend", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName, "observation", observation)
-
 	switch observation {
 	case NoAction:
 		return nil

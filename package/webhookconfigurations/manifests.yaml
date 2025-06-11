@@ -1,3 +1,4 @@
+---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
@@ -7,15 +8,11 @@ webhooks:
   - v1
   clientConfig:
     service:
-      name: provider-ceph
-      namespace: crossplane-system
+      name: webhook-service
+      namespace: system
       path: /validate-provider-ceph-ceph-crossplane-io-v1alpha1-bucket
-      port: 9443
   failurePolicy: Fail
   name: bucket-validation.providerceph.crossplane.io
-  objectSelector:
-    matchLabels:
-      provider-ceph.crossplane.io/validation-required: "true"
   rules:
   - apiGroups:
     - provider-ceph.ceph.crossplane.io

@@ -135,12 +135,8 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	if len(external) != 0 && len(local) == 0 {
 		return NeedsDeletion, nil
 	}
-	// From https://github.com/crossplane-contrib/provider-aws/pkg/controller/s3/bucket/lifecycleConfig.go
-	// NOTE(muvaf): We ignore ID because it might have been auto-assigned by AWS
-	// and we don't have late-init for this subresource. Besides, a change in ID
-	// is almost never expected.
-	if !cmp.Equal(external, rgw.GenerateLifecycleRules(local),
-		cmpopts.IgnoreFields(s3types.LifecycleRule{}, "ID"), cmpopts.IgnoreTypes(document.NoSerde{})) {
+
+	if !cmp.Equal(external, rgw.GenerateLifecycleRules(local), cmpopts.IgnoreTypes(document.NoSerde{})) {
 		log.V(1).Info("Lifecycle configuration requires update on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 		return NeedsUpdate, nil
@@ -166,6 +162,14 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 
 		return err
 	}
+
+	// observation
+	// NoAction      0
+	// Updated       1
+	// NeedsUpdate   2
+	// NeedsDeletion 3
+	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
+	log.Info("DEBUG: observeBackend", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName, "observation", observation)
 
 	switch observation {
 	case NoAction:

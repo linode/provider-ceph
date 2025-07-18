@@ -22,6 +22,10 @@ import (
 	"github.com/linode/provider-ceph/internal/utils"
 )
 
+const (
+	defaultRegion = "us-east-1"
+)
+
 func NewS3Client(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec, s3Timeout time.Duration, sessionToken *string) (*s3.Client, error) {
 	sessionConfig, err := buildSessionConfig(ctx, data)
 	if err != nil {
@@ -74,6 +78,7 @@ func buildSessionConfig(ctx context.Context, data map[string][]byte) (aws.Config
 	return config.LoadDefaultConfig(ctx,
 		config.WithRetryMaxAttempts(retry.DefaultRetry.Steps),
 		config.WithRetryMode(aws.RetryModeStandard),
+		config.WithRegion(defaultRegion),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
 			string(data[consts.KeyAccessKey]),
 			string(data[consts.KeySecretKey]),

@@ -36,7 +36,7 @@ spec:
               value: localstack-a
             - name: SERVICES
               value: s3
-          image: localstack/localstack:2.2
+          image: localstack/localstack:4.7
           name: localstack-a
           ports:
             - containerPort: 32510
@@ -114,7 +114,7 @@ spec:
               value: localstack-b
             - name: SERVICES
               value: s3
-          image: localstack/localstack:2.2
+          image: localstack/localstack:4.7
           name: localstack-b
           ports:
             - containerPort: 32511
@@ -182,7 +182,7 @@ spec:
               value: localstack-c
             - name: SERVICES
               value: s3
-          image: localstack/localstack:2.2
+          image: localstack/localstack:4.7
           name: localstack-c
           ports:
             - containerPort: 32512

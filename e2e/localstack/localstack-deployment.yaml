@@ -30,13 +30,13 @@ spec:
               value: /tmp/data
             - name: DEBUG
               value: "1"
-            - name: EDGE_PORT
-              value: "32566"
+            - name: GATEWAY_LISTEN
+              value: ":32566"
             - name: MAIN_CONTAINER_NAME
               value: localstack-a
             - name: SERVICES
               value: s3
-          image: localstack/localstack:2.2
+          image: localstack/localstack:4.7
           name: localstack-a
           ports:
             - containerPort: 32510
@@ -108,13 +108,13 @@ spec:
               value: /tmp/data
             - name: DEBUG
               value: "1"
-            - name: EDGE_PORT
-              value: "32567"
+            - name: GATEWAY_LISTEN
+              value: ":32567"
             - name: MAIN_CONTAINER_NAME
               value: localstack-b
             - name: SERVICES
               value: s3
-          image: localstack/localstack:2.2
+          image: localstack/localstack:4.7
           name: localstack-b
           ports:
             - containerPort: 32511
@@ -176,13 +176,13 @@ spec:
               value: /tmp/data
             - name: DEBUG
               value: "1"
-            - name: EDGE_PORT
-              value: "32568"
+            - name: GATEWAY_LISTEN
+              value: ":32568"
             - name: MAIN_CONTAINER_NAME
               value: localstack-c
             - name: SERVICES
               value: s3
-          image: localstack/localstack:2.2
+          image: localstack/localstack:4.7
           name: localstack-c
           ports:
             - containerPort: 32512

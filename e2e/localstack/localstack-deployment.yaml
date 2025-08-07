@@ -30,8 +30,8 @@ spec:
               value: /tmp/data
             - name: DEBUG
               value: "1"
-            - name: EDGE_PORT
-              value: "32566"
+            - name: GATEWAY_LISTEN
+              value: ":32566"
             - name: MAIN_CONTAINER_NAME
               value: localstack-a
             - name: SERVICES
@@ -108,8 +108,8 @@ spec:
               value: /tmp/data
             - name: DEBUG
               value: "1"
-            - name: EDGE_PORT
-              value: "32567"
+            - name: GATEWAY_LISTEN
+              value: ":32567"
             - name: MAIN_CONTAINER_NAME
               value: localstack-b
             - name: SERVICES
@@ -176,8 +176,8 @@ spec:
               value: /tmp/data
             - name: DEBUG
               value: "1"
-            - name: EDGE_PORT
-              value: "32568"
+            - name: GATEWAY_LISTEN
+              value: ":32568"
             - name: MAIN_CONTAINER_NAME
               value: localstack-c
             - name: SERVICES

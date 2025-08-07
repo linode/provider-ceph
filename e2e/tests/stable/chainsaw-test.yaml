@@ -633,6 +633,25 @@ spec:
         - -p
         - '{"spec":{"selector":{"io.kompose.service":"not-exists"}}}'
         entrypoint: kubectl
+    - command:
+        args:
+        - rollout
+        - restart
+        - -n
+        - crossplane-system
+        - deployment
+        - localstack-a
+        entrypoint: kubectl
+    - command:
+        args:
+        - wait
+        - --for=condition=available
+        - --timeout=120s
+        - -n
+        - crossplane-system
+        - deployment
+        - localstack-a
+        entrypoint: kubectl
     - assert:
         resource:
           apiVersion: ceph.crossplane.io/v1alpha1
@@ -948,6 +967,25 @@ spec:
         - -p
         - '{"spec":{"selector":{"io.kompose.service":"not-exists"}}}'
         entrypoint: kubectl
+    - command:
+        args:
+        - rollout
+        - restart
+        - -n
+        - crossplane-system
+        - deployment
+        - localstack-a
+        entrypoint: kubectl
+    - command:
+        args:
+        - wait
+        - --for=condition=available
+        - --timeout=120s
+        - -n
+        - crossplane-system
+        - deployment
+        - localstack-a
+        entrypoint: kubectl
     - assert:
         resource:
           apiVersion: ceph.crossplane.io/v1alpha1
@@ -973,6 +1011,25 @@ spec:
         - -p
         - '{"spec":{"selector":{"io.kompose.service":"not-exists"}}}'
         entrypoint: kubectl
+    - command:
+        args:
+        - rollout
+        - restart
+        - -n
+        - crossplane-system
+        - deployment
+        - localstack-b
+        entrypoint: kubectl
+    - command:
+        args:
+        - wait
+        - --for=condition=available
+        - --timeout=120s
+        - -n
+        - crossplane-system
+        - deployment
+        - localstack-b
+        entrypoint: kubectl
     - assert:
         resource:
           apiVersion: ceph.crossplane.io/v1alpha1
@@ -997,6 +1054,25 @@ spec:
         - --type=merge
         - -p
         - '{"spec":{"selector":{"io.kompose.service":"not-exists"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - rollout
+        - restart
+        - -n
+        - crossplane-system
+        - deployment
+        - localstack-c
+        entrypoint: kubectl
+    - command:
+        args:
+        - wait
+        - --for=condition=available
+        - --timeout=120s
+        - -n
+        - crossplane-system
+        - deployment
+        - localstack-c
         entrypoint: kubectl
     - assert:
         resource:

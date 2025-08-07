@@ -954,7 +954,7 @@ spec:
   # 4. Make all Localstack backends reachable again.
   # 5. Restart Provider Ceph deployment.
   # 6. Bucket edge-case-bucket should become Ready and Synced.
-  - name: Make localstack-a unreachable and therefore Unhealthy.
+  - name: "Edge case scenario 1: Make localstack-a unreachable and therefore Unhealthy."
     try:
     - command:
         args:
@@ -998,7 +998,7 @@ spec:
               status: "False"
               type: Ready
 
-  - name: Make localstack-b unreachable and therefore Unhealthy.
+  - name: "Edge case scenario 1: Make localstack-b unreachable and therefore Unhealthy."
     try:
     - command:
         args:
@@ -1042,7 +1042,7 @@ spec:
               status: "False"
               type: Ready
 
-  - name: Make localstack-c unreachable and therefore Unhealthy.
+  - name: "Edge case scenario 1: Make localstack-c unreachable and therefore Unhealthy."
     try:
     - command:
         args:
@@ -1086,7 +1086,7 @@ spec:
               status: "False"
               type: Ready
 
-  - name: Apply edge-case-bucket.
+  - name: "Edge case scenario 2: Apply edge-case-bucket."
     try:
     - apply:
         resource:
@@ -1114,7 +1114,7 @@ spec:
               status: "False"
               type: Synced
 
-  - name: Remove creation-failed annotation from edge-case-bucket.
+  - name: "Edge case scenario 3: Remove creation-failed annotation from edge-case-bucket."
     try:
     - command:
         args:
@@ -1127,7 +1127,7 @@ spec:
         entrypoint: kubectl
 
 
-  - name: Make localstack-a reachable again and therefore Healthy.
+  - name: "Edge case scenario 4: Make localstack-a reachable again and therefore Healthy."
     try:
     - command:
         args:
@@ -1152,7 +1152,7 @@ spec:
               status: "True"
               type: Ready
 
-  - name: Make localstack-b reachable again and therefore Healthy.
+  - name: "Edge case scenario 4: Make localstack-b reachable again and therefore Healthy."
     try:
     - command:
         args:
@@ -1177,7 +1177,7 @@ spec:
               status: "True"
               type: Ready
 
-  - name: Make localstack-c reachable again and therefore Healthy.
+  - name: "Edge case scenario 4: Make localstack-c reachable again and therefore Healthy."
     try:
     - command:
         args:
@@ -1202,7 +1202,7 @@ spec:
               status: "True"
               type: Ready
 
-  - name: Scale Provider Ceph deployment to zero in order to restart.
+  - name: "Edge case scenario 5: Scale Provider Ceph deployment to zero in order to restart."
     try:
     - command:
         args:
@@ -1213,7 +1213,7 @@ spec:
         - --replicas=0
         entrypoint: kubectl
 
-  - name: Assert edge-case-bucket is created successfully.
+  - name: "Edge case scenario 6: Assert edge-case-bucket is created successfully."
     try:
     # Assert edge-case-bucket has been created successfully.
     - assert:
@@ -1231,7 +1231,7 @@ spec:
               status: "True"
               type: Synced
 
-  - name: Delete edge-case-bucket.
+  - name: "Edge case scenario 7: Delete edge-case-bucket."
     try:
     - command:
       # We need to "unpause" edge-case-bucket to allow deletion.

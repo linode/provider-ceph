@@ -3,7 +3,7 @@ package healthcheck
 import (
 	"testing"
 
-	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 

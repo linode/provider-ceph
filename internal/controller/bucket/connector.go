@@ -27,7 +27,7 @@ type Connector struct {
 	operationTimeout      time.Duration
 	creationGracePeriod   time.Duration
 	pollInterval          time.Duration
-	usage                 resource.Tracker
+	usage                 *resource.LegacyProviderConfigUsageTracker
 	newServiceFn          func(creds []byte) (interface{}, error)
 }
 
@@ -82,7 +82,7 @@ func WithPollInterval(t time.Duration) func(*Connector) {
 	}
 }
 
-func WithUsage(u resource.Tracker) func(*Connector) {
+func WithUsage(u *resource.LegacyProviderConfigUsageTracker) func(*Connector) {
 	return func(c *Connector) {
 		c.usage = u
 	}
@@ -119,7 +119,11 @@ func WithNewServiceFn(s func(creds []byte) (interface{}, error)) func(*Connector
 }
 
 func (c *Connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	if err := c.usage.Track(ctx, mg); err != nil {
+	legacyMg, ok := mg.(resource.LegacyManaged)
+	if !ok {
+		return nil, errors.Wrap(errors.New("failed to assert to legacy managed type"), errTrackPCUsage)
+	}
+	if err := c.usage.Track(ctx, legacyMg); err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 

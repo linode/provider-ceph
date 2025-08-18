@@ -47,7 +47,7 @@ func Setup(mgr ctrl.Manager, o controller.Options, c *Connector) error {
 		managed.WithCriticalAnnotationUpdater(managed.NewRetryingCriticalAnnotationUpdater(mgr.GetClient())),
 		managed.WithTimeout(c.operationTimeout + time.Second),
 		managed.WithPollInterval(c.pollInterval),
-		managed.WithExternalConnecter(c),
+		managed.WithExternalConnector(c),
 		managed.WithLogger(o.Logger.WithValues("bucket reconciler", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
 		managed.WithCreationGracePeriod(c.creationGracePeriod),

@@ -339,7 +339,7 @@ func main() {
 					ObjectLockConfigurationClientDisabled: *disableObjectLockConfigReconcile},
 				log)),
 		bucket.WithS3ClientHandler(s3ClientHandler),
-		bucket.WithUsage(resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{})),
+		bucket.WithUsage(resource.NewLegacyProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{})),
 		bucket.WithNewServiceFn(bucket.NewNoOpService))), "Cannot setup Bucket controller")
 
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")

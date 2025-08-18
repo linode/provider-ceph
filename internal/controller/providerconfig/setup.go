@@ -31,6 +31,7 @@ func Setup(mgr ctrl.Manager, o controller.Options, b *backendmonitor.Controller,
 
 	of := resource.ProviderConfigKinds{
 		Config:    apisv1alpha1.ProviderConfigGroupVersionKind,
+		Usage:     apisv1alpha1.ProviderConfigUsageGroupVersionKind,
 		UsageList: apisv1alpha1.ProviderConfigUsageListGroupVersionKind,
 	}
 

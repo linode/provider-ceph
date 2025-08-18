@@ -43,7 +43,6 @@ var (
 func Setup(mgr ctrl.Manager, o controller.Options, c *Connector) error {
 	name := managed.ControllerName(v1alpha1.BucketGroupKind)
 
-	cps := []managed.ConnectionPublisher{managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())}
 	opts := []managed.ReconcilerOption{
 		managed.WithCriticalAnnotationUpdater(managed.NewRetryingCriticalAnnotationUpdater(mgr.GetClient())),
 		managed.WithTimeout(c.operationTimeout + time.Second),
@@ -51,7 +50,6 @@ func Setup(mgr ctrl.Manager, o controller.Options, c *Connector) error {
 		managed.WithExternalConnecter(c),
 		managed.WithLogger(o.Logger.WithValues("bucket reconciler", name)),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
-		managed.WithConnectionPublishers(cps...),
 		managed.WithCreationGracePeriod(c.creationGracePeriod),
 	}
 

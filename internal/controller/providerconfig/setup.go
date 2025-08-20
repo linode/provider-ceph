@@ -1,12 +1,12 @@
 package providerconfig
 
 import (
-	"github.com/crossplane/crossplane-runtime/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/event"
-	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/controller/providerconfig/backendmonitor"
 	"github.com/linode/provider-ceph/internal/controller/providerconfig/healthcheck"
@@ -31,6 +31,7 @@ func Setup(mgr ctrl.Manager, o controller.Options, b *backendmonitor.Controller,
 
 	of := resource.ProviderConfigKinds{
 		Config:    apisv1alpha1.ProviderConfigGroupVersionKind,
+		Usage:     apisv1alpha1.ProviderConfigUsageGroupVersionKind,
 		UsageList: apisv1alpha1.ProviderConfigUsageListGroupVersionKind,
 	}
 

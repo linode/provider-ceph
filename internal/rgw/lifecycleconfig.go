@@ -4,8 +4,8 @@ import (
 	"context"
 
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"go.opentelemetry.io/otel"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"

@@ -1,6 +1,6 @@
 package bucket
 
-import "github.com/crossplane/crossplane-runtime/pkg/errors"
+import "github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 
 var errUnhealthyBackend = errors.New("backend marked as unhealthy in backendstore")
 

@@ -3,7 +3,7 @@ package utils
 import (
 	"strings"
 
-	commonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	commonv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"k8s.io/utils/strings/slices"

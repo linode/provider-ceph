@@ -3,7 +3,7 @@ package backendmonitor
 import (
 	"time"
 
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
 	"github.com/go-logr/logr"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"

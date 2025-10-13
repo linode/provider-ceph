@@ -79,7 +79,6 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		log.Info("Failed to update on all backends", consts.KeyBucketName, bucket.Name, "error", updateAllErr.Error())
 		traces.SetAndRecordError(span, updateAllErr)
 	}
-
 	// Whether buckets are updated successfully or not on backends, we need to update the
 	// Bucket CR Status in all cases to represent the conditions of each individual bucket.
 	if err := c.updateBucketCR(ctx, bucket,
@@ -134,8 +133,6 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 	ctx, span := otel.Tracer("").Start(ctx, "updateOnAllBackends")
 	defer span.End()
 	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
-
-	defer setBucketStatus(bucket, bb, backendsToUpdateOnNames, c.minReplicas)
 
 	g := new(errgroup.Group)
 

@@ -323,6 +323,7 @@ func main() {
 		bucket.WithRecreateMissingBucket(recreateMissingBucket),
 		bucket.WithBackendStore(backendStore),
 		bucket.WithKubeClient(mgr.GetClient()),
+		bucket.WithKubeReader(mgr.GetAPIReader()),
 		bucket.WithOperationTimeout(*reconcileTimeout),
 		bucket.WithCreationGracePeriod(*creationGracePeriod),
 		bucket.WithPollInterval(*pollInterval),

@@ -16,7 +16,8 @@ import (
 // A Connector is expected to produce an ExternalClient when its Connect method
 // is called.
 type Connector struct {
-	kube                  client.Client
+	kubeClient            client.Client
+	kubeReader            client.Reader
 	autoPauseBucket       bool
 	minReplicas           uint
 	recreateMissingBucket bool
@@ -42,7 +43,13 @@ func NewConnector(options ...func(*Connector)) *Connector {
 
 func WithKubeClient(k client.Client) func(*Connector) {
 	return func(c *Connector) {
-		c.kube = k
+		c.kubeClient = k
+	}
+}
+
+func WithKubeReader(k client.Reader) func(*Connector) {
+	return func(c *Connector) {
+		c.kubeReader = k
 	}
 }
 
@@ -128,7 +135,8 @@ func (c *Connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	}
 
 	return &external{
-			kubeClient:            c.kube,
+			kubeClient:            c.kubeClient,
+			kubeReader:            c.kubeReader,
 			autoPauseBucket:       c.autoPauseBucket,
 			minReplicas:           c.minReplicas,
 			recreateMissingBucket: c.recreateMissingBucket,
@@ -145,6 +153,7 @@ func (c *Connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 // resource to ensure it reflects the managed resource's desired state.
 type external struct {
 	kubeClient            client.Client
+	kubeReader            client.Reader
 	autoPauseBucket       bool
 	minReplicas           uint
 	recreateMissingBucket bool

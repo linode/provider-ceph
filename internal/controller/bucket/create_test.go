@@ -132,6 +132,7 @@ func TestCreateBasicErrors(t *testing.T) {
 
 			e := external{
 				kubeClient:   cl.Build(),
+				kubeReader:   cl.Build(),
 				backendStore: tc.fields.backendStore,
 				log:          logr.Discard(),
 			}
@@ -398,6 +399,7 @@ func TestCreate(t *testing.T) {
 
 			e := external{
 				kubeClient:   cl.Build(),
+				kubeReader:   cl.Build(),
 				backendStore: tc.fields.backendStore,
 				s3ClientHandler: s3clienthandler.NewHandler(
 					s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),

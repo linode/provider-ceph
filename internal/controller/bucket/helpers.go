@@ -16,6 +16,7 @@ import (
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/utils"
 	"go.opentelemetry.io/otel"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -242,16 +243,37 @@ func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, 
 	defer span.End()
 	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
-	for _, cb := range callbacks {
+	for i, cb := range callbacks {
 		err := retry.OnError(retry.DefaultRetry, resource.IsAPIError, func() error {
-			if err := c.kubeClient.Get(ctx, types.NamespacedName{Name: bucket.GetName()}, bucket); err != nil {
-				return err
+			// If there are multiple callbacks, we can only use the cached kube client for
+			// the first Get(). Subsequent Get() calls must use the kube reader which reads
+			// directly from the API. This is necessary as we are doing Patch and Get calls
+			// in quick succession and need to avoid reading stale data from the client cache.
+			switch i {
+			case 0:
+				if err := c.kubeClient.Get(
+					ctx,
+					types.NamespacedName{Name: bucket.GetName()},
+					bucket,
+				); err != nil {
+					return err
+				}
+			default:
+				if err := c.kubeReader.Get(
+					ctx,
+					types.NamespacedName{Name: bucket.GetName()},
+					bucket,
+				); err != nil {
+					return err
+				}
 			}
+
+			bucketCopy := bucket.DeepCopy()
 			switch cb(bucket) {
 			case NeedsStatusUpdate:
-				return c.kubeClient.Status().Update(ctx, bucket)
+				return c.kubeClient.Status().Patch(ctx, bucket, client.MergeFrom(bucketCopy))
 			case NeedsObjectUpdate:
-				return c.kubeClient.Update(ctx, bucket)
+				return c.kubeClient.Patch(ctx, bucket, client.MergeFrom(bucketCopy))
 			default:
 				return nil
 			}

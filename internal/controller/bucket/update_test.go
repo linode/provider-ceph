@@ -535,6 +535,7 @@ func TestUpdate(t *testing.T) {
 
 			e := external{
 				kubeClient:         cl,
+				kubeReader:         cl,
 				backendStore:       tc.fields.backendStore,
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
@@ -878,6 +879,7 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 
 			e := external{
 				kubeClient:         cl,
+				kubeReader:         cl,
 				backendStore:       tc.fields.backendStore,
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
@@ -1206,6 +1208,7 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 
 			e := external{
 				kubeClient:         cl,
+				kubeReader:         cl,
 				backendStore:       tc.fields.backendStore,
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
@@ -1539,6 +1542,7 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 
 			e := external{
 				kubeClient:         cl,
+				kubeReader:         cl,
 				backendStore:       tc.fields.backendStore,
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,

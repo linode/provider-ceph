@@ -18,6 +18,8 @@ package main
 
 //go:generate go get github.com/maxbrunsfeld/counterfeiter/v6
 
+//+kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch
+
 import (
 	"context"
 	"flag"
@@ -27,10 +29,14 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/go-logr/logr"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap/zapcore"
+	authv1 "k8s.io/api/authorization/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -40,14 +46,18 @@ import (
 	kcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/gate"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/customresourcesgate"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
@@ -71,7 +81,224 @@ var defaultZapConfig = map[string]string{
 	"zap-time-encoding":    "rfc3339nano",
 }
 
-//nolint:maintidx // Function requires a lot of setup operations.
+// canWatchCRD checks if the provider has the necessary RBAC permissions to
+// watch CustomResourceDefinitions. This is required for safe-start to function.
+func canWatchCRD(ctx context.Context, mgr manager.Manager) (bool, error) {
+	if err := authv1.AddToScheme(mgr.GetScheme()); err != nil {
+		return false, err
+	}
+	verbs := []string{"get", "list", "watch"}
+	for _, verb := range verbs {
+		sar := &authv1.SelfSubjectAccessReview{
+			Spec: authv1.SelfSubjectAccessReviewSpec{
+				ResourceAttributes: &authv1.ResourceAttributes{
+					Group:    "apiextensions.k8s.io",
+					Resource: "customresourcedefinitions",
+					Verb:     verb,
+				},
+			},
+		}
+		if err := mgr.GetClient().Create(ctx, sar); err != nil {
+			return false, errors.Wrapf(err, "unable to perform RBAC check for verb %s on CustomResourceDefinitions", verb)
+		}
+		if !sar.Status.Allowed {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+// setupZapLogging configures zap logging flags and returns configured options.
+func setupZapLogging(app *kingpin.Application, debugFlag *bool) []zap.Opts {
+	var zo zap.Options
+	var zapDevel *bool
+
+	zapFlagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	zo.BindFlags(zapFlagSet)
+
+	zapOpts := []zap.Opts{}
+	zapFlagSet.VisitAll(func(f *flag.Flag) {
+		defaultValue, ok := defaultZapConfig[f.Name]
+		if !ok {
+			defaultValue = f.DefValue
+		}
+		kf := app.Flag(f.Name, f.Usage).Default(defaultValue)
+
+		switch f.Name {
+		case "zap-devel":
+			zapDevel = kf.Bool()
+			zapOpts = append(zapOpts, func(o *zap.Options) {
+				o.Development = *zapDevel
+			})
+		case "zap-encoder":
+			e := kf.String()
+			zapOpts = append(zapOpts, func(o *zap.Options) {
+				o.NewEncoder = func(eco ...zap.EncoderConfigOption) zapcore.Encoder {
+					if *e == "json" {
+						zap.JSONEncoder(eco...)(o)
+					} else {
+						zap.ConsoleEncoder(eco...)(o)
+					}
+
+					return o.Encoder
+				}
+			})
+		case "zap-log-level":
+			ll := kf.String()
+			zapOpts = append(zapOpts, func(o *zap.Options) {
+				l := zapcore.Level(0)
+				app.FatalIfError(l.Set(*ll), "Unable to unmarshal zap-log-level")
+				if *zapDevel || *debugFlag {
+					l = zapcore.Level(-1)
+				}
+				o.Level = l
+			})
+		case "zap-stacktrace-level":
+			sl := kf.String()
+			zapOpts = append(zapOpts, func(o *zap.Options) {
+				l := zapcore.Level(0)
+				app.FatalIfError(l.Set(*sl), "Unable to unmarshal zap-stacktrace-level")
+				o.StacktraceLevel = l
+			})
+		case "zap-time-encoding":
+			te := kf.String()
+			zapOpts = append(zapOpts, func(o *zap.Options) {
+				o.TimeEncoder = zapcore.EpochTimeEncoder
+				app.FatalIfError(o.TimeEncoder.UnmarshalText([]byte(*te)), "Unable to unmarshal zap-time-encoding")
+			})
+		}
+	})
+
+	return zapOpts
+}
+
+// configureSafeStart configures the safe-start gate if permissions allow.
+func configureSafeStart(o *controller.Options, canSafeStart bool) {
+	if canSafeStart {
+		o.Gate = new(gate.Gate[schema.GroupVersionKind])
+	}
+}
+
+// configureManagementPolicies enables management policies if requested.
+func configureManagementPolicies(o *controller.Options, enableManagementPolicies bool, log logr.Logger) {
+	if enableManagementPolicies {
+		o.Features.Enable(features.EnableAlphaManagementPolicies)
+		log.Info("Alpha feature enabled", "flag", features.EnableAlphaManagementPolicies)
+	}
+}
+
+// createBucketConnector creates a bucket connector with all required options.
+func createBucketConnector(
+	mgr manager.Manager,
+	backendStore *backendstore.BackendStore,
+	s3ClientHandler *s3clienthandler.Handler,
+	log logr.Logger,
+	autoPauseBucket *bool,
+	minReplicas *uint,
+	recreateMissingBucket *bool,
+	reconcileTimeout *time.Duration,
+	creationGracePeriod *time.Duration,
+	pollInterval *time.Duration,
+	disableACLReconcile *bool,
+	disablePolicyReconcile *bool,
+	disableLifecycleConfigReconcile *bool,
+	disableVersioningConfigReconcile *bool,
+	disableObjectLockConfigReconcile *bool,
+) *bucket.Connector {
+	return bucket.NewConnector(
+		bucket.WithAutoPause(autoPauseBucket),
+		bucket.WithMinimumReplicas(minReplicas),
+		bucket.WithRecreateMissingBucket(recreateMissingBucket),
+		bucket.WithBackendStore(backendStore),
+		bucket.WithKubeClient(mgr.GetClient()),
+		bucket.WithKubeReader(mgr.GetAPIReader()),
+		bucket.WithOperationTimeout(*reconcileTimeout),
+		bucket.WithCreationGracePeriod(*creationGracePeriod),
+		bucket.WithPollInterval(*pollInterval),
+		bucket.WithLog(log),
+		bucket.WithSubresourceClients(
+			bucket.NewSubresourceClients(
+				backendStore,
+				s3ClientHandler,
+				bucket.SubresourceClientConfig{
+					LifecycleConfigurationClientDisabled:  *disableLifecycleConfigReconcile,
+					ACLClientDisabled:                     *disableACLReconcile,
+					PolicyClientDisabled:                  *disablePolicyReconcile,
+					VersioningConfigurationClientDisabled: *disableVersioningConfigReconcile,
+					ObjectLockConfigurationClientDisabled: *disableObjectLockConfigReconcile},
+				log)),
+		bucket.WithS3ClientHandler(s3ClientHandler),
+		bucket.WithUsage(resource.NewLegacyProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{})),
+		bucket.WithNewServiceFn(bucket.NewNoOpService))
+}
+
+// setupControllers sets up bucket controllers with or without safe-start gating.
+func setupControllers(mgr manager.Manager, o controller.Options, connector *bucket.Connector, canSafeStart bool, log logr.Logger) {
+	if canSafeStart {
+		// Setup the CRD gate controller first
+		kingpin.FatalIfError(customresourcesgate.Setup(mgr, o), "Cannot setup CRD gate")
+		// Setup controllers with gated versions
+		kingpin.FatalIfError(bucket.SetupGated(mgr, o, connector), "Cannot setup gated Bucket controller")
+	} else {
+		log.Info("Provider has missing RBAC permissions for watching CRDs, controller SafeStart capability will be disabled")
+		// Setup controllers directly without gating
+		kingpin.FatalIfError(bucket.Setup(mgr, o, connector), "Cannot setup Bucket controller")
+	}
+}
+
+// setupBucketWebhook sets up the bucket validating webhook.
+func setupBucketWebhook(mgr manager.Manager, backendStore *backendstore.BackendStore) {
+	kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
+		For(&providercephv1alpha1.Bucket{}).
+		WithValidator(bucket.NewBucketValidator(backendStore)).
+		Complete(), "Cannot setup bucket validating webhook")
+}
+
+// setupProviderConfigControllers sets up the provider config, backend monitor, and health check controllers.
+func setupProviderConfigControllers(
+	mgr manager.Manager,
+	o controller.Options,
+	backendStore *backendstore.BackendStore,
+	kubeClientUncached client.Client,
+	log logr.Logger,
+	s3Timeout time.Duration,
+	backendMonitorInterval time.Duration,
+	autoPauseBucket *bool,
+) {
+	kingpin.FatalIfError(providerconfig.Setup(mgr, o,
+		backendmonitor.NewController(
+			backendmonitor.WithKubeClient(mgr.GetClient()),
+			backendmonitor.WithBackendStore(backendStore),
+			backendmonitor.WithS3Timeout(s3Timeout),
+			backendmonitor.WithRequeueInterval(backendMonitorInterval),
+			backendmonitor.WithLogger(log)),
+		healthcheck.NewController(
+			healthcheck.WithAutoPause(autoPauseBucket),
+			healthcheck.WithBackendStore(backendStore),
+			healthcheck.WithKubeClientUncached(kubeClientUncached),
+			healthcheck.WithKubeClientCached(mgr.GetClient()),
+			healthcheck.WithHttpClient(&http.Client{Timeout: s3Timeout}),
+			healthcheck.WithLogger(log))),
+		"Cannot setup ProviderConfig controllers")
+}
+
+// createS3ClientHandler creates an S3 client handler with all required options.
+func createS3ClientHandler(
+	assumeRoleArn *string,
+	backendStore *backendstore.BackendStore,
+	kubeClient client.Client,
+	s3Timeout time.Duration,
+	log logr.Logger,
+) *s3clienthandler.Handler {
+	return s3clienthandler.NewHandler(
+		s3clienthandler.WithAssumeRoleArn(assumeRoleArn),
+		s3clienthandler.WithBackendStore(backendStore),
+		s3clienthandler.WithKubeClient(kubeClient),
+		s3clienthandler.WithS3Timeout(s3Timeout),
+		s3clienthandler.WithLog(log))
+}
+
 func main() {
 	var (
 		app            = kingpin.New(filepath.Base(os.Args[0]), "Ceph support for Crossplane.").DefaultEnvars()
@@ -115,68 +342,8 @@ func main() {
 		disableObjectLockConfigReconcile = app.Flag("disable-object-lock-config-reconcile", "Disable reconciliation of Object Lock Configurations.").Default("false").Envar("DISABLE_OBJECT_LOCK_CONFIG_RECONCILE").Bool()
 	)
 
-	var zo zap.Options
-	var zapDevel *bool
-
-	zapFlagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	zo.BindFlags(zapFlagSet)
-
-	zapOpts := []zap.Opts{}
-	zapFlagSet.VisitAll(func(f *flag.Flag) {
-		defaultValue, ok := defaultZapConfig[f.Name]
-		if !ok {
-			defaultValue = f.DefValue
-		}
-		kf := app.Flag(f.Name, f.Usage).Default(defaultValue)
-
-		switch f.Name {
-		case "zap-devel":
-			// Store the value for zap-devel for use when we come to zap-log-level so that we
-			// do not overwrite the level. VisitAll visits flags in lexicographical order so it
-			// is safe to assume "zap-devel" will always be visited before "zap-log-level".
-			zapDevel = kf.Bool()
-			zapOpts = append(zapOpts, func(o *zap.Options) {
-				o.Development = *zapDevel
-			})
-		case "zap-encoder":
-			e := kf.String()
-			zapOpts = append(zapOpts, func(o *zap.Options) {
-				o.NewEncoder = func(eco ...zap.EncoderConfigOption) zapcore.Encoder {
-					if *e == "json" {
-						zap.JSONEncoder(eco...)(o)
-					} else {
-						zap.ConsoleEncoder(eco...)(o)
-					}
-
-					return o.Encoder
-				}
-			})
-		case "zap-log-level":
-			ll := kf.String()
-			zapOpts = append(zapOpts, func(o *zap.Options) {
-				l := zapcore.Level(0)
-				app.FatalIfError(l.Set(*ll), "Unable to unmarshal zap-log-level")
-				// if zap-devel is enabled, the log level should be debug (-1).
-				if *zapDevel {
-					l = zapcore.Level(-1)
-				}
-				o.Level = l
-			})
-		case "zap-stacktrace-level":
-			sl := kf.String()
-			zapOpts = append(zapOpts, func(o *zap.Options) {
-				l := zapcore.Level(0)
-				app.FatalIfError(l.Set(*sl), "Unable to unmarshal zap-stacktrace-level")
-				o.StacktraceLevel = l
-			})
-		case "zap-time-encoding":
-			te := kf.String()
-			zapOpts = append(zapOpts, func(o *zap.Options) {
-				o.TimeEncoder = zapcore.EpochTimeEncoder
-				app.FatalIfError(o.TimeEncoder.UnmarshalText([]byte(*te)), "Unable to unmarshal zap-time-encoding")
-			})
-		}
-	})
+	debugFlag := app.Flag("debug", "Enable debug logging (sets zap-log-level to debug)").Default("false").Bool()
+	zapOpts := setupZapLogging(app, debugFlag)
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -184,7 +351,6 @@ func main() {
 	ctrl.SetLogger(log)
 	klog.SetLogger(log)
 
-	// Init otel tracer provider if the user sets the flag
 	if *tracesEnabled {
 		flush, err := traces.InitTracerProvider(log, *tracesExportAddress, *tracesExportTimeout, *tracesExportInterval)
 		kingpin.FatalIfError(err, "Cannot start tracer provider")
@@ -265,6 +431,14 @@ func main() {
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 
+	ctx := context.Background()
+
+	kingpin.FatalIfError(apiextensionsv1.AddToScheme(mgr.GetScheme()), "Cannot add apiextensionsv1 to scheme")
+
+	// Check if provider has permissions to watch CRDs for safe-start capability
+	canSafeStart, err := canWatchCRD(ctx, mgr)
+	kingpin.FatalIfError(err, "SafeStart precheck failed")
+
 	o := controller.Options{
 		Logger:                  logging.NewLogrLogger(log),
 		MaxConcurrentReconciles: *reconcileConcurrency,
@@ -274,10 +448,8 @@ func main() {
 		MetricOptions:           &mo,
 	}
 
-	if *enableManagementPolicies {
-		o.Features.Enable(features.EnableAlphaManagementPolicies)
-		log.Info("Alpha feature enabled", "flag", features.EnableAlphaManagementPolicies)
-	}
+	configureSafeStart(&o, canSafeStart)
+	configureManagementPolicies(&o, *enableManagementPolicies, log)
 
 	backendStore := backendstore.NewBackendStore()
 
@@ -289,59 +461,15 @@ func main() {
 	})
 	kingpin.FatalIfError(err, "Cannot create Kube client")
 
-	kingpin.FatalIfError(ctrl.NewWebhookManagedBy(mgr).
-		For(&providercephv1alpha1.Bucket{}).
-		WithValidator(bucket.NewBucketValidator(backendStore)).
-		Complete(), "Cannot setup bucket validating webhook")
+	setupBucketWebhook(mgr, backendStore)
+	setupProviderConfigControllers(mgr, o, backendStore, kubeClientUncached, log, *s3Timeout, *backendMonitorInterval, autoPauseBucket)
+	s3ClientHandler := createS3ClientHandler(assumeRoleArn, backendStore, mgr.GetClient(), *s3Timeout, log)
 
-	kingpin.FatalIfError(providerconfig.Setup(mgr, o,
-		backendmonitor.NewController(
-			backendmonitor.WithKubeClient(mgr.GetClient()),
-			backendmonitor.WithBackendStore(backendStore),
-			backendmonitor.WithS3Timeout(*s3Timeout),
-			backendmonitor.WithRequeueInterval(*backendMonitorInterval),
-			backendmonitor.WithLogger(log)),
-		healthcheck.NewController(
-			healthcheck.WithAutoPause(autoPauseBucket),
-			healthcheck.WithBackendStore(backendStore),
-			healthcheck.WithKubeClientUncached(kubeClientUncached),
-			healthcheck.WithKubeClientCached(mgr.GetClient()),
-			healthcheck.WithHttpClient(&http.Client{Timeout: *s3Timeout}),
-			healthcheck.WithLogger(log))),
-		"Cannot setup ProviderConfig controllers")
+	connector := createBucketConnector(mgr, backendStore, s3ClientHandler, log, autoPauseBucket, minReplicas,
+		recreateMissingBucket, reconcileTimeout, creationGracePeriod, pollInterval, disableACLReconcile,
+		disablePolicyReconcile, disableLifecycleConfigReconcile, disableVersioningConfigReconcile, disableObjectLockConfigReconcile)
 
-	s3ClientHandler := s3clienthandler.NewHandler(
-		s3clienthandler.WithAssumeRoleArn(assumeRoleArn),
-		s3clienthandler.WithBackendStore(backendStore),
-		s3clienthandler.WithKubeClient(mgr.GetClient()),
-		s3clienthandler.WithS3Timeout(*s3Timeout),
-		s3clienthandler.WithLog(log))
-
-	kingpin.FatalIfError(bucket.Setup(mgr, o, bucket.NewConnector(
-		bucket.WithAutoPause(autoPauseBucket),
-		bucket.WithMinimumReplicas(minReplicas),
-		bucket.WithRecreateMissingBucket(recreateMissingBucket),
-		bucket.WithBackendStore(backendStore),
-		bucket.WithKubeClient(mgr.GetClient()),
-		bucket.WithKubeReader(mgr.GetAPIReader()),
-		bucket.WithOperationTimeout(*reconcileTimeout),
-		bucket.WithCreationGracePeriod(*creationGracePeriod),
-		bucket.WithPollInterval(*pollInterval),
-		bucket.WithLog(log),
-		bucket.WithSubresourceClients(
-			bucket.NewSubresourceClients(
-				backendStore,
-				s3ClientHandler,
-				bucket.SubresourceClientConfig{
-					LifecycleConfigurationClientDisabled:  *disableLifecycleConfigReconcile,
-					ACLClientDisabled:                     *disableACLReconcile,
-					PolicyClientDisabled:                  *disablePolicyReconcile,
-					VersioningConfigurationClientDisabled: *disableVersioningConfigReconcile,
-					ObjectLockConfigurationClientDisabled: *disableObjectLockConfigReconcile},
-				log)),
-		bucket.WithS3ClientHandler(s3ClientHandler),
-		bucket.WithUsage(resource.NewLegacyProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{})),
-		bucket.WithNewServiceFn(bucket.NewNoOpService))), "Cannot setup Bucket controller")
+	setupControllers(mgr, o, connector, canSafeStart, log)
 
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }

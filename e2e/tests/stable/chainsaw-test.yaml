@@ -366,7 +366,7 @@ spec:
             # This method of iterative assertions is necessary here because
             # these conditions do not always appear in the same order.
             # It's safe to perform this assertions because we have already
-            # asserted that these conditios exist.
+            # asserted that these conditions exist.
             ~.(conditions[?reason == 'Available']):
               status: "True"
               type: Ready
@@ -376,6 +376,9 @@ spec:
 
   - name: Check for buckets on Localstack backends.
     try:
+    # Wait to ensure buckets are fully created on backends and avoid racing conditions
+    - sleep:
+        duration: 2s
     # Check for subresource-configs on all backends.
     - command:
         args:
@@ -1209,7 +1212,7 @@ spec:
         - scale
         - -n
         - crossplane-system
-        - deploy/provider-ceph-provider-cep
+        - deploy/provider-ceph-xpkg-crosspl
         - --replicas=0
         entrypoint: kubectl
 

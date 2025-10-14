@@ -82,7 +82,7 @@ jobs:
         run: make vendor vendor.check
 
       - name: Docker cache
-        uses: ScribeMD/docker-cache@0.3.7
+        uses: ScribeMD/docker-cache@0.5.0
         with:
           key: docker-\${{ runner.os }}-\${{ hashFiles('go.sum') }}}
 
@@ -93,6 +93,11 @@ jobs:
           AWS_ACCESS_KEY_ID: 'Dummy'
           AWS_SECRET_ACCESS_KEY: 'Dummy'
           AWS_DEFAULT_REGION: 'us-east-1'
+
+      - name: Run chainsaw-safe-start tests ${major}
+        run: make chainsaw-safe-start
+        env:
+          LATEST_KUBE_VERSION: '${major}'
 EOF
 
 done

@@ -8,7 +8,12 @@ if ! ping -c 1 ${address%:*} &>/dev/null; then
     address="$(kubectl get no ${address%:*} -o jsonpath='{.status.addresses[0].address}'):${address#*:}"
 fi
 
-# Check whether the bucket already exists. 
+# Set AWS credentials for localstack
+export AWS_ACCESS_KEY_ID=Dummy
+export AWS_SECRET_ACCESS_KEY=Dummy
+export AWS_DEFAULT_REGION=us-east-1
+
+# Check whether the bucket already exists.
 # We suppress all output - we're interested only in the return code.
 
 bucket_exists() {

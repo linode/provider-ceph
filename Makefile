@@ -10,13 +10,16 @@ PLATFORMS ?= linux_amd64 linux_arm64
 # Generate chainsaw e2e tests for the following kind node versions
 # TEST_KIND_NODES is not intended to be updated manually.
 # Please edit LATEST_KIND_NODE instead and run 'make update-kind-nodes'.
-TEST_KIND_NODES ?= 1.28.7,1.29.2,1.30.8,1.31.4
-
-LATEST_KUBE_VERSION ?= 1.31
-LATEST_KIND_NODE ?= 1.31.4
+TEST_KIND_NODES ?= 1.31.13,1.32.9,1.33.5,1.34.1
+KIND_VERSION ?= v0.30.0
+LATEST_KUBE_VERSION ?= 1.34
+LATEST_KIND_NODE ?= 1.34.1
+KUBECTL_VERSION ?= v1.34.0
 REPO ?= provider-ceph
 
-CROSSPLANE_VERSION ?= 1.20.0
+CROSSPLANE_CLI_VERSION ?= v2.0.2
+CROSSPLANE_NAMESPACE ?= crossplane-system
+CROSSPLANE_VERSION ?= 2.0.2
 LOCALSTACK_VERSION ?= 4.7
 CERT_MANAGER_VERSION ?= 1.14.0
 
@@ -69,12 +72,17 @@ IMAGES = provider-ceph
 XPKG_REG_ORGS ?= xpkg.upbound.io/linode
 # NOTE(hasheddan): skip promoting on xpkg.upbound.io as channel tags are
 # inferred.
-XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/linode
+XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/linode xpkg.crossplane.internal/dev
 XPKGS = provider-ceph
 -include build/makelib/xpkg.mk
 -include build/makelib/local.xpkg.mk
 
 VAL_WBHK_STAGE ?= $(ROOT_DIR)/staging/validatingwebhookconfiguration
+
+# ====================================================================================
+# Setup Controlplane and E2E Testing (Crossplane v2)
+
+-include build/makelib/controlplane.mk
 
 # NOTE(hasheddan): we force image building to happen prior to xpkg build so that
 # we ensure image is present in daemon.
@@ -84,9 +92,6 @@ fallthrough: submodules
 	@echo Initial setup complete. Running make again . . .
 	@make
 
-# integration tests
-e2e.run: test-integration
-
 # Update kind node versions to be tested.
 update-kind-nodes:
 	LATEST_KIND_NODE=$(LATEST_KIND_NODE) ./hack/update-kind-nodes.sh
@@ -94,12 +99,6 @@ update-kind-nodes:
 # Generate chainsaw e2e tests.
 generate-tests:
 	TEST_KIND_NODES=$(TEST_KIND_NODES) REPO=$(REPO) LOCALSTACK_VERSION=$(LOCALSTACK_VERSION) CERT_MANAGER_VERSION=$(CERT_MANAGER_VERSION) ./hack/generate-tests.sh
-
-# Run integration tests.
-test-integration: $(KIND) $(KUBECTL) $(UP) $(HELM)
-	@$(INFO) running integration tests using kind $(KIND_VERSION)
-	@KIND_NODE_IMAGE_TAG=${KIND_NODE_IMAGE_TAG} $(ROOT_DIR)/cluster/local/integration_tests.sh || $(FAIL)
-	@$(OK) integration tests passed
 
 # Update the submodules, such as the common build scripts.
 submodules:
@@ -116,6 +115,16 @@ go.cachedir:
 	@go env GOCACHE
 
 build.init: $(CROSSPLANE_CLI)
+
+# Export build variables for integration tests
+build.vars: common.buildvars k8s_tools.buildvars
+	@echo CROSSPLANE_VERSION=$(CROSSPLANE_VERSION)
+	@echo CROSSPLANE_NAMESPACE=$(CROSSPLANE_NAMESPACE)
+	@echo CROSSPLANE_CLI_VERSION=$(CROSSPLANE_CLI_VERSION)
+	@echo KIND_VERSION=$(KIND_VERSION)
+	@echo KUBECTL_VERSION=$(KUBECTL_VERSION)
+	@echo LOCALSTACK_VERSION=$(LOCALSTACK_VERSION)
+	@echo CERT_MANAGER_VERSION=$(CERT_MANAGER_VERSION)
 
 # This is for running out-of-cluster locally, and is for convenience. Running
 # this make target will print out the command which was used. For more control,
@@ -136,14 +145,22 @@ localstack-cluster: $(KIND) $(KUBECTL)
 	@KIND_CLUSTER_NAME=$(KIND_CLUSTER_NAME) SOURCE="file://$(PWD)/e2e/localstack/localstack-deployment.yaml" ./hack/load-images.sh
 	@$(KUBECTL) apply -R -f e2e/localstack/localstack-deployment.yaml
 
-# Spin up a Kind cluster and install Crossplane via Helm.
-crossplane-cluster: $(HELM) cluster
-	@$(INFO) Installing Crossplane
-	@$(HELM) repo add crossplane-stable https://charts.crossplane.io/stable
+# Internal helper target to install Crossplane via Helm with configurable activations
+# Usage: make _install-crossplane CROSSPLANE_ACTIVATIONS="<value>"
+# CROSSPLANE_ACTIVATIONS can be empty (for default) or "provider.defaultActivations={}"
+.PHONY: _install-crossplane
+_install-crossplane: $(HELM)
+	@$(INFO) Installing Crossplane $(CROSSPLANE_VERSION)
+	@$(HELM) repo add crossplane-stable https://charts.crossplane.io/stable --force-update
 	@$(HELM) repo update
+	@$(HELM) get notes -n $(CROSSPLANE_NAMESPACE) crossplane >/dev/null 2>&1 || $(HELM) install crossplane --create-namespace --namespace=$(CROSSPLANE_NAMESPACE) --version $(CROSSPLANE_VERSION) $(CROSSPLANE_ACTIVATIONS) --set packageCache.sizeLimit=128Mi crossplane-stable/crossplane
+	@$(OK) Crossplane installed
+
+# Spin up a Kind cluster and install Crossplane 2.0+ with safe-start (empty activations)
+crossplane-cluster: $(HELM) cluster
+	@$(INFO) Installing Crossplane with safe-start support
 	@KIND_CLUSTER_NAME=$(KIND_CLUSTER_NAME) SOURCE="helm template crossplane --namespace crossplane-system --version $(CROSSPLANE_VERSION) crossplane-stable/crossplane" ./hack/load-images.sh
-	@$(HELM) install crossplane --namespace crossplane-system --create-namespace --version $(CROSSPLANE_VERSION) crossplane-stable/crossplane
-	@$(OK) Installing Crossplane
+	@$(MAKE) _install-crossplane CROSSPLANE_ACTIVATIONS="--set provider.defaultActivations={}"
 
 ## Deploy cert manager to the K8s cluster specified in ~/.kube/config.
 cert-manager: $(KUBECTL)
@@ -164,38 +181,56 @@ kustomize-webhook: $(KUSTOMIZE)
 	@cp -f $(VAL_WBHK_STAGE)/service-patch-$(WEBHOOK_TYPE).yaml $(VAL_WBHK_STAGE)/service-patch.yaml
 	$(KUSTOMIZE) build $(VAL_WBHK_STAGE) -o $(XPKG_DIR)/webhookconfigurations/manifests.yaml
 
-# Build the controller image and the provider package.
-# Load the controller image to the Kind cluster and add the provider package
-# to the Provider.
-# The following is taken from local.xpkg.deploy.provider.
-# However, it is modified to use the "--zap-devel" flag instead of "-d" which does
-# not exist in this project and would therefore cause the controller to CrashLoop.
-load-package: $(KIND) build kustomize-webhook
-	@$(MAKE) local.xpkg.sync
-	@$(INFO) deploying provider package $(PROJECT_NAME)
-	@$(KIND) load docker-image $(BUILD_REGISTRY)/$(PROJECT_NAME)-$(ARCH) -n $(KIND_CLUSTER_NAME)
-	@BUILD_REGISTRY=$(BUILD_REGISTRY) PROJECT_NAME=$(PROJECT_NAME) ARCH=$(ARCH) VERSION=$(VERSION) ./hack/deploy-provider.sh
-	@$(OK) deploying provider package $(PROJECT_NAME) $(VERSION)
+# Setup Crossplane with default activations for standard testing
+.PHONY: crossplane-standard
+crossplane-standard: $(KIND) $(KUBECTL)
+	@$(INFO) Setting up kind cluster for standard testing
+	@$(KIND) get kubeconfig --name $(KIND_CLUSTER_NAME) >/dev/null 2>&1 || $(KIND) create cluster --name=$(KIND_CLUSTER_NAME)
+	@$(INFO) Setting kubectl context to kind-$(KIND_CLUSTER_NAME)
+	@$(KUBECTL) config use-context "kind-$(KIND_CLUSTER_NAME)"
+	@$(MAKE) _install-crossplane CROSSPLANE_ACTIVATIONS=""
 
-# Spin up a Kind cluster and localstack and install Crossplane via Helm.
-# Build the controller image and the provider package.
-# Load the controller image to the Kind cluster and add the provider package
-# to the Provider.
-# Run Chainsaw test suite on newly built controller image.
-# Destroy Kind and localstack.
+# Setup Crossplane for safe-start testing
+.PHONY: crossplane-safe-start
+crossplane-safe-start: $(KIND) $(KUBECTL)
+	@$(INFO) Setting up kind cluster for safe-start testing
+	@$(KIND) get kubeconfig --name $(KIND_CLUSTER_NAME) >/dev/null 2>&1 || $(KIND) create cluster --name=$(KIND_CLUSTER_NAME)
+	@$(INFO) Setting kubectl context to kind-$(KIND_CLUSTER_NAME)
+	@$(KUBECTL) config use-context "kind-$(KIND_CLUSTER_NAME)"
+	@$(MAKE) _install-crossplane CROSSPLANE_ACTIVATIONS="--set provider.defaultActivations={}"
+
+# Run Chainsaw test suite for safe-start testing
+.PHONY: chainsaw-safe-start
+chainsaw-safe-start: $(CHAINSAW) build generate-pkg generate-tests
+	@$(INFO) Running chainsaw safe-start test suite with Crossplane v2
+	@$(MAKE) crossplane-safe-start
+	@$(MAKE) localstack-cluster
+	@$(MAKE) local.xpkg.deploy.provider.$(PROJECT_NAME)
+	@$(CHAINSAW) test e2e/tests/safe-start --config e2e/tests/safe-start/.chainsaw.yaml
+# || ($(MAKE) controlplane.down && $(FAIL))
+	@$(OK) Running chainsaw safe-start test suite
+	@$(MAKE) controlplane.down
+
+# Run Chainsaw test suite using build submodule's controlplane infrastructure
+# This is the standardized approach for Crossplane v2 testing
 .PHONY: chainsaw
-chainsaw: $(CHAINSAW) generate-pkg generate-tests crossplane-cluster localstack-cluster load-package
-	@$(INFO) Running chainsaw test suite
-	$(CHAINSAW) test e2e/tests/stable --config e2e/tests/stable/.chainsaw.yaml
+chainsaw: $(CHAINSAW) build generate-pkg generate-tests
+	@$(INFO) Running chainsaw test suite with Crossplane v2
+	@$(MAKE) crossplane-standard
+	@$(MAKE) localstack-cluster
+	@$(MAKE) local.xpkg.deploy.provider.$(PROJECT_NAME)
+	@$(CHAINSAW) test e2e/tests/stable --config e2e/tests/stable/.chainsaw.yaml
 	@$(OK) Running chainsaw test suite
-	@$(MAKE) cluster-clean
+	@$(MAKE) controlplane.down
 
 .PHONY: ceph-chainsaw
-ceph-chainsaw: $(CHAINSAW) crossplane-cluster load-package
+ceph-chainsaw: $(CHAINSAW) build generate-pkg
 	@$(INFO) Running chainsaw test suite against ceph cluster
-	$(CHAINSAW) test e2e/tests/ceph
+	@$(MAKE) controlplane.up
+	@$(MAKE) local.xpkg.deploy.provider.$(PROJECT_NAME)
+	@$(CHAINSAW) test e2e/tests/ceph || ($(MAKE) controlplane.down && $(FAIL))
 	@$(OK) Running chainsaw test suite against ceph cluster
-	@$(MAKE) cluster-clean
+	@$(MAKE) controlplane.down
 
 # Spin up a Kind cluster and localstack and install Crossplane CRDs (not
 # containerised Crossplane componenets).
@@ -280,7 +315,7 @@ cluster-clean: $(KIND) $(KUBECTL)
 	@$(KIND) delete cluster --name=$(KIND_CLUSTER_NAME)
 	@$(OK) Deleting kind cluster
 
-.PHONY: submodules fallthrough test-integration run cluster dev-cluster dev cluster-clean
+.PHONY: submodules fallthrough run cluster dev-cluster dev cluster-clean
 
 # ====================================================================================
 # Special Targets
@@ -346,9 +381,9 @@ help-special: crossplane.help
 AWS ?= /usr/local/bin/aws
 aws:
 ifeq (,$(wildcard $(AWS)))
-	curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o $PWD/bin/awscliv2.zip
-	unzip $PWD/bin/awscliv2.zip -d $PWD/bin/
-	$PWD/bin/aws/install
+	curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o $(PWD)/bin/awscliv2.zip
+	unzip $(PWD)/bin/awscliv2.zip -d $(PWD)/bin/
+	$(PWD)/bin/aws/install
 endif
 
 NILAWAY_VERSION ?= latest
@@ -360,7 +395,7 @@ nilcheck: $(NILAWAY) ## Run nil check against codemake.
 	@# Backendstore contains mostly nil safe generated files.
 	@# Lifecycleconfig_helper has false positive reports: https://github.com/uber-go/nilaway/issues/207
 	go list ./... | xargs -I {} -d '\n' $(NILAWAY) \
-		-exclude-errors-in-files $(PWD)/internal/controller/bucket/bucket_backends.go,$(PWD)/internal/rgw/lifecycleconfig_helpers.go,$(PWD)/internal/rgw/objectlockconfiguration_helpers.go \
+		-exclude-errors-in-files $(PWD)/cmd/provider/main.go,$(PWD)/internal/controller/bucket/bucket_backends.go,$(PWD)/internal/rgw/lifecycleconfig_helpers.go,$(PWD)/internal/rgw/objectlockconfiguration_helpers.go \
 		-exclude-pkgs github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1,github.com/linode/provider-ceph/internal/backendstore \
 		-include-pkgs {} ./...
 

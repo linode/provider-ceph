@@ -1,0 +1,101 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: provider-ceph-safe-start
+spec:
+  steps:
+  - name: Assert that Crossplane 2.0+ has been installed.
+    try:
+    - assert:
+        resource:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: crossplane
+            namespace: crossplane-system
+          status:
+            readyReplicas: 1
+    - assert:
+        resource:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: crossplane-rbac-manager
+            namespace: crossplane-system
+          status:
+            readyReplicas: 1
+
+  - name: Verify MRDs are not created.
+    try:
+    # MRD exists but is Inactive
+    - assert:
+        resource:
+          apiVersion: apiextensions.crossplane.io/v1alpha1
+          kind: ManagedResourceDefinition
+          metadata:
+            name: buckets.provider-ceph.ceph.crossplane.io
+          spec:
+            state: Inactive
+    # ProviderConfig CRD should exist (not gated)
+    - assert:
+        resource:
+          apiVersion: apiextensions.k8s.io/v1
+          kind: CustomResourceDefinition
+          metadata:
+            name: providerconfigs.ceph.crossplane.io
+
+  - name: Verify Bucket CRD does not exist before activation.
+    try:
+    - script:
+        content: |
+          if kubectl get crd buckets.provider-ceph.ceph.crossplane.io 2>/dev/null; then
+            echo "ERROR: Bucket CRD should not exist before activation"
+            exit 1
+          fi
+          echo "SUCCESS: Bucket CRD does not exist as expected"
+          exit 0
+
+  - name: Create ManagedResourceActivationPolicy to activate Bucket MRD.
+    try:
+    - apply:
+        resource:
+          apiVersion: apiextensions.crossplane.io/v1alpha1
+          kind: ManagedResourceActivationPolicy
+          metadata:
+            name: activate-provider-ceph-buckets
+          spec:
+            activate:
+            - "buckets.provider-ceph.ceph.crossplane.io"
+
+  - name: Verify MRD is now Active and CRD exists.
+    try:
+    - assert:
+        resource:
+          apiVersion: apiextensions.crossplane.io/v1alpha1
+          kind: ManagedResourceDefinition
+          metadata:
+            name: buckets.provider-ceph.ceph.crossplane.io
+          spec:
+            state: Active
+    - assert:
+        resource:
+          apiVersion: apiextensions.k8s.io/v1
+          kind: CustomResourceDefinition
+          metadata:
+            name: buckets.provider-ceph.ceph.crossplane.io
+
+  - name: Clean up ManagedResourceActivationPolicy.
+    try:
+    - delete:
+        ref:
+          apiVersion: apiextensions.crossplane.io/v1alpha1
+          kind: ManagedResourceActivationPolicy
+          name: activate-provider-ceph-buckets
+    - error:
+        resource:
+          apiVersion: apiextensions.crossplane.io/v1alpha1
+          kind: ManagedResourceActivationPolicy
+          metadata:
+            name: activate-provider-ceph-buckets

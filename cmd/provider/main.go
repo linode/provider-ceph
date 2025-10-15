@@ -18,8 +18,6 @@ package main
 
 //go:generate go get github.com/maxbrunsfeld/counterfeiter/v6
 
-//+kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch
-
 import (
 	"context"
 	"flag"

@@ -178,9 +178,19 @@ func TestUpdate(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -228,10 +238,20 @@ func TestUpdate(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 				roleArn: &roleArn,
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -282,9 +302,19 @@ func TestUpdate(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -340,9 +370,19 @@ func TestUpdate(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -495,6 +535,7 @@ func TestUpdate(t *testing.T) {
 
 			e := external{
 				kubeClient:         cl,
+				kubeReader:         cl,
 				backendStore:       tc.fields.backendStore,
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
@@ -552,9 +593,19 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -603,9 +654,19 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -669,9 +730,19 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -808,6 +879,7 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 
 			e := external{
 				kubeClient:         cl,
+				kubeReader:         cl,
 				backendStore:       tc.fields.backendStore,
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
@@ -865,9 +937,19 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -912,9 +994,19 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -975,9 +1067,19 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -1106,6 +1208,7 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 
 			e := external{
 				kubeClient:         cl,
+				kubeReader:         cl,
 				backendStore:       tc.fields.backendStore,
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,
@@ -1163,9 +1266,19 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -1212,9 +1325,19 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -1276,9 +1399,19 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 
 					return bs
 				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "bucket",
+						},
+					},
+				},
 			},
 			args: args{
 				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "bucket",
+					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
 							"s3-backend-1",
@@ -1409,6 +1542,7 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 
 			e := external{
 				kubeClient:         cl,
+				kubeReader:         cl,
 				backendStore:       tc.fields.backendStore,
 				s3ClientHandler:    s3ClientHandler,
 				autoPauseBucket:    tc.fields.autoPauseBucket,

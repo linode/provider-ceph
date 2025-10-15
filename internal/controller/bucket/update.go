@@ -80,23 +80,15 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		traces.SetAndRecordError(span, updateAllErr)
 	}
 
-	// Whether buckets are updated successfully or not on backends, we need to update the
-	// Bucket CR Status in all cases to represent the conditions of each individual bucket.
-	if err := c.updateBucketCR(ctx, bucket,
+	err := c.updateBucketCR(ctx, bucket,
+		// Whether buckets are updated successfully or not on backends, we need to update the
+		// Bucket CR Status in all cases to represent the conditions of each individual bucket.
 		func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 			setBucketStatus(bucketLatest, bucketBackends, backendsToUpdateOnNames, c.minReplicas)
 
 			return NeedsStatusUpdate
-		}); err != nil {
-		log.Info("Failed to update Bucket CR Status", consts.KeyBucketName, bucket.Name, "error", err.Error())
-		traces.SetAndRecordError(span, err)
-
-		return managed.ExternalUpdate{}, err
-	}
-
-	// The buckets have been updated successfully on all backends, so we need to update the
-	// Bucket CR Spec accordingly.
-	err := c.updateBucketCR(ctx, bucket,
+		},
+		// Update the Bucket CR Meta for backends on which the buckets have been updated successfully.
 		func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 			if bucketLatest.Labels == nil {
 				bucketLatest.Labels = map[string]string{}
@@ -121,7 +113,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			return NeedsObjectUpdate
 		})
 	if err != nil {
-		log.Info("Failed to update Bucket CR Spec", consts.KeyBucketName, bucket.Name, "error", err.Error())
+		log.Info("Failed to update Bucket CR", consts.KeyBucketName, bucket.Name, "error", err.Error())
 		traces.SetAndRecordError(span, err)
 
 		return managed.ExternalUpdate{}, err
@@ -134,8 +126,6 @@ func (c *external) updateOnAllBackends(ctx context.Context, bucket *v1alpha1.Buc
 	ctx, span := otel.Tracer("").Start(ctx, "updateOnAllBackends")
 	defer span.End()
 	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
-
-	defer setBucketStatus(bucket, bb, backendsToUpdateOnNames, c.minReplicas)
 
 	g := new(errgroup.Group)
 

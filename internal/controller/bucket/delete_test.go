@@ -758,6 +758,7 @@ func TestDelete(t *testing.T) {
 					s3clienthandler.WithKubeClient(kubeClient)),
 				log:        logr.Discard(),
 				kubeClient: kubeClient,
+				kubeReader: kubeClient,
 			}
 
 			_, err := e.Delete(context.Background(), tc.args.mg)

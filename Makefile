@@ -10,7 +10,7 @@ PLATFORMS ?= linux_amd64 linux_arm64
 # Generate chainsaw e2e tests for the following kind node versions
 # TEST_KIND_NODES is not intended to be updated manually.
 # Please edit LATEST_KIND_NODE instead and run 'make update-kind-nodes'.
-TEST_KIND_NODES ?= 1.31.13,1.32.9,1.33.5,1.34.1
+TEST_KIND_NODES ?= 1.31.12,1.32.8,1.33.4,1.34.0
 KIND_VERSION ?= v0.30.0
 LATEST_KUBE_VERSION ?= 1.34
 LATEST_KIND_NODE ?= 1.34.1
@@ -207,7 +207,6 @@ chainsaw-safe-start: $(CHAINSAW) build generate-pkg generate-tests
 	@$(MAKE) localstack-cluster
 	@$(MAKE) local.xpkg.deploy.provider.$(PROJECT_NAME)
 	@$(CHAINSAW) test e2e/tests/safe-start --config e2e/tests/safe-start/.chainsaw.yaml
-# || ($(MAKE) controlplane.down && $(FAIL))
 	@$(OK) Running chainsaw safe-start test suite
 	@$(MAKE) controlplane.down
 

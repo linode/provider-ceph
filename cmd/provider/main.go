@@ -239,7 +239,7 @@ func setupControllers(mgr manager.Manager, o controller.Options, connector *buck
 		// Setup controllers with gated versions
 		kingpin.FatalIfError(bucket.SetupGated(mgr, o, connector), "Cannot setup gated Bucket controller")
 	} else {
-		log.Info("Provider has missing RBAC permissions for watching CRDs, controller SafeStart capability will be disabled")
+		log.Info("Provider is missing RBAC permissions for watching CRDs, controller SafeStart capability will be disabled")
 		// Setup controllers directly without gating
 		kingpin.FatalIfError(bucket.Setup(mgr, o, connector), "Cannot setup Bucket controller")
 	}
@@ -460,12 +460,41 @@ func main() {
 	kingpin.FatalIfError(err, "Cannot create Kube client")
 
 	setupBucketWebhook(mgr, backendStore)
-	setupProviderConfigControllers(mgr, o, backendStore, kubeClientUncached, log, *s3Timeout, *backendMonitorInterval, autoPauseBucket)
-	s3ClientHandler := createS3ClientHandler(assumeRoleArn, backendStore, mgr.GetClient(), *s3Timeout, log)
+	setupProviderConfigControllers(
+		mgr,
+		o,
+		backendStore,
+		kubeClientUncached,
+		log,
+		*s3Timeout,
+		*backendMonitorInterval,
+		autoPauseBucket,
+	)
+	s3ClientHandler := createS3ClientHandler(
+		assumeRoleArn,
+		backendStore,
+		mgr.GetClient(),
+		*s3Timeout,
+		log,
+	)
 
-	connector := createBucketConnector(mgr, backendStore, s3ClientHandler, log, autoPauseBucket, minReplicas,
-		recreateMissingBucket, reconcileTimeout, creationGracePeriod, pollInterval, disableACLReconcile,
-		disablePolicyReconcile, disableLifecycleConfigReconcile, disableVersioningConfigReconcile, disableObjectLockConfigReconcile)
+	connector := createBucketConnector(
+		mgr,
+		backendStore,
+		s3ClientHandler,
+		log,
+		autoPauseBucket,
+		minReplicas,
+		recreateMissingBucket,
+		reconcileTimeout,
+		creationGracePeriod,
+		pollInterval,
+		disableACLReconcile,
+		disablePolicyReconcile,
+		disableLifecycleConfigReconcile,
+		disableVersioningConfigReconcile,
+		disableObjectLockConfigReconcile,
+	)
 
 	setupControllers(mgr, o, connector, canSafeStart, log)
 

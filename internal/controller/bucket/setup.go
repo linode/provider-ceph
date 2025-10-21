@@ -39,6 +39,17 @@ var (
 	NewNoOpService = func(_ []byte) (interface{}, error) { return &NoOpService{}, nil }
 )
 
+// SetupGated registers controller setup with the gate, waiting for the required CRD.
+func SetupGated(mgr ctrl.Manager, o controller.Options, c *Connector) error {
+	o.Gate.Register(func() {
+		if err := Setup(mgr, o, c); err != nil {
+			panic(err)
+		}
+	}, v1alpha1.BucketGroupVersionKind)
+
+	return nil
+}
+
 // Setup adds a controller that reconciles Bucket managed resources.
 func Setup(mgr ctrl.Manager, o controller.Options, c *Connector) error {
 	name := managed.ControllerName(v1alpha1.BucketGroupKind)

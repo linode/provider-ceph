@@ -170,6 +170,16 @@ cert-manager: $(KUBECTL)
 # Generate the provider-ceph package and webhookconfiguration manifest.
 generate-pkg: generate kustomize-webhook
 
+# Ensure your branch/PR is ready for review. This target is used instead of the build submodule's
+# 'reviewable' target. The only difference is that this target calls 'generate-pkg' instead of 'generate'
+# to ensure we don't edit the webhook manifest and leave unmerged edits on the branch.
+ready-for-review:
+	@$(INFO) Ensuring branch is ready for review
+	@$(MAKE) generate-pkg
+	@$(MAKE) lint
+	@$(MAKE) test
+	@$(OK) Ensuring branch is ready for review
+
 # Ensure generate-pkg target doesn't create a diff
 check-diff-pkg: generate-pkg
 	@$(INFO) checking that branch is clean

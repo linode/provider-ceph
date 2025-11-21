@@ -667,6 +667,92 @@ spec:
               status: "False"
               type: Ready
 
+  # Create a bucket while localstack-a is still unhealthy, we will use this to verify
+  # that disabling a bucket on an unhealthy backend will fail.
+  - name: Apply unhealthy-backend-disable-bucket.
+    try:
+    - apply:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: unhealthy-backend-disable-bucket
+          spec:
+            autoPause: true
+            forProvider: {}
+    # Assert that unhealthy-backend-disable-bucket is created on localstack-b and -c.
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: unhealthy-backend-disable-bucket
+            finalizers:
+            - "finalizer.managedresource.crossplane.io"
+          status:
+            atProvider:
+              backends:
+                localstack-a:
+                  bucketCondition:
+                    reason: Unavailable
+                    status: "False"
+                    type: Ready
+                localstack-b:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                localstack-c:
+                  bucketCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+            conditions:
+            - reason: Available
+              status: "True"
+              type: Ready
+            - reason: ReconcileError
+              status: "False"
+              type: Synced
+
+  - name: Disable unhealthy-backend-disable-bucket.
+    try:
+    - apply:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: unhealthy-backend-disable-bucket
+          spec:
+            disabled: true
+            autoPause: true
+            forProvider: {}
+
+    # Assert that disablement failed on localstack-a as it is still unreachable.
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: unhealthy-backend-disable-bucket
+            finalizers:
+            - "finalizer.managedresource.crossplane.io"
+          status:
+            atProvider:
+              backends:
+                localstack-a:
+                  bucketCondition:
+                    reason: Deleting
+                    status: "False"
+                    type: Ready
+            conditions:
+            - reason: Unavailable
+              status: "False"
+              type: Ready
+            - reason: ReconcileError
+              status: "False"
+              type: Synced
+
   - name: Make localstack-a reachable again and therefore Healthy.
     try:
     - command:
@@ -691,6 +777,71 @@ spec:
             - reason: HealthCheckSuccess
               status: "True"
               type: Ready
+
+    # Assert that disablement now succeeds on localstack-a after it has become reachable/healthy again.
+    - assert:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: unhealthy-backend-disable-bucket
+            finalizers:
+            - "finalizer.managedresource.crossplane.io"
+          status:
+            atProvider: {}
+            conditions:
+            - reason: Unavailable
+              status: "False"
+              type: Ready
+            - reason: ReconcileSuccess
+              status: "True"
+              type: Synced
+
+  - name: Check that unhealthy-backend-disable-bucket is now deleted from localstack-a.
+    try:
+    - command:
+        args:
+        - bucket_does_not_exist
+        - unhealthy-backend-disable-bucket
+        - local-dev-control-plane:32566
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - unhealthy-backend-disable-bucket
+        - local-dev-control-plane:32567
+        entrypoint: ../../../hack/expect_bucket.sh
+    - command:
+        args:
+        - bucket_does_not_exist
+        - unhealthy-backend-disable-bucket
+        - local-dev-control-plane:32568
+        entrypoint: ../../../hack/expect_bucket.sh
+
+  - name: Delete unhealthy-backend-disable-bucket.
+    try:
+    - command:
+      # We need to "unpause" the bucket to allow deletion.
+        args:
+        - patch
+        - --type=merge
+        - buckets
+        - unhealthy-backend-disable-bucket
+        - -p
+        - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - delete
+        - bucket
+        - unhealthy-backend-disable-bucket
+        entrypoint: kubectl
+    - error:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: unhealthy-backend-disable-bucket
 
   - name: Scale localstack-a deployment to zero and therefore Unhealthy.
     try:

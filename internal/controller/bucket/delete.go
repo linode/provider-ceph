@@ -64,10 +64,6 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 			log.Info("Skipping deletion of bucket on backend, missing status", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			continue
-		} else if reason := backend.BucketCondition.Reason; reason != xpv1.ReasonAvailable {
-			log.Info("Skipping deletion of bucket on backend, not available", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
-
-			continue
 		}
 
 		bucketBackends.setBucketCondition(bucket.Name, backendName, xpv1.Deleting())

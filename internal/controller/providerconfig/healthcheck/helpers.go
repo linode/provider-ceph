@@ -53,28 +53,26 @@ func UpdateProviderConfigStatus(ctx context.Context, kubeClient client.Client, p
 	nn := types.NamespacedName{Name: pc.GetName(), Namespace: pc.Namespace}
 	pcDeepCopy := pc.DeepCopy()
 
-	err := retry.OnError(
-		wait.Backoff{
-			Steps:    steps,
-			Duration: (time.Duration(pc.Spec.HealthCheckIntervalSeconds) * time.Second) - time.Second,
-			Factor:   factor,
-			Jitter:   jitter,
-		},
-		func(err error) bool {
-			return kerrors.IsConflict(err) ||
-				kerrors.IsInternalError(err) ||
-				kerrors.IsServerTimeout(err) ||
-				kerrors.IsServiceUnavailable(err)
-		},
-		func() error {
-			if err := kubeClient.Get(ctx, nn, pc); err != nil {
-				return err
-			}
-			callback(pcDeepCopy, pc)
+	shouldRetry := func(err error) bool {
+		return kerrors.IsConflict(err) ||
+			kerrors.IsInternalError(err) ||
+			kerrors.IsServerTimeout(err) ||
+			kerrors.IsServiceUnavailable(err)
+	}
 
-			return kubeClient.Status().Update(ctx, pc)
-		},
-	)
+	err := retry.OnError(wait.Backoff{
+		Steps:    steps,
+		Duration: (time.Duration(pc.Spec.HealthCheckIntervalSeconds) * time.Second) - time.Second,
+		Factor:   factor,
+		Jitter:   jitter,
+	}, shouldRetry, func() error {
+		if err := kubeClient.Get(ctx, nn, pc); err != nil {
+			return err
+		}
+		callback(pcDeepCopy, pc)
+
+		return kubeClient.Status().Update(ctx, pc)
+	})
 
 	if err != nil {
 		if kerrors.IsNotFound(err) {

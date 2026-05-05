@@ -244,7 +244,7 @@ func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, 
 	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
 	for i, cb := range callbacks {
-		err := retry.OnError(retry.DefaultRetry, resource.IsAPIError, func() error {
+		err := retry.OnError(retry.DefaultBackoff, resource.IsAPIError, func() error {
 			// If there are multiple callbacks, we can only use the cached kube client for
 			// the first Get(). Subsequent Get() calls must use the kube reader which reads
 			// directly from the API. This is necessary as we are doing Patch and Get calls

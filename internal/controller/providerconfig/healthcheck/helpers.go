@@ -47,7 +47,7 @@ import (
 func UpdateProviderConfigStatus(ctx context.Context, kubeClient client.Client, pc *apisv1alpha1.ProviderConfig, callback func(*apisv1alpha1.ProviderConfig, *apisv1alpha1.ProviderConfig)) error {
 	const (
 		steps  = 4
-		factor = 0.5
+		factor = 5.0
 		jitter = 0.1
 	)
 

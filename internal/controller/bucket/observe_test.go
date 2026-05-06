@@ -19,6 +19,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var (
@@ -470,4 +473,87 @@ func TestObserve(t *testing.T) {
 			assert.Equal(t, got, tc.want.o, "unexpected result")
 		})
 	}
+}
+
+// TestObserveDisabledBucketNoBackendsDoesNotTriggerCreate proves the fix for an etcd write loop.
+//
+// Root cause: a disabled bucket with empty backends caused Observe to return ResourceExists:false,
+// which triggered the Crossplane reconciler to call Create on every cycle — 3 etcd writes per
+// reconcile × thousands of buckets. The fix returns ResourceExists:true so Create is never invoked.
+func TestObserveDisabledBucketNoBackendsDoesNotTriggerCreate(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypes(v1alpha1.SchemeGroupVersion, &v1alpha1.Bucket{}, &v1alpha1.BucketList{})
+
+	bs := backendstore.NewBackendStore()
+	bs.AddOrUpdateBackend("s3-backend-1", nil, nil, apisv1alpha1.HealthStatusHealthy)
+
+	t.Run("disabled bucket with no backends returns ResourceExists:true preventing Create", func(t *testing.T) {
+		t.Parallel()
+
+		// Exact state that caused the loop: disabled=true, backends={}, condition not yet Unavailable.
+		bucket := &v1alpha1.Bucket{
+			ObjectMeta: metav1.ObjectMeta{Name: "disabled-no-backends"},
+			Spec:       v1alpha1.BucketSpec{Disabled: true},
+			Status: v1alpha1.BucketStatus{
+				ResourceStatus: v1.ResourceStatus{
+					ConditionedStatus: v1.ConditionedStatus{
+						Conditions: []v1.Condition{v1.Creating()},
+					},
+				},
+			},
+		}
+
+		cl := fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(bucket).
+			WithStatusSubresource(bucket).
+			Build()
+
+		e := external{kubeClient: cl, kubeReader: cl, backendStore: bs, log: logr.Discard()}
+
+		obs, err := e.Observe(context.Background(), bucket)
+		require.NoError(t, err)
+		// ResourceExists:true is the gate that stops the loop — the Crossplane reconciler only
+		// invokes Create (and its three annotation writes) when ResourceExists:false.
+		assert.True(t, obs.ResourceExists, "must be true to prevent Create being called")
+		assert.True(t, obs.ResourceUpToDate)
+
+		// Condition should be driven to Unavailable on the first observe.
+		require.NoError(t, cl.Get(context.Background(), types.NamespacedName{Name: "disabled-no-backends"}, bucket))
+		assert.True(t, bucket.Status.GetCondition(v1.TypeReady).Equal(v1.Unavailable()))
+		rvAfterFirstObserve := bucket.ResourceVersion
+
+		// Second observe: condition is already Unavailable — no further write should occur.
+		obs, err = e.Observe(context.Background(), bucket)
+		require.NoError(t, err)
+		assert.True(t, obs.ResourceExists)
+		assert.True(t, obs.ResourceUpToDate)
+
+		require.NoError(t, cl.Get(context.Background(), types.NamespacedName{Name: "disabled-no-backends"}, bucket))
+		// A stable ResourceVersion proves no etcd write happened on the second reconcile.
+		assert.Equal(t, rvAfterFirstObserve, bucket.ResourceVersion,
+			"no write should occur when condition is already Unavailable — reconciles are idempotent no-ops")
+	})
+
+	t.Run("non-disabled bucket with no backends still returns ResourceExists:false", func(t *testing.T) {
+		t.Parallel()
+
+		bucket := &v1alpha1.Bucket{
+			ObjectMeta: metav1.ObjectMeta{Name: "enabled-no-backends"},
+		}
+
+		cl := fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(bucket).
+			WithStatusSubresource(bucket).
+			Build()
+
+		e := external{kubeClient: cl, kubeReader: cl, backendStore: bs, log: logr.Discard()}
+
+		obs, err := e.Observe(context.Background(), bucket)
+		require.NoError(t, err)
+		assert.False(t, obs.ResourceExists, "active bucket with no backends must still trigger Create")
+	})
 }

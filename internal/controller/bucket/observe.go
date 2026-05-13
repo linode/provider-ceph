@@ -50,6 +50,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 				ResourceUpToDate: true,
 			}, nil
 		}
+
 		return managed.ExternalObservation{
 			ResourceExists:   false,
 			ResourceUpToDate: true,

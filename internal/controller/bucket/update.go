@@ -34,7 +34,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
-	span.SetAttributes(attribute.String("bucket", bucket.Name))
+	span.SetAttributes(attribute.String(consts.TestBucket, bucket.Name))
 
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()
@@ -104,7 +104,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 				c.autoPauseBucket,
 			) {
 				log.Info("Auto pausing bucket", consts.KeyBucketName, bucket.Name)
-				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = True
+				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = consts.TrueStr
 			}
 			// Apply the backend label to the Bucket CR for each backend that the bucket was
 			// intended to be updated on.

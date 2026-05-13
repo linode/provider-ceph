@@ -16,6 +16,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,7 +53,7 @@ func TestCreateBasicErrors(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 				},
 			},
@@ -71,10 +72,10 @@ func TestCreateBasicErrors(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
-						Providers: []string{"s3-backend-1"},
+						Providers: []string{consts.S3Backend1},
 					},
 				},
 			},
@@ -89,7 +90,7 @@ func TestCreateBasicErrors(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 				},
 			},
@@ -101,7 +102,7 @@ func TestCreateBasicErrors(t *testing.T) {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -109,8 +110,8 @@ func TestCreateBasicErrors(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{v1alpha1.BackendLabelPrefix + "s3-backend-1": "false"},
-						Name:   "test-bucket",
+						Labels: map[string]string{v1alpha1.BackendLabelPrefix + consts.S3Backend1: consts.FalseStr},
+						Name:   consts.TestBucket,
 					},
 				},
 			},
@@ -176,7 +177,7 @@ func TestCreate(t *testing.T) {
 					Items: []apisv1alpha1.ProviderConfig{
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "s3-backend-1",
+								Name: consts.S3Backend1,
 							},
 						},
 					},
@@ -189,7 +190,7 @@ func TestCreate(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -197,7 +198,7 @@ func TestCreate(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-bucket",
+						Name: consts.TestBucket,
 					},
 				},
 			},
@@ -212,7 +213,7 @@ func TestCreate(t *testing.T) {
 						"bucket cr condition is not available")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Available()),
 						"bucket condition on backend is not available")
 				},
 			},
@@ -227,8 +228,8 @@ func TestCreate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -237,12 +238,12 @@ func TestCreate(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 					},
 				},
@@ -264,17 +265,17 @@ func TestCreate(t *testing.T) {
 					Items: []apisv1alpha1.ProviderConfig{
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "s3-backend-1",
+								Name: consts.S3Backend1,
 							},
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "s3-backend-2",
+								Name: consts.S3Backend2,
 							},
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "s3-backend-3",
+								Name: consts.S3Backend3,
 							},
 						},
 					},
@@ -294,9 +295,9 @@ func TestCreate(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-3", &fakeClientOK, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend3, &fakeClientOK, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -304,7 +305,7 @@ func TestCreate(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-bucket",
+						Name: consts.TestBucket,
 					},
 				},
 			},
@@ -319,7 +320,7 @@ func TestCreate(t *testing.T) {
 						"bucket cr condition is not available")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-3"].BucketCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend3].BucketCondition.Equal(v1.Available()),
 						"bucket condition on backend is not available")
 				},
 			},
@@ -330,17 +331,17 @@ func TestCreate(t *testing.T) {
 					Items: []apisv1alpha1.ProviderConfig{
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "s3-backend-1",
+								Name: consts.S3Backend1,
 							},
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "s3-backend-2",
+								Name: consts.S3Backend2,
 							},
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "s3-backend-3",
+								Name: consts.S3Backend3,
 							},
 						},
 					},
@@ -354,9 +355,9 @@ func TestCreate(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-3", &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend3, &fakeClientError, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -364,7 +365,7 @@ func TestCreate(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-bucket",
+						Name: consts.TestBucket,
 					},
 				},
 			},

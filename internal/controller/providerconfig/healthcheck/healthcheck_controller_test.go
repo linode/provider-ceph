@@ -33,6 +33,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/utils"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -241,8 +242,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-1",
 								Labels: map[string]string{
-									utils.GetBackendLabel(backendName):     "true",
-									meta.AnnotationKeyReconciliationPaused: "true",
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 								},
 							},
 						},
@@ -250,8 +251,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-2",
 								Labels: map[string]string{
-									utils.GetBackendLabel(backendName):     "true",
-									meta.AnnotationKeyReconciliationPaused: "true",
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 								},
 							},
 						},
@@ -259,7 +260,7 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-3",
 								Labels: map[string]string{
-									utils.GetBackendLabel(backendName):     "true",
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
@@ -268,7 +269,7 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-4",
 								Labels: map[string]string{
-									meta.AnnotationKeyReconciliationPaused: "true",
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 								},
 							},
 						},
@@ -308,7 +309,7 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-1",
 								Labels: map[string]string{
-									utils.GetBackendLabel(backendName):     "true",
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
@@ -317,7 +318,7 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-2",
 								Labels: map[string]string{
-									utils.GetBackendLabel(backendName):     "true",
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
@@ -326,7 +327,7 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-3",
 								Labels: map[string]string{
-									utils.GetBackendLabel(backendName):     "true",
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
@@ -335,7 +336,7 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-4",
 								Labels: map[string]string{
-									meta.AnnotationKeyReconciliationPaused: "true",
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 								},
 							},
 						},
@@ -372,8 +373,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-1",
 								Labels: map[string]string{
-									utils.GetBackendLabel(backendName):     "true",
-									meta.AnnotationKeyReconciliationPaused: "true",
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 								},
 							},
 						},
@@ -381,8 +382,8 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-2",
 								Labels: map[string]string{
-									utils.GetBackendLabel(backendName):     "true",
-									meta.AnnotationKeyReconciliationPaused: "true",
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 								},
 							},
 						},
@@ -390,7 +391,7 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-3",
 								Labels: map[string]string{
-									utils.GetBackendLabel(backendName):     "true",
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
@@ -399,7 +400,7 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-4",
 								Labels: map[string]string{
-									meta.AnnotationKeyReconciliationPaused: "true",
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 								},
 							},
 						},
@@ -439,7 +440,7 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-1",
 								Labels: map[string]string{
-									utils.GetBackendLabel(backendName):     "true",
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
@@ -448,7 +449,7 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-2",
 								Labels: map[string]string{
-									utils.GetBackendLabel(backendName):     "true",
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
@@ -457,7 +458,7 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-3",
 								Labels: map[string]string{
-									utils.GetBackendLabel(backendName):     "true",
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
 								},
 							},
@@ -466,7 +467,7 @@ func TestReconcile(t *testing.T) {
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "bucket-4",
 								Labels: map[string]string{
-									meta.AnnotationKeyReconciliationPaused: "true",
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 								},
 							},
 						},

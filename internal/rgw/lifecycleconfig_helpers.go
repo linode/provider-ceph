@@ -87,7 +87,7 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 			}
 		}
 
-		if local.Prefix != nil {
+		if local.Prefix != nil { //nolint:staticcheck // Support deprecated field.
 			rule.Prefix = local.Prefix //nolint:staticcheck // Support deprecated field.
 		} else {
 			// This is done because S3 expects an empty filter, and never nil if Prefix is not set.
@@ -122,7 +122,7 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 
 // copyTags converts a list of local v1beta.Tags to S3 Tags
 func copyTags(tags []v1alpha1.Tag) []types.Tag {
-	out := make([]types.Tag, 0)
+	out := make([]types.Tag, 0, len(tags))
 	for _, one := range tags {
 		out = append(out, types.Tag{Key: aws.String(one.Key), Value: aws.String(one.Value)})
 	}

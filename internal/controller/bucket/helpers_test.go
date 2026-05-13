@@ -26,6 +26,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
+	"github.com/linode/provider-ceph/internal/consts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -57,7 +58,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Status: v1alpha1.BucketStatus{
 						ResourceStatus: xpv1.ResourceStatus{
@@ -76,7 +77,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Status: v1alpha1.BucketStatus{
 						ResourceStatus: xpv1.ResourceStatus{
@@ -97,7 +98,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Status: v1alpha1.BucketStatus{
 						ResourceStatus: xpv1.ResourceStatus{
@@ -118,7 +119,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Status: v1alpha1.BucketStatus{
 						ResourceStatus: xpv1.ResourceStatus{
@@ -140,7 +141,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Status: v1alpha1.BucketStatus{
 						ResourceStatus: xpv1.ResourceStatus{
@@ -162,7 +163,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Status: v1alpha1.BucketStatus{
 						ResourceStatus: xpv1.ResourceStatus{
@@ -185,7 +186,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Status: v1alpha1.BucketStatus{
 						ResourceStatus: xpv1.ResourceStatus{
@@ -198,22 +199,22 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Unavailable(),
 							},
 						},
@@ -228,7 +229,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Status: v1alpha1.BucketStatus{
 						ResourceStatus: xpv1.ResourceStatus{
@@ -241,19 +242,19 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -268,7 +269,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Status: v1alpha1.BucketStatus{
 						ResourceStatus: xpv1.ResourceStatus{
@@ -281,22 +282,22 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -311,9 +312,9 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
-							meta.AnnotationKeyReconciliationPaused: "false",
+							meta.AnnotationKeyReconciliationPaused: consts.FalseStr,
 						},
 					},
 					Status: v1alpha1.BucketStatus{
@@ -327,22 +328,22 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -358,9 +359,9 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
-							meta.AnnotationKeyReconciliationPaused: "false",
+							meta.AnnotationKeyReconciliationPaused: consts.FalseStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
@@ -377,22 +378,22 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -407,7 +408,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -423,22 +424,22 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -454,7 +455,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -473,22 +474,22 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -503,7 +504,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							"some": "label",
 						},
@@ -519,22 +520,22 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -550,7 +551,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							"some": "label",
 						},
@@ -569,22 +570,22 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -599,7 +600,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -610,7 +611,7 @@ func TestIsPauseRequired(t *testing.T) {
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							},
@@ -627,24 +628,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &unavailable,
 							},
@@ -660,7 +661,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -671,7 +672,7 @@ func TestIsPauseRequired(t *testing.T) {
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							},
@@ -688,24 +689,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -720,7 +721,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -731,7 +732,7 @@ func TestIsPauseRequired(t *testing.T) {
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							},
@@ -748,24 +749,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &available,
 							},
@@ -781,7 +782,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -793,7 +794,7 @@ func TestIsPauseRequired(t *testing.T) {
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							},
@@ -810,24 +811,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                 xpv1.Available(),
 								LifecycleConfigurationCondition: &unavailable,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -842,7 +843,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -854,7 +855,7 @@ func TestIsPauseRequired(t *testing.T) {
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							},
@@ -871,22 +872,22 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -901,7 +902,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -925,24 +926,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &unavailable,
 							},
@@ -958,7 +959,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -982,24 +983,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -1014,7 +1015,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -1038,24 +1039,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
@@ -1071,7 +1072,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -1091,24 +1092,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &unavailable,
 							},
@@ -1124,7 +1125,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -1144,24 +1145,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -1176,7 +1177,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -1196,24 +1197,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								VersioningConfigurationCondition: &available,
 							},
@@ -1229,7 +1230,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -1253,24 +1254,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								ObjectLockConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								ObjectLockConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								ObjectLockConfigurationCondition: &unavailable,
 							},
@@ -1286,7 +1287,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -1310,24 +1311,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								ObjectLockConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								ObjectLockConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition: xpv1.Available(),
 							},
 						},
@@ -1342,7 +1343,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -1366,24 +1367,24 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								ObjectLockConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								ObjectLockConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								ObjectLockConfigurationCondition: &available,
 							},
@@ -1399,7 +1400,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -1410,7 +1411,7 @@ func TestIsPauseRequired(t *testing.T) {
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							},
@@ -1433,28 +1434,28 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
 								VersioningConfigurationCondition: &available,
 								ObjectLockConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
 								VersioningConfigurationCondition: &available,
 								ObjectLockConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
 								VersioningConfigurationCondition: &available,
@@ -1472,7 +1473,7 @@ func TestIsPauseRequired(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
 							meta.AnnotationKeyReconciliationPaused: "",
 						},
@@ -1482,7 +1483,7 @@ func TestIsPauseRequired(t *testing.T) {
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							},
@@ -1505,28 +1506,28 @@ func TestIsPauseRequired(t *testing.T) {
 						},
 					},
 				},
-				providerNames: []string{"s3-backend-1", "s3-backend-2", "s3-backend-3"},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
 				clients: map[string]backendstore.S3Client{
-					"s3-backend-1": nil,
-					"s3-backend-2": nil,
-					"s3-backend-3": nil,
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
 				},
 				bucketBackends: &bucketBackends{
 					backends: map[string]v1alpha1.Backends{
-						"bucket": {
-							"s3-backend-1": &v1alpha1.BackendInfo{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
 								VersioningConfigurationCondition: &available,
 								ObjectLockConfigurationCondition: &available,
 							},
-							"s3-backend-2": &v1alpha1.BackendInfo{
+							consts.S3Backend2: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
 								VersioningConfigurationCondition: &available,
 								ObjectLockConfigurationCondition: &available,
 							},
-							"s3-backend-3": &v1alpha1.BackendInfo{
+							consts.S3Backend3: &v1alpha1.BackendInfo{
 								BucketCondition:                  xpv1.Available(),
 								LifecycleConfigurationCondition:  &available,
 								VersioningConfigurationCondition: &available,

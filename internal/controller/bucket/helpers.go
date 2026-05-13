@@ -27,7 +27,7 @@ const errUnavailableBackends = "Bucket is unavailable on the following backends:
 
 // isBucketPaused returns true if the bucket has the paused label set.
 func isBucketPaused(bucket *v1alpha1.Bucket) bool {
-	if val, ok := bucket.Labels[meta.AnnotationKeyReconciliationPaused]; ok && val == True {
+	if val, ok := bucket.Labels[meta.AnnotationKeyReconciliationPaused]; ok && val == consts.TrueStr {
 		return true
 	}
 
@@ -114,7 +114,7 @@ func isBucketAvailableFromStatus(bucket *v1alpha1.Bucket, providerNames []string
 func getAllBackendLabels(bucket *v1alpha1.Bucket, enabledOnly bool) map[string]string {
 	backends := map[string]string{}
 	for k, v := range bucket.Labels {
-		if !enabledOnly || strings.HasPrefix(k, v1alpha1.BackendLabelPrefix) && bucket.Labels[k] == True {
+		if !enabledOnly || strings.HasPrefix(k, v1alpha1.BackendLabelPrefix) && bucket.Labels[k] == consts.TrueStr {
 			backends[strings.Replace(k, v1alpha1.BackendLabelPrefix, "", 1)] = v
 		}
 	}
@@ -139,7 +139,7 @@ func setAllBackendLabels(bucket *v1alpha1.Bucket, providerNames []string) {
 			continue
 		}
 
-		bucket.Labels[beLabel] = True
+		bucket.Labels[beLabel] = consts.TrueStr
 	}
 }
 
@@ -155,7 +155,7 @@ func getBucketProvidersFilterDisabledLabel(bucket *v1alpha1.Bucket, providerName
 	for i := range providers {
 		// Skip explicitly disabled backends
 		beLabel := utils.GetBackendLabel(providers[i])
-		if status, ok := bucket.Labels[beLabel]; ok && status != True {
+		if status, ok := bucket.Labels[beLabel]; ok && status != consts.TrueStr {
 			continue
 		}
 

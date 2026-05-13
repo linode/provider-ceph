@@ -38,6 +38,4 @@ const (
 	// Policy error messages.
 	errObservePolicy = "failed to observe bucket policy"
 	errHandlePolicy  = "failed to handle bucket policy"
-
-	True = "true"
 )

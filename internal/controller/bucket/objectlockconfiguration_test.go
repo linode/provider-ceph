@@ -32,6 +32,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -72,7 +73,7 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -80,7 +81,7 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -90,7 +91,7 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsUpdate,
@@ -112,7 +113,7 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -120,7 +121,7 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -130,7 +131,7 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: Updated,
@@ -157,7 +158,7 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -165,7 +166,7 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -180,7 +181,7 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsUpdate,
@@ -209,8 +210,8 @@ func TestObjectLockConfigObserveBackend(t *testing.T) {
 //nolint:maintidx //Test with lots of cases.
 func TestObjectLockConfigurationHandle(t *testing.T) {
 	t.Parallel()
-	bucketName := "bucket"
-	beName := "s3-backend-1"
+	bucketName := consts.TestBucket
+	beName := consts.S3Backend1
 	creating := v1.Creating()
 	errRandom := errors.New("some error")
 	type fields struct {
@@ -274,7 +275,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -282,13 +283,13 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: nil,
@@ -300,7 +301,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -308,7 +309,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -316,7 +317,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: nil,
@@ -341,7 +342,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -349,7 +350,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -364,7 +365,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: nil,
@@ -389,7 +390,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -397,7 +398,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -413,7 +414,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: nil,
@@ -447,7 +448,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 						},
 					}
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -455,7 +456,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -471,7 +472,7 @@ func TestObjectLockConfigurationHandle(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: errRandom,

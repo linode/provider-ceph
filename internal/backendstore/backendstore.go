@@ -48,7 +48,7 @@ func (b *BackendStore) GetAllBackendS3Clients() []S3Client {
 	defer b.mu.RUnlock()
 
 	// Create a new clients slice hold a copy of the backend clients
-	clients := make([]S3Client, 0)
+	clients := make([]S3Client, 0, len(b.s3Backends))
 	for _, v := range b.s3Backends {
 		clients = append(clients, v.s3Client)
 	}
@@ -170,7 +170,7 @@ func (b *BackendStore) GetAllBackendNames() []string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	backends := make([]string, 0)
+	backends := make([]string, 0, len(b.s3Backends))
 	for k := range b.s3Backends {
 		backends = append(backends, k)
 	}

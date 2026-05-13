@@ -400,7 +400,6 @@ spec:
                               type: array
                             prefix:
                               description: |-
-                                Prefix identifying one or more objects to which the rule applies.
                                 Deprecated: Use Filter instead.
                                 This field is still supported as it is a required field in PutBucketLifecycle v1.
                               type: string

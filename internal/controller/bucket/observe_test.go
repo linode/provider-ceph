@@ -15,6 +15,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,7 +66,7 @@ func TestObserveBasicErrors(t *testing.T) {
 					Spec: v1alpha1.BucketSpec{
 						ResourceSpec: v1.ResourceSpec{
 							ProviderConfigReference: &v1.Reference{
-								Name: "s3-backend-1",
+								Name: consts.S3Backend1,
 							},
 						},
 					},
@@ -90,7 +91,7 @@ func TestObserveBasicErrors(t *testing.T) {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -98,12 +99,12 @@ func TestObserveBasicErrors(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{v1alpha1.BackendLabelPrefix + "s3-backend-1": "false"},
+						Labels: map[string]string{v1alpha1.BackendLabelPrefix + consts.S3Backend1: consts.FalseStr},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: v1.Available(),
 								},
 							},
@@ -162,7 +163,7 @@ func TestObserve(t *testing.T) {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -172,14 +173,14 @@ func TestObserve(t *testing.T) {
 					Spec: v1alpha1.BucketSpec{
 						ResourceSpec: v1.ResourceSpec{
 							ProviderConfigReference: &v1.Reference{
-								Name: "s3-backend-1",
+								Name: consts.S3Backend1,
 							},
 						},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: v1.Available(),
 								},
 							},
@@ -205,7 +206,7 @@ func TestObserve(t *testing.T) {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -213,17 +214,17 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					Spec: v1alpha1.BucketSpec{
-						Providers: []string{"s3-backend-1"},
+						Providers: []string{consts.S3Backend1},
 						ResourceSpec: v1.ResourceSpec{
 							ProviderConfigReference: &v1.Reference{
-								Name: "s3-backend-1",
+								Name: consts.S3Backend1,
 							},
 						},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: v1.Unavailable(),
 								},
 							},
@@ -255,7 +256,7 @@ func TestObserve(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -266,17 +267,17 @@ func TestObserve(t *testing.T) {
 						Name: "bucket-check-external-error",
 					},
 					Spec: v1alpha1.BucketSpec{
-						Providers: []string{"s3-backend-1"},
+						Providers: []string{consts.S3Backend1},
 						ResourceSpec: v1.ResourceSpec{
 							ProviderConfigReference: &v1.Reference{
-								Name: "s3-backend-1",
+								Name: consts.S3Backend1,
 							},
 						},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: v1.Available(),
 								},
 							},
@@ -309,7 +310,7 @@ func TestObserve(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -320,17 +321,17 @@ func TestObserve(t *testing.T) {
 						Name: "bucket-check-external-not-exists",
 					},
 					Spec: v1alpha1.BucketSpec{
-						Providers: []string{"s3-backend-1"},
+						Providers: []string{consts.S3Backend1},
 						ResourceSpec: v1.ResourceSpec{
 							ProviderConfigReference: &v1.Reference{
-								Name: "s3-backend-1",
+								Name: consts.S3Backend1,
 							},
 						},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: v1.Available(),
 								},
 							},
@@ -363,7 +364,7 @@ func TestObserve(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -374,17 +375,17 @@ func TestObserve(t *testing.T) {
 						Name: "bucket-check-external-ok",
 					},
 					Spec: v1alpha1.BucketSpec{
-						Providers: []string{"s3-backend-1"},
+						Providers: []string{consts.S3Backend1},
 						ResourceSpec: v1.ResourceSpec{
 							ProviderConfigReference: &v1.Reference{
-								Name: "s3-backend-1",
+								Name: consts.S3Backend1,
 							},
 						},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: v1.Available(),
 								},
 							},
@@ -417,7 +418,7 @@ func TestObserve(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -426,17 +427,17 @@ func TestObserve(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					Spec: v1alpha1.BucketSpec{
-						Providers: []string{"s3-backend-1"},
+						Providers: []string{consts.S3Backend1},
 						ResourceSpec: v1.ResourceSpec{
 							ProviderConfigReference: &v1.Reference{
-								Name: "s3-backend-1",
+								Name: consts.S3Backend1,
 							},
 						},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								"s3-backend-1": &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: v1.Available(),
 								},
 							},

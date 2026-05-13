@@ -13,6 +13,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,7 +55,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusUnhealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusUnhealthy)
 
 					return bs
 				}(),
@@ -62,10 +63,10 @@ func TestPolicyObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: Updated,
@@ -81,7 +82,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -89,10 +90,10 @@ func TestPolicyObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsUpdate,
@@ -109,7 +110,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -117,7 +118,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -125,7 +126,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: Updated,
@@ -141,7 +142,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -149,7 +150,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -157,7 +158,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsUpdate,
@@ -173,7 +174,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -181,10 +182,10 @@ func TestPolicyObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: Updated,
@@ -201,7 +202,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -209,7 +210,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -217,7 +218,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsUpdate,
@@ -233,7 +234,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -241,10 +242,10 @@ func TestPolicyObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsDeletion,
@@ -261,7 +262,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -269,7 +270,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -277,7 +278,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsUpdate,

@@ -47,8 +47,6 @@ const (
 	errFailedHealthCheckReq = "failed to forward health check request"
 
 	healthCheckSuffix = "-health-check"
-
-	True = "true"
 )
 
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -192,8 +190,8 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 	// Only list Buckets that (a) were created on s3BackendName
 	// and (b) are already paused.
 	listLabels := labels.SelectorFromSet(labels.Set(map[string]string{
-		utils.GetBackendLabel(s3BackendName):   True,
-		meta.AnnotationKeyReconciliationPaused: True,
+		utils.GetBackendLabel(s3BackendName):   consts.TrueStr,
+		meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 	}))
 
 	buckets := &v1alpha1.BucketList{}
@@ -222,7 +220,7 @@ func (c *Controller) unpauseBuckets(ctx context.Context, s3BackendName string) {
 			Jitter:   jitter,
 		}, resource.IsAPIError, func() error {
 			if (c.autoPauseBucket || buckets.Items[i].Spec.AutoPause) &&
-				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] == True {
+				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] == consts.TrueStr {
 				buckets.Items[i].Labels[meta.AnnotationKeyReconciliationPaused] = ""
 
 				return c.kubeClientCached.Update(ctx, &buckets.Items[i])

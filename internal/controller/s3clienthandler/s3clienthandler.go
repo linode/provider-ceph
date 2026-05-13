@@ -141,7 +141,7 @@ func (h *Handler) createAssumeRoleS3Client(ctx context.Context, b *v1alpha1.Buck
 
 // copySTSTags converts a list of local v1alpha1.Tags to STS Tags
 func copySTSTags(tags []v1alpha1.Tag) []ststypes.Tag {
-	out := make([]ststypes.Tag, 0)
+	out := make([]ststypes.Tag, 0, len(tags))
 	for _, tag := range tags {
 		out = append(out, ststypes.Tag{Key: aws.String(tag.Key), Value: aws.String(tag.Value)})
 	}

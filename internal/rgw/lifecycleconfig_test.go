@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
+	"github.com/linode/provider-ceph/internal/consts"
 )
 
 func TestGenerateLifecycleConfigurationInput(t *testing.T) {
@@ -40,7 +41,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 				config: &v1alpha1.BucketLifecycleConfiguration{
 					Rules: []v1alpha1.LifecycleRule{
 						{
-							Status: "Enabled",
+							Status: consts.EnabledStr,
 							Prefix: &prefix,
 							Expiration: &v1alpha1.LifecycleExpiration{
 								Days: &days365,
@@ -55,7 +56,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 					LifecycleConfiguration: &types.BucketLifecycleConfiguration{
 						Rules: []types.LifecycleRule{
 							{
-								Status: "Enabled",
+								Status: consts.EnabledStr,
 								Prefix: &prefix,
 								Expiration: &types.LifecycleExpiration{
 									Days: &days365,
@@ -72,7 +73,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 				config: &v1alpha1.BucketLifecycleConfiguration{
 					Rules: []v1alpha1.LifecycleRule{
 						{
-							Status: "Enabled",
+							Status: consts.EnabledStr,
 							Prefix: &prefix,
 							Expiration: &v1alpha1.LifecycleExpiration{
 								Days: &days3650,
@@ -88,7 +89,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 							},
 						},
 						{
-							Status: "Enabled",
+							Status: consts.EnabledStr,
 							Prefix: &prefix,
 
 							Expiration: &v1alpha1.LifecycleExpiration{
@@ -102,7 +103,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 							},
 						},
 						{
-							Status: "Enabled",
+							Status: consts.EnabledStr,
 							Prefix: &prefix,
 							Expiration: &v1alpha1.LifecycleExpiration{
 								Days: &days365,
@@ -126,7 +127,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 					LifecycleConfiguration: &types.BucketLifecycleConfiguration{
 						Rules: []types.LifecycleRule{
 							{
-								Status: "Enabled",
+								Status: consts.EnabledStr,
 								Prefix: &prefix,
 								Expiration: &types.LifecycleExpiration{
 									Days: &days3650,
@@ -142,7 +143,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 								},
 							},
 							{
-								Status: "Enabled",
+								Status: consts.EnabledStr,
 								Prefix: &prefix,
 								Expiration: &types.LifecycleExpiration{
 									Days: &days3650,
@@ -155,7 +156,7 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 								},
 							},
 							{
-								Status: "Enabled",
+								Status: consts.EnabledStr,
 								Prefix: &prefix,
 								Expiration: &types.LifecycleExpiration{
 									Days: &days365,

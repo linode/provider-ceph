@@ -19,6 +19,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,6 +31,7 @@ import (
 
 var vEnabled = v1alpha1.VersioningStatusEnabled
 var lEnabled = v1alpha1.ObjectLockEnabledEnabled
+var testStr = "test"
 
 func TestUpdateBasicErrors(t *testing.T) {
 	t.Parallel()
@@ -88,7 +90,7 @@ func TestUpdateBasicErrors(t *testing.T) {
 				mg: &v1alpha1.Bucket{
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
+							consts.S3Backend1,
 						},
 					},
 				},
@@ -102,7 +104,7 @@ func TestUpdateBasicErrors(t *testing.T) {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -110,8 +112,8 @@ func TestUpdateBasicErrors(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{v1alpha1.BackendLabelPrefix + "s3-backend-1": "false"},
-						Name:   "test-bucket",
+						Labels: map[string]string{v1alpha1.BackendLabelPrefix + consts.S3Backend1: consts.FalseStr},
+						Name:   consts.TestBucket,
 					},
 				},
 			},
@@ -173,15 +175,15 @@ func TestUpdate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -189,12 +191,12 @@ func TestUpdate(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 					},
 				},
@@ -214,11 +216,11 @@ func TestUpdate(t *testing.T) {
 						"unexpected bucket synced condition")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Available()),
 						"bucket condition on s3-backend-1 is not available")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].BucketCondition.Equal(v1.Available()),
 						"bucket condition on s3-backend-2 is not available")
 				},
 			},
@@ -233,15 +235,15 @@ func TestUpdate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -250,12 +252,12 @@ func TestUpdate(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 					},
 				},
@@ -270,7 +272,7 @@ func TestUpdate(t *testing.T) {
 						bucket.Status.Conditions[0].Equal(v1.Unavailable()),
 						"unexpected bucket ready condition")
 
-					unavailableBackends := []string{"s3-backend-1", "s3-backend-2"}
+					unavailableBackends := []string{consts.S3Backend1, consts.S3Backend2}
 					slices.Sort(unavailableBackends)
 					assert.True(t,
 						bucket.Status.Conditions[1].Equal(v1.ReconcileError(errors.New(
@@ -278,11 +280,11 @@ func TestUpdate(t *testing.T) {
 						"unexpected bucket synced condition")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Unavailable().
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Unavailable().
 							WithMessage(errors.Wrap(errors.Wrap(someError, "failed to assume role"), "Failed to create s3 client via assume role").Error())), "unexpected bucket condition for s3-backend-1")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(v1.Unavailable().
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].BucketCondition.Equal(v1.Unavailable().
 							WithMessage(errors.Wrap(errors.Wrap(someError, "failed to assume role"), "Failed to create s3 client via assume role").Error())), "unexpected bucket condition for s3-backend-2")
 				},
 			},
@@ -297,15 +299,15 @@ func TestUpdate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -313,12 +315,12 @@ func TestUpdate(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 					},
 				},
@@ -333,7 +335,7 @@ func TestUpdate(t *testing.T) {
 						bucket.Status.Conditions[0].Equal(v1.Unavailable()),
 						"unexpected bucket ready condition")
 
-					unavailableBackends := []string{"s3-backend-1", "s3-backend-2"}
+					unavailableBackends := []string{consts.S3Backend1, consts.S3Backend2}
 					slices.Sort(unavailableBackends)
 					assert.True(t,
 						bucket.Status.Conditions[1].Equal(v1.ReconcileError(errors.New(
@@ -341,11 +343,11 @@ func TestUpdate(t *testing.T) {
 						"unexpected bucket synced condition")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Unavailable().WithMessage(errors.Wrap(someError, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Unavailable().WithMessage(errors.Wrap(someError, "failed to perform head bucket").Error())),
 						"unexpected bucket condition for s3-backend-1")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(v1.Unavailable().WithMessage(errors.Wrap(someError, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].BucketCondition.Equal(v1.Unavailable().WithMessage(errors.Wrap(someError, "failed to perform head bucket").Error())),
 						"unexpected bucket condition for s3-backend-2")
 				},
 			},
@@ -365,15 +367,15 @@ func TestUpdate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fakeOK, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fakeErr, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -381,12 +383,12 @@ func TestUpdate(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 					},
 				},
@@ -406,15 +408,15 @@ func TestUpdate(t *testing.T) {
 
 					assert.True(t,
 						bucket.Status.Conditions[1].Equal(v1.ReconcileError(errors.New(
-							fmt.Sprintf(errUnavailableBackends, strings.Join([]string{"s3-backend-2"}, ", "))))),
+							fmt.Sprintf(errUnavailableBackends, strings.Join([]string{consts.S3Backend2}, ", "))))),
 						"unexpected bucket synced condition")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Available()),
 						"unexpected bucket condition for s3-backend-1")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].BucketCondition.Equal(v1.Unavailable().WithMessage(errors.Wrap(someError, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].BucketCondition.Equal(v1.Unavailable().WithMessage(errors.Wrap(someError, "failed to perform head bucket").Error())),
 						"unexpected bucket condition for s3-backend-2")
 				},
 			},
@@ -429,7 +431,7 @@ func TestUpdate(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -437,9 +439,9 @@ func TestUpdate(t *testing.T) {
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 							Annotations: map[string]string{
-								"test": "test",
+								testStr: testStr,
 							},
 						},
 					},
@@ -448,20 +450,20 @@ func TestUpdate(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Annotations: map[string]string{
-							"test": "test",
+							testStr: testStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
+							consts.S3Backend1,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							},
@@ -490,22 +492,22 @@ func TestUpdate(t *testing.T) {
 						"unexpected bucket synced condition")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].BucketCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Available()),
 						"bucket condition on s3-backend-1 is not available")
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].LifecycleConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].LifecycleConfigurationCondition.Equal(v1.Available()),
 						"lifecycle config condition on s3-backend-1 is not available")
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].VersioningConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].VersioningConfigurationCondition.Equal(v1.Available()),
 						"versioning config condition on s3-backend-1 is not available")
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].ObjectLockConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].ObjectLockConfigurationCondition.Equal(v1.Available()),
 						"object lock config condition on s3-backend-1 is not available")
 
 					assert.Equal(t,
 						map[string]string{
-							meta.AnnotationKeyReconciliationPaused: True,
-							"provider-ceph.backends.s3-backend-1":  True,
+							meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
+							"provider-ceph.backends.s3-backend-1":  consts.TrueStr,
 						},
 						bucket.Labels,
 						"unexpected bucket labels",
@@ -588,15 +590,15 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -604,18 +606,18 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							},
@@ -630,11 +632,11 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].LifecycleConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].LifecycleConfigurationCondition.Equal(v1.Available()),
 						"lifecycle configuration condition on s3-backend-1 is not available")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].LifecycleConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].LifecycleConfigurationCondition.Equal(v1.Available()),
 						"lifecycle configuration condition on s3-backend-2 is not available")
 				},
 			},
@@ -649,15 +651,15 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -665,18 +667,18 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							},
@@ -690,10 +692,10 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 				specificDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
-					unavailableBackends := []string{"s3-backend-1", "s3-backend-2"}
+					unavailableBackends := []string{consts.S3Backend1, consts.S3Backend2}
 					slices.Sort(unavailableBackends)
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].LifecycleConfigurationCondition.Equal(
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].LifecycleConfigurationCondition.Equal(
 							v1.Unavailable().WithMessage(
 								errors.Wrap(
 									errors.Wrap(someError, "failed to put bucket lifecycle configuration"),
@@ -703,7 +705,7 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 						"unexpected lifecycle configuration condition for s3-backend-1")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].LifecycleConfigurationCondition.Equal(
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].LifecycleConfigurationCondition.Equal(
 							v1.Unavailable().WithMessage(
 								errors.Wrap(
 									errors.Wrap(someError, "failed to put bucket lifecycle configuration"),
@@ -725,15 +727,15 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 					fakeOK := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fakeOK, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fakeErr, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -741,18 +743,18 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							},
@@ -768,11 +770,11 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].LifecycleConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].LifecycleConfigurationCondition.Equal(v1.Available()),
 						"unexpected lifecycle configuration condition for s3-backend-1")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].LifecycleConfigurationCondition.Equal(
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].LifecycleConfigurationCondition.Equal(
 							v1.Unavailable().WithMessage(
 								errors.Wrap(
 									errors.Wrap(someError, "failed to put bucket lifecycle configuration"),
@@ -789,7 +791,7 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -797,9 +799,9 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 							Annotations: map[string]string{
-								"test": "test",
+								testStr: testStr,
 							},
 						},
 					},
@@ -808,20 +810,20 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Annotations: map[string]string{
-							"test": "test",
+							testStr: testStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
+							consts.S3Backend1,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							},
@@ -843,13 +845,13 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 						"unexpected bucket synced condition")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].LifecycleConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].LifecycleConfigurationCondition.Equal(v1.Available()),
 						"lifecycle configuration condition on s3-backend-1 is not available")
 
 					assert.Equal(t,
 						map[string]string{
-							meta.AnnotationKeyReconciliationPaused: True,
-							"provider-ceph.backends.s3-backend-1":  True,
+							meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
+							"provider-ceph.backends.s3-backend-1":  consts.TrueStr,
 						},
 						bucket.Labels,
 						"unexpected bucket labels",
@@ -932,15 +934,15 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -948,12 +950,12 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
@@ -970,11 +972,11 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].VersioningConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].VersioningConfigurationCondition.Equal(v1.Available()),
 						"versioning configuration condition on s3-backend-1 is not available")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].VersioningConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].VersioningConfigurationCondition.Equal(v1.Available()),
 						"versioning configuration condition on s3-backend-2 is not available")
 				},
 			},
@@ -989,15 +991,15 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -1005,12 +1007,12 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
@@ -1026,11 +1028,11 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 				specificDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
-					unavailableBackends := []string{"s3-backend-1", "s3-backend-2"}
+					unavailableBackends := []string{consts.S3Backend1, consts.S3Backend2}
 					slices.Sort(unavailableBackends)
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].VersioningConfigurationCondition.Equal(
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].VersioningConfigurationCondition.Equal(
 							v1.Unavailable().WithMessage(
 								errors.Wrap(
 									errors.Wrap(someError, "failed to put bucket versioning"),
@@ -1040,7 +1042,7 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 						"unexpected versioning configuration condition for s3-backend-1")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].VersioningConfigurationCondition.Equal(
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].VersioningConfigurationCondition.Equal(
 							v1.Unavailable().WithMessage(
 								errors.Wrap(
 									errors.Wrap(someError, "failed to put bucket versioning"),
@@ -1062,15 +1064,15 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					fakeOK := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fakeOK, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fakeErr, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -1078,12 +1080,12 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
@@ -1101,11 +1103,11 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].VersioningConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].VersioningConfigurationCondition.Equal(v1.Available()),
 						"unexpected versioning configuration condition for s3-backend-1")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].VersioningConfigurationCondition.Equal(
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].VersioningConfigurationCondition.Equal(
 							v1.Unavailable().WithMessage(
 								errors.Wrap(
 									errors.Wrap(someError, "failed to put bucket versioning"),
@@ -1122,7 +1124,7 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -1130,9 +1132,9 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 							Annotations: map[string]string{
-								"test": "test",
+								testStr: testStr,
 							},
 						},
 					},
@@ -1141,14 +1143,14 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Annotations: map[string]string{
-							"test": "test",
+							testStr: testStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
+							consts.S3Backend1,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							VersioningConfiguration: &v1alpha1.VersioningConfiguration{
@@ -1172,13 +1174,13 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 						"unexpected bucket synced condition")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].VersioningConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].VersioningConfigurationCondition.Equal(v1.Available()),
 						"versioning configuration condition on s3-backend-1 is not available")
 
 					assert.Equal(t,
 						map[string]string{
-							meta.AnnotationKeyReconciliationPaused: True,
-							"provider-ceph.backends.s3-backend-1":  True,
+							meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
+							"provider-ceph.backends.s3-backend-1":  consts.TrueStr,
 						},
 						bucket.Labels,
 						"unexpected bucket labels",
@@ -1261,15 +1263,15 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -1277,12 +1279,12 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							ObjectLockEnabledForBucket: &enabledTrue,
@@ -1300,12 +1302,12 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].ObjectLockConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].ObjectLockConfigurationCondition.Equal(v1.Available()),
 
 						"object lock configuration condition on s3-backend-1 is not available")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].ObjectLockConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].ObjectLockConfigurationCondition.Equal(v1.Available()),
 						"object lock configuration condition on s3-backend-2 is not available")
 				},
 			},
@@ -1320,15 +1322,15 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -1336,12 +1338,12 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							ObjectLockEnabledForBucket: &enabledTrue,
@@ -1358,11 +1360,11 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 				specificDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
-					unavailableBackends := []string{"s3-backend-1", "s3-backend-2"}
+					unavailableBackends := []string{consts.S3Backend1, consts.S3Backend2}
 					slices.Sort(unavailableBackends)
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].ObjectLockConfigurationCondition.Equal(
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].ObjectLockConfigurationCondition.Equal(
 							v1.Unavailable().WithMessage(
 								errors.Wrap(
 									errors.Wrap(someError, "failed to put object lock configuration"),
@@ -1372,7 +1374,7 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 						"unexpected object lock configuration condition for s3-backend-1")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].ObjectLockConfigurationCondition.Equal(
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].ObjectLockConfigurationCondition.Equal(
 							v1.Unavailable().WithMessage(
 								errors.Wrap(
 									errors.Wrap(someError, "failed to put object lock configuration"),
@@ -1394,15 +1396,15 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 					fakeOK := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fakeOK, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend("s3-backend-2", &fakeErr, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fakeOK, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, &fakeErr, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 						},
 					},
 				},
@@ -1410,12 +1412,12 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
-							"s3-backend-2",
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							ObjectLockEnabledForBucket: &enabledTrue,
@@ -1434,11 +1436,11 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].ObjectLockConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].ObjectLockConfigurationCondition.Equal(v1.Available()),
 						"unexpected object lock configuration condition for s3-backend-1")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-2"].ObjectLockConfigurationCondition.Equal(
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].ObjectLockConfigurationCondition.Equal(
 							v1.Unavailable().WithMessage(
 								errors.Wrap(
 									errors.Wrap(someError, "failed to put object lock configuration"),
@@ -1455,7 +1457,7 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -1463,9 +1465,9 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 				initObjects: []client.Object{
 					&v1alpha1.Bucket{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "bucket",
+							Name: consts.TestBucket,
 							Annotations: map[string]string{
-								"test": "test",
+								testStr: testStr,
 							},
 						},
 					},
@@ -1474,14 +1476,14 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Annotations: map[string]string{
-							"test": "test",
+							testStr: testStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							"s3-backend-1",
+							consts.S3Backend1,
 						},
 						ForProvider: v1alpha1.BucketParameters{
 							ObjectLockEnabledForBucket: &enabledTrue,
@@ -1506,13 +1508,13 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 						"unexpected bucket synced condition")
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends["s3-backend-1"].ObjectLockConfigurationCondition.Equal(v1.Available()),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].ObjectLockConfigurationCondition.Equal(v1.Available()),
 						"object lock configuration condition on s3-backend-1 is not available")
 
 					assert.Equal(t,
 						map[string]string{
-							meta.AnnotationKeyReconciliationPaused: True,
-							"provider-ceph.backends.s3-backend-1":  True,
+							meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
+							"provider-ceph.backends.s3-backend-1":  consts.TrueStr,
 						},
 						bucket.Labels,
 						"unexpected bucket labels",

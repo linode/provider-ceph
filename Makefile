@@ -416,7 +416,7 @@ $(NILAWAY):
 	@mv $(TOOLS_HOST_DIR)/nilaway $(NILAWAY)
 	@$(OK) installing nilaway $(NILAWAY_VERSION)
 
-GOVULNCHECK_VERSION ?= v1.1.4
+GOVULNCHECK_VERSION ?= latest
 GOVULNCHECK := $(TOOLS_HOST_DIR)/govulncheck-$(GOVULNCHECK_VERSION)
 
 .PHONY: vulncheck

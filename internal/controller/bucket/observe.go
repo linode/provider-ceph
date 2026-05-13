@@ -42,18 +42,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		if bucket.Spec.Disabled {
 			// Bucket is disabled and has no backends — either it was never
 			// created, or Delete has already removed it from all backends.
-			// Either way, there is nothing for provider-ceph to act on
-			// Only update the condition if not already Unavailable to avoid
-			// an etcd write on every reconcile.
-			if !bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Unavailable()) {
-				if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
-					bucketLatest.Status.SetConditions(xpv1.Unavailable())
-					return NeedsStatusUpdate
-				}); err != nil {
-					traces.SetAndRecordError(span, err)
-					return managed.ExternalObservation{}, err
-				}
-			}
+			// Either way, there is nothing for provider-ceph to act on so
+			// we return true/true for the external observation so that the
+			// Create/Delete methods are not called by crossplane-runtime.
 			return managed.ExternalObservation{
 				ResourceExists:   true,
 				ResourceUpToDate: true,

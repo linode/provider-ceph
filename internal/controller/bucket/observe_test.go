@@ -20,7 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -519,22 +518,6 @@ func TestObserveDisabledBucketNoBackendsDoesNotTriggerCreate(t *testing.T) {
 		// invokes Create (and its three annotation writes) when ResourceExists:false.
 		assert.True(t, obs.ResourceExists, "must be true to prevent Create being called")
 		assert.True(t, obs.ResourceUpToDate)
-
-		// Condition should be driven to Unavailable on the first observe.
-		require.NoError(t, cl.Get(context.Background(), types.NamespacedName{Name: "disabled-no-backends"}, bucket))
-		assert.True(t, bucket.Status.GetCondition(v1.TypeReady).Equal(v1.Unavailable()))
-		rvAfterFirstObserve := bucket.ResourceVersion
-
-		// Second observe: condition is already Unavailable — no further write should occur.
-		obs, err = e.Observe(context.Background(), bucket)
-		require.NoError(t, err)
-		assert.True(t, obs.ResourceExists)
-		assert.True(t, obs.ResourceUpToDate)
-
-		require.NoError(t, cl.Get(context.Background(), types.NamespacedName{Name: "disabled-no-backends"}, bucket))
-		// A stable ResourceVersion proves no etcd write happened on the second reconcile.
-		assert.Equal(t, rvAfterFirstObserve, bucket.ResourceVersion,
-			"no write should occur when condition is already Unavailable — reconciles are idempotent no-ops")
 	})
 
 	t.Run("non-disabled bucket with no backends still returns ResourceExists:false", func(t *testing.T) {

@@ -34,7 +34,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
-	span.SetAttributes(attribute.String(consts.TestBucket, bucket.Name))
+	span.SetAttributes(attribute.String("bucket", bucket.Name))
 
 	ctx, cancel := context.WithTimeout(ctx, c.operationTimeout)
 	defer cancel()

@@ -39,12 +39,23 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	if len(bucket.Status.AtProvider.Backends) == 0 {
-		if bucket.Spec.Disabled {
-			// Bucket is disabled and has no backends — either it was never
-			// created, or Delete has already removed it from all backends.
-			// Either way, there is nothing for provider-ceph to act on so
-			// we return true/true for the external observation so that the
-			// Create/Delete methods are not called by crossplane-runtime.
+		if bucket.Spec.Disabled && bucket.GetDeletionTimestamp() == nil {
+			// This is an edge case:
+			// 1. The Bucket CR has no corresponding S3 bucket on any backends.
+			// 2. The Bucket CR is disabled.
+			// 3. The Bucket CR has NOT been deleted.
+			//
+			// Therefore we can assume its S3 buckets were never created on any backends or they
+			// were successfully removed when the CR was disabled. Either way, there is nothing
+			// for provider-ceph to do, so we return true/true for the external observation.
+			//
+			// This may seem counter intuitive given that the external resource does not exist.
+			// However, were we to return "ResourceExists: false" in this scenario, the crossplane
+			// runtime would update the "external-create-pending" annotation on the CR and call
+			// provider ceph's Create() method which will just return early as the CR is disabled.
+			// This results in an infinite loop of crossplane-runtime re-queuing the disabled CR
+			// and updating the same annotation repeatedly even though it is already in the desired
+			// state for a disabled CR. Over time these annotaion writes will fill up the ETCD DB.
 			return managed.ExternalObservation{
 				ResourceExists:   true,
 				ResourceUpToDate: true,

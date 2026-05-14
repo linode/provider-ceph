@@ -86,9 +86,9 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 				rule.Transitions = append(rule.Transitions, transition)
 			}
 		}
-
-		if local.Prefix != nil { //nolint:staticcheck // Support deprecated field.
-			rule.Prefix = local.Prefix //nolint:staticcheck // Support deprecated field.
+		//nolint:staticcheck // Support deprecated field.
+		if local.Prefix != nil {
+			rule.Prefix = local.Prefix
 		} else {
 			// This is done because S3 expects an empty filter, and never nil if Prefix is not set.
 			rule.Filter = &types.LifecycleRuleFilterMemberPrefix{}

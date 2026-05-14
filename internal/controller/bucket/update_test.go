@@ -31,7 +31,8 @@ import (
 
 var vEnabled = v1alpha1.VersioningStatusEnabled
 var lEnabled = v1alpha1.ObjectLockEnabledEnabled
-var testStr = "test"
+
+const testStr = "test"
 
 func TestUpdateBasicErrors(t *testing.T) {
 	t.Parallel()

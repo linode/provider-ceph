@@ -33,6 +33,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"github.com/linode/provider-ceph/internal/rgw"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -82,7 +83,7 @@ func TestObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -90,10 +91,10 @@ func TestObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsUpdate,
@@ -106,7 +107,7 @@ func TestObserveBackend(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusUnhealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusUnhealthy)
 
 					return bs
 				}(),
@@ -114,10 +115,10 @@ func TestObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NoAction,
@@ -133,7 +134,7 @@ func TestObserveBackend(t *testing.T) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							}, nil
@@ -141,7 +142,7 @@ func TestObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -149,13 +150,13 @@ func TestObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						LifecycleConfigurationDisabled: false,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsDeletion,
@@ -175,7 +176,7 @@ func TestObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -183,13 +184,13 @@ func TestObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						LifecycleConfigurationDisabled: false,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NoAction,
@@ -205,7 +206,7 @@ func TestObserveBackend(t *testing.T) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							}, nil
@@ -213,7 +214,7 @@ func TestObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -221,7 +222,7 @@ func TestObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						LifecycleConfigurationDisabled: true,
@@ -238,7 +239,7 @@ func TestObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsDeletion,
@@ -258,7 +259,7 @@ func TestObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -266,7 +267,7 @@ func TestObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						LifecycleConfigurationDisabled: true,
@@ -283,7 +284,7 @@ func TestObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NoAction,
@@ -309,7 +310,7 @@ func TestObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -317,7 +318,7 @@ func TestObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						LifecycleConfigurationDisabled: false,
@@ -328,7 +329,7 @@ func TestObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsDeletion,
@@ -344,7 +345,7 @@ func TestObserveBackend(t *testing.T) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 										Expiration: &s3types.LifecycleExpiration{
 											Days: &days2,
 										},
@@ -356,7 +357,7 @@ func TestObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -364,7 +365,7 @@ func TestObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						LifecycleConfigurationDisabled: false,
@@ -372,7 +373,7 @@ func TestObserveBackend(t *testing.T) {
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 										Expiration: &v1alpha1.LifecycleExpiration{
 											Days: &days1,
 										},
@@ -382,7 +383,7 @@ func TestObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsUpdate,
@@ -409,7 +410,7 @@ func TestObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -417,7 +418,7 @@ func TestObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						LifecycleConfigurationDisabled: false,
@@ -434,7 +435,7 @@ func TestObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: Updated,
@@ -463,8 +464,8 @@ func TestObserveBackend(t *testing.T) {
 //nolint:maintidx // Function requires numerous checks.
 func TestHandle(t *testing.T) {
 	t.Parallel()
-	bucketName := "bucket"
-	beName := "s3-backend-1"
+	bucketName := consts.TestBucket
+	beName := consts.S3Backend1
 	creating := v1.Creating()
 	errRandom := errors.New("some error")
 	type fields struct {
@@ -492,7 +493,7 @@ func TestHandle(t *testing.T) {
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{}
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusUnhealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusUnhealthy)
 
 					return bs
 				}(),
@@ -521,7 +522,7 @@ func TestHandle(t *testing.T) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							}, nil
@@ -529,7 +530,7 @@ func TestHandle(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -567,7 +568,7 @@ func TestHandle(t *testing.T) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 									},
 								},
 							}, nil
@@ -587,13 +588,13 @@ func TestHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						LifecycleConfigurationDisabled: false,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: errRandom,
@@ -620,7 +621,7 @@ func TestHandle(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -628,7 +629,7 @@ func TestHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						LifecycleConfigurationDisabled: true,
@@ -645,7 +646,7 @@ func TestHandle(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: nil,
@@ -660,7 +661,7 @@ func TestHandle(t *testing.T) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 										Expiration: &s3types.LifecycleExpiration{
 											Days: &days2,
 										},
@@ -672,7 +673,7 @@ func TestHandle(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -680,7 +681,7 @@ func TestHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						LifecycleConfigurationDisabled: false,
@@ -688,7 +689,7 @@ func TestHandle(t *testing.T) {
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 										Expiration: &v1alpha1.LifecycleExpiration{
 											Days: &days1,
 										},
@@ -698,7 +699,7 @@ func TestHandle(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: nil,
@@ -720,7 +721,7 @@ func TestHandle(t *testing.T) {
 							return &s3.GetBucketLifecycleConfigurationOutput{
 								Rules: []s3types.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 										Expiration: &s3types.LifecycleExpiration{
 											Days: &days2,
 										},
@@ -734,7 +735,7 @@ func TestHandle(t *testing.T) {
 						},
 					}
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -742,7 +743,7 @@ func TestHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						LifecycleConfigurationDisabled: false,
@@ -750,7 +751,7 @@ func TestHandle(t *testing.T) {
 							LifecycleConfiguration: &v1alpha1.BucketLifecycleConfiguration{
 								Rules: []v1alpha1.LifecycleRule{
 									{
-										Status: "Enabled",
+										Status: consts.EnabledStr,
 										Expiration: &v1alpha1.LifecycleExpiration{
 											Days: &days1,
 										},
@@ -760,7 +761,7 @@ func TestHandle(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: errRandom,

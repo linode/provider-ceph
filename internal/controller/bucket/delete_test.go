@@ -16,6 +16,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"github.com/linode/provider-ceph/internal/rgw"
 	"github.com/stretchr/testify/assert"
@@ -23,11 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-)
-
-const (
-	s3Backend1 = "s3-backend-1"
-	s3Backend2 = "s3-backend-2"
 )
 
 func TestDeleteBasicErrors(t *testing.T) {
@@ -71,7 +67,7 @@ func TestDeleteBasicErrors(t *testing.T) {
 					Spec: v1alpha1.BucketSpec{
 						ResourceSpec: xpv1.ResourceSpec{
 							ProviderConfigReference: &xpv1.Reference{
-								Name: s3Backend1,
+								Name: consts.S3Backend1,
 							},
 						},
 					},
@@ -149,8 +145,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -158,22 +154,22 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
-							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
-							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+							v1alpha1.BackendLabelPrefix + consts.S3Backend1: consts.TrueStr,
+							v1alpha1.BackendLabelPrefix + consts.S3Backend2: consts.TrueStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
-						Providers: []string{s3Backend1, s3Backend2},
+						Providers: []string{consts.S3Backend1, consts.S3Backend2},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								s3Backend1: &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								s3Backend2: &v1alpha1.BackendInfo{
+								consts.S3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -190,7 +186,7 @@ func TestDelete(t *testing.T) {
 					// s3-backend-1 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b[s3Backend1]; ok {
+							if _, ok := b[consts.S3Backend1]; ok {
 								return true
 							}
 
@@ -201,7 +197,7 @@ func TestDelete(t *testing.T) {
 					// s3-backend-2 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b[s3Backend2]; ok {
+							if _, ok := b[consts.S3Backend2]; ok {
 								return true
 							}
 
@@ -225,8 +221,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -234,10 +230,10 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
-							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
-							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+							v1alpha1.BackendLabelPrefix + consts.S3Backend1: consts.TrueStr,
+							v1alpha1.BackendLabelPrefix + consts.S3Backend2: consts.TrueStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
@@ -247,10 +243,10 @@ func TestDelete(t *testing.T) {
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								s3Backend1: &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								s3Backend2: &v1alpha1.BackendInfo{
+								consts.S3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -267,7 +263,7 @@ func TestDelete(t *testing.T) {
 					// s3-backend-1 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b[s3Backend1]; ok {
+							if _, ok := b[consts.S3Backend1]; ok {
 								return true
 							}
 
@@ -278,7 +274,7 @@ func TestDelete(t *testing.T) {
 					// s3-backend-2 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b[s3Backend2]; ok {
+							if _, ok := b[consts.S3Backend2]; ok {
 								return true
 							}
 
@@ -301,8 +297,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -310,25 +306,25 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
-							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
-							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+							v1alpha1.BackendLabelPrefix + consts.S3Backend1: consts.TrueStr,
+							v1alpha1.BackendLabelPrefix + consts.S3Backend2: consts.TrueStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							s3Backend1,
-							s3Backend2,
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								s3Backend1: &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								s3Backend2: &v1alpha1.BackendInfo{
+								consts.S3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -343,10 +339,10 @@ func TestDelete(t *testing.T) {
 					bucket, _ := mg.(*v1alpha1.Bucket)
 
 					assert.True(t,
-						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
 						"unexpected bucket condition on s3-backend-1")
 					assert.True(t,
-						bucket.Status.AtProvider.Backends[s3Backend2].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
 						"unexpected bucket condition on s3-backend-2")
 				},
 			},
@@ -364,8 +360,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -373,10 +369,10 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
-							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
-							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+							v1alpha1.BackendLabelPrefix + consts.S3Backend1: consts.TrueStr,
+							v1alpha1.BackendLabelPrefix + consts.S3Backend2: consts.TrueStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
@@ -385,10 +381,10 @@ func TestDelete(t *testing.T) {
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								s3Backend1: &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								s3Backend2: &v1alpha1.BackendInfo{
+								consts.S3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -402,10 +398,10 @@ func TestDelete(t *testing.T) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 					assert.True(t,
-						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
 						"unexpected bucket condition on s3-backend-1")
 					assert.True(t,
-						bucket.Status.AtProvider.Backends[s3Backend2].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
 						"unexpected bucket condition on s3-backend-2")
 				},
 			},
@@ -421,8 +417,8 @@ func TestDelete(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -431,10 +427,10 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
-							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
-							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+							v1alpha1.BackendLabelPrefix + consts.S3Backend1: consts.TrueStr,
+							v1alpha1.BackendLabelPrefix + consts.S3Backend2: consts.TrueStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
@@ -443,10 +439,10 @@ func TestDelete(t *testing.T) {
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								s3Backend1: &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								s3Backend2: &v1alpha1.BackendInfo{
+								consts.S3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -460,10 +456,10 @@ func TestDelete(t *testing.T) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
 					assert.True(t,
-						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to assume role"), "Failed to create s3 client via assume role").Error())),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to assume role"), "Failed to create s3 client via assume role").Error())),
 						"unexpected bucket condition on s3-backend-1")
 					assert.True(t,
-						bucket.Status.AtProvider.Backends[s3Backend2].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to assume role"), "Failed to create s3 client via assume role").Error())),
+						bucket.Status.AtProvider.Backends[consts.S3Backend2].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errors.Wrap(errRandom, "failed to assume role"), "Failed to create s3 client via assume role").Error())),
 						"unexpected bucket condition on s3-backend-2")
 				},
 			},
@@ -492,8 +488,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClientOK, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, fakeClientOK, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -501,25 +497,25 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
-							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
-							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+							v1alpha1.BackendLabelPrefix + consts.S3Backend1: consts.TrueStr,
+							v1alpha1.BackendLabelPrefix + consts.S3Backend2: consts.TrueStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							s3Backend1,
-							s3Backend2,
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								s3Backend1: &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								s3Backend2: &v1alpha1.BackendInfo{
+								consts.S3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -535,13 +531,13 @@ func TestDelete(t *testing.T) {
 
 					// s3-backend-1 failed so is stuck in Deleting status.
 					assert.True(t,
-						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(errors.Wrap(errRandom, "failed to perform head bucket").Error())),
 						"unexpected bucket condition on s3-backend-1")
 
 					// s3-backend-2 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b[s3Backend2]; ok {
+							if _, ok := b[consts.S3Backend2]; ok {
 								return true
 							}
 
@@ -579,8 +575,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClientOK, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, fakeClientOK, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -588,25 +584,25 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
-							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
-							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+							v1alpha1.BackendLabelPrefix + consts.S3Backend1: consts.TrueStr,
+							v1alpha1.BackendLabelPrefix + consts.S3Backend2: consts.TrueStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							s3Backend1,
-							s3Backend2,
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								s3Backend1: &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								s3Backend2: &v1alpha1.BackendInfo{
+								consts.S3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -622,13 +618,13 @@ func TestDelete(t *testing.T) {
 
 					// s3-backend-1 failed so is stuck in Deleting status.
 					assert.True(t,
-						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(fmt.Errorf("%w: %w", rgw.ErrBucketNotEmpty, rgw.BucketNotEmptyError{}).Error())),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(fmt.Errorf("%w: %w", rgw.ErrBucketNotEmpty, rgw.BucketNotEmptyError{}).Error())),
 						"unexpected bucket condition on s3-backend-1")
 
 					// s3-backend-2 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b[s3Backend2]; ok {
+							if _, ok := b[consts.S3Backend2]; ok {
 								return true
 							}
 
@@ -671,8 +667,8 @@ func TestDelete(t *testing.T) {
 					)
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend(s3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
-					bs.AddOrUpdateBackend(s3Backend2, fakeClientOK, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, fakeClient, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend2, fakeClientOK, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -680,26 +676,26 @@ func TestDelete(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 						Labels: map[string]string{
-							v1alpha1.BackendLabelPrefix + s3Backend1: "true",
-							v1alpha1.BackendLabelPrefix + s3Backend2: "true",
+							v1alpha1.BackendLabelPrefix + consts.S3Backend1: consts.TrueStr,
+							v1alpha1.BackendLabelPrefix + consts.S3Backend2: consts.TrueStr,
 						},
 					},
 					Spec: v1alpha1.BucketSpec{
 						Providers: []string{
-							s3Backend1,
-							s3Backend2,
+							consts.S3Backend1,
+							consts.S3Backend2,
 						},
 						Disabled: true,
 					},
 					Status: v1alpha1.BucketStatus{
 						AtProvider: v1alpha1.BucketObservation{
 							Backends: v1alpha1.Backends{
-								s3Backend1: &v1alpha1.BackendInfo{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
-								s3Backend2: &v1alpha1.BackendInfo{
+								consts.S3Backend2: &v1alpha1.BackendInfo{
 									BucketCondition: xpv1.Available(),
 								},
 							},
@@ -715,13 +711,13 @@ func TestDelete(t *testing.T) {
 
 					// s3-backend-1 failed so is stuck in Deleting status.
 					assert.True(t,
-						bucket.Status.AtProvider.Backends[s3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(fmt.Errorf("%w: %w", rgw.ErrBucketNotEmpty, rgw.BucketNotEmptyError{}).Error())),
+						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(xpv1.Deleting().WithMessage(fmt.Errorf("%w: %w", rgw.ErrBucketNotEmpty, rgw.BucketNotEmptyError{}).Error())),
 						"unexpected bucket condition on s3-backend-1")
 
 					// s3-backend-2 was successfully deleted so was removed from status.
 					assert.False(t,
 						func(b v1alpha1.Backends) bool {
-							if _, ok := b[s3Backend2]; ok {
+							if _, ok := b[consts.S3Backend2]; ok {
 								return true
 							}
 

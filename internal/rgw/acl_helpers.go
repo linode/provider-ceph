@@ -40,7 +40,7 @@ func GenerateAccessControlPolicy(policyIn *v1alpha1.AccessControlPolicy) *s3type
 }
 
 func GenerateGrants(grantsIn []v1alpha1.Grant) []s3types.Grant {
-	grantsOut := make([]s3types.Grant, 0)
+	grantsOut := make([]s3types.Grant, 0, len(grantsIn))
 
 	for _, grantIn := range grantsIn {
 		localGrant := s3types.Grant{}

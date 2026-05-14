@@ -13,6 +13,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -63,7 +64,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -92,7 +93,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -100,7 +101,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -129,7 +130,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -137,7 +138,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -145,7 +146,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				requireErr: func(t *testing.T, err error) {
@@ -168,7 +169,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -176,7 +177,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -184,7 +185,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				requireErr: func(t *testing.T, err error) {
@@ -210,7 +211,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -218,7 +219,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -226,7 +227,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				requireErr: func(t *testing.T, err error) {
@@ -252,7 +253,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -260,7 +261,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -268,7 +269,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				requireErr: func(t *testing.T, err error) {
@@ -294,7 +295,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -302,7 +303,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -310,7 +311,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				requireErr: func(t *testing.T, err error) {
@@ -336,7 +337,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -356,7 +357,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -364,7 +365,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				requireErr: func(t *testing.T, err error) {
@@ -391,14 +392,14 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", nil, &fake, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
 				initObjects: []client.Object{
 					&apisv1alpha1.ProviderConfig{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "s3-backend-1",
+							Name: consts.S3Backend1,
 						},
 					},
 				},
@@ -406,7 +407,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -414,7 +415,7 @@ func TestCreateAssumeRoleS3Client(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				requireErr: nil,

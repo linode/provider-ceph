@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,55 +20,55 @@ func TestMissingStrings(t *testing.T) {
 	}{
 		"All strings in sliceA found in sliceB": {
 			sliceA: []string{
-				"cluster-1",
-				"cluster-2",
+				consts.S3Backend1,
+				consts.S3Backend2,
 			},
 			sliceB: []string{
-				"cluster-1",
-				"cluster-2",
-				"cluster-3",
+				consts.S3Backend1,
+				consts.S3Backend2,
+				consts.S3Backend3,
 			},
 			missing: nil,
 		},
 		"All strings in sliceA missing from sliceB": {
 			sliceA: []string{
-				"cluster-1",
-				"cluster-2",
+				consts.S3Backend1,
+				consts.S3Backend2,
 			},
 			sliceB: []string{
-				"cluster-3",
+				consts.S3Backend3,
 				"cluster-4",
 				"cluster-5",
 			},
 			missing: []string{
-				"cluster-1",
-				"cluster-2",
+				consts.S3Backend1,
+				consts.S3Backend2,
 			},
 		},
 		"All strings in sliceA missing from empty sliceB": {
 			sliceA: []string{
-				"cluster-1",
-				"cluster-2",
+				consts.S3Backend1,
+				consts.S3Backend2,
 			},
 			sliceB: []string{},
 			missing: []string{
-				"cluster-1",
-				"cluster-2",
+				consts.S3Backend1,
+				consts.S3Backend2,
 			},
 		},
 		"One string in sliceA is missing from sliceB, others are found": {
 			sliceA: []string{
-				"cluster-1",
-				"cluster-2",
-				"cluster-3",
+				consts.S3Backend1,
+				consts.S3Backend2,
+				consts.S3Backend3,
 			},
 			sliceB: []string{
-				"cluster-1",
-				"cluster-2",
+				consts.S3Backend1,
+				consts.S3Backend2,
 				"cluster-5",
 			},
 			missing: []string{
-				"cluster-3",
+				consts.S3Backend3,
 			},
 		},
 	}

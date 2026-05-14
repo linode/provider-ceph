@@ -180,9 +180,7 @@ spec:
                 x-kubernetes-list-type: map
               health:
                 description: |-
-                  Health of the s3 backend represented by the ProviderConfig determined
-                  by periodic health check.
-                  Deprecated: Use ProviderConfogStatus.ConditionedStatus instead.
+                  Deprecated: Use ProviderConfigStatus.ConditionedStatus instead.
                   This field will be removed in a future release.
                 enum:
                 - Healthy
@@ -191,7 +189,7 @@ spec:
                 type: string
               reason:
                 description: |-
-                  Deprecated: Use ProviderConfogStatus.ConditionedStatus instead.
+                  Deprecated: Use ProviderConfigStatus.ConditionedStatus instead.
                   This field will be removed in a future release.
                 type: string
               users:

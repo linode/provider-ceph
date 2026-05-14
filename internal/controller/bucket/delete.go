@@ -52,7 +52,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	providerNames := []string{}
 	for backendName, value := range getAllBackendLabels(bucket, true) {
 		// Skip disabled backends
-		if value != True {
+		if value != consts.TrueStr {
 			log.Info("Skipping deletion of bucket on backend, disabled", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
 			continue

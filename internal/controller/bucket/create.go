@@ -157,7 +157,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			// If a backend for which it was intended becomes healthy, the health-check
 			// controller will un-pause the Bucket CR (identifying it by its backend label)
 			// and it will be re-reconciled.
-			bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = True
+			bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = consts.TrueStr
 
 			return NeedsObjectUpdate
 		}); err != nil {

@@ -32,6 +32,7 @@ import (
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
+	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -77,7 +78,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -85,10 +86,10 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsUpdate,
@@ -101,7 +102,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusUnhealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusUnhealthy)
 
 					return bs
 				}(),
@@ -109,10 +110,10 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NoAction,
@@ -132,7 +133,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -140,10 +141,10 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsDeletion,
@@ -161,7 +162,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -169,10 +170,10 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NoAction,
@@ -186,14 +187,14 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 
 						GetBucketVersioningStub: func(ctx context.Context, lci *s3.GetBucketVersioningInput, f ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error) {
 							return &s3.GetBucketVersioningOutput{
-								Status:    "Enabled",
-								MFADelete: "Enabled",
+								Status:    consts.EnabledStr,
+								MFADelete: consts.EnabledStr,
 							}, nil
 						},
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -201,7 +202,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -212,7 +213,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: Updated,
@@ -233,7 +234,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -241,7 +242,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -252,7 +253,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsUpdate,
@@ -266,14 +267,14 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 
 						GetBucketVersioningStub: func(ctx context.Context, lci *s3.GetBucketVersioningInput, f ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error) {
 							return &s3.GetBucketVersioningOutput{
-								Status:    "Enabled",
+								Status:    consts.EnabledStr,
 								MFADelete: "Disabled",
 							}, nil
 						},
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -281,7 +282,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -289,7 +290,7 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				status: NeedsUpdate,
@@ -318,8 +319,8 @@ func TestVersioningConfigObserveBackend(t *testing.T) {
 //nolint:maintidx // Function requires numerous checks.
 func TestVersioningConfigurationHandle(t *testing.T) {
 	t.Parallel()
-	bucketName := "bucket"
-	beName := "s3-backend-1"
+	bucketName := consts.TestBucket
+	beName := consts.S3Backend1
 	creating := v1.Creating()
 	errRandom := errors.New("some error")
 	type fields struct {
@@ -347,7 +348,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{}
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusUnhealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusUnhealthy)
 
 					return bs
 				}(),
@@ -383,7 +384,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -391,7 +392,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -399,7 +400,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: nil,
@@ -412,13 +413,13 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 
 						GetBucketVersioningStub: func(ctx context.Context, lci *s3.GetBucketVersioningInput, f ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error) {
 							return &s3.GetBucketVersioningOutput{
-								Status: "Enabled",
+								Status: consts.EnabledStr,
 							}, nil
 						},
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -454,7 +455,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 					fake := backendstorefakes.FakeS3Client{
 						GetBucketVersioningStub: func(ctx context.Context, lci *s3.GetBucketVersioningInput, f ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error) {
 							return &s3.GetBucketVersioningOutput{
-								Status: "Enabled",
+								Status: consts.EnabledStr,
 							}, nil
 						},
 
@@ -472,7 +473,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -480,7 +481,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: errRandom,
@@ -508,7 +509,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -516,7 +517,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -527,7 +528,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: nil,
@@ -547,7 +548,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 					}
 
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -555,7 +556,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -566,7 +567,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: nil,
@@ -595,7 +596,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 						},
 					}
 					bs := backendstore.NewBackendStore()
-					bs.AddOrUpdateBackend("s3-backend-1", &fake, nil, apisv1alpha1.HealthStatusHealthy)
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
 
 					return bs
 				}(),
@@ -603,7 +604,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bucket",
+						Name: consts.TestBucket,
 					},
 					Spec: v1alpha1.BucketSpec{
 						ForProvider: v1alpha1.BucketParameters{
@@ -614,7 +615,7 @@ func TestVersioningConfigurationHandle(t *testing.T) {
 						},
 					},
 				},
-				backendName: "s3-backend-1",
+				backendName: consts.S3Backend1,
 			},
 			want: want{
 				err: errRandom,

@@ -14,4 +14,4 @@ spec:
   capabilities:
   - safe-start
   controller:
-    image: xpkg.upbound.io/linode/provider-ceph:v1.2.2-rc.0.1.g92f6c1b
+    image: xpkg.upbound.io/linode/provider-ceph:v1.3.0

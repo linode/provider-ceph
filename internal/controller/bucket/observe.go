@@ -55,7 +55,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			// provider ceph's Create() method which will just return early as the CR is disabled.
 			// This results in an infinite loop of crossplane-runtime re-queuing the disabled CR
 			// and updating the same annotation repeatedly even though it is already in the desired
-			// state for a disabled CR. Over time these annotaion writes will fill up the ETCD DB.
+			// state for a disabled CR. Over time these annotation writes will fill up the ETCD DB.
 			return managed.ExternalObservation{
 				ResourceExists:   true,
 				ResourceUpToDate: true,

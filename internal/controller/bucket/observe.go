@@ -49,7 +49,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			// were successfully removed when the CR was disabled. Either way, there is nothing
 			// for provider-ceph to do, so we return true/true for the external observation.
 			//
-			// This may seem counter intuitive given that the external resource does not exist.
+			// This may seem counterintuitive given that the external resource does not exist.
 			// However, were we to return "ResourceExists: false" in this scenario, the crossplane
 			// runtime would update the "external-create-pending" annotation on the CR and call
 			// provider ceph's Create() method which will just return early as the CR is disabled.

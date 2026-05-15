@@ -6,10 +6,7 @@ import (
 	"time"
 
 	otelresource "go.opentelemetry.io/otel/sdk/resource"
-
-	// We have to set this to match the version used in ~/go/pkg/mod/go.opentelemetry.io/otel/sdk
-	// See https://github.com/open-telemetry/opentelemetry-go/issues/2341
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
 )
 
 const (

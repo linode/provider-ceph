@@ -23,6 +23,7 @@ import (
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
@@ -67,6 +68,10 @@ func Setup(mgr ctrl.Manager, o controller.Options, c *Connector) error {
 
 	if o.Features.Enabled(features.EnableAlphaManagementPolicies) {
 		opts = append(opts, managed.WithManagementPolicies())
+	}
+
+	if o.Features.Enabled(feature.EnableAlphaChangeLogs) {
+		opts = append(opts, managed.WithChangeLogger(o.ChangeLogOptions.ChangeLogger))
 	}
 
 	if err := mgr.Add(statemetrics.NewMRStateRecorder(

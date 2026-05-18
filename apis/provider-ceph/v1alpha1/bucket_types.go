@@ -93,6 +93,11 @@ type BucketParameters struct {
 	// +optional
 	ObjectLockConfiguration *ObjectLockConfiguration `json:"objectLockConfiguration,omitempty"`
 
+	// ServerSideEncryptionConfiguration specifies default encryption for a bucket using server-side
+	// encryption.
+	// +optional
+	ServerSideEncryptionConfiguration *ServerSideEncryptionConfiguration `json:"serverSideEncryptionConfiguration,omitempty"`
+
 	// AssumeRoleTags may be used to add custom values to an AssumeRole request.
 	// +optional
 	AssumeRoleTags []Tag `json:"assumeRoleTags,omitempty"`
@@ -124,6 +129,11 @@ type BackendInfo struct {
 	// configuration on the S3 backend. Use a pointer to allow nil value when
 	// there is no object lock configuration.
 	ObjectLockConfigurationCondition *xpv1.Condition `json:"objectLockConfigurationCondition,omitempty"`
+	// +optional
+	// ServerSideEncryptionConfigurationCondition is the condition of the server
+	// side encryption configuration on the S3 backend. Use a pointer to allow nil
+	// value when there is no serverside encryption configuration.
+	ServerSideEncryptionConfigurationCondition *xpv1.Condition `json:"serverSideEncryptionConfigurationCondition,omitempty"`
 }
 
 // Backends is a map of the names of the S3 backends to BackendInfo.
@@ -159,6 +169,12 @@ type BucketSpec struct {
 	// lifecycle config for the bucket on all of the bucket's
 	// backends. The Bucket CR's status is updated accordingly.
 	LifecycleConfigurationDisabled bool `json:"lifecycleConfigurationDisabled,omitempty"`
+	// ServerSideEncryptionConfigurationDisabled causes provider-ceph
+	// to attempt deletion and/or avoid create/updates of the SSE config
+	// for the bucket on all of the bucket's backends. The Bucket CR's
+	// status is updated accordingly.
+	ServerSideEncryptionConfigurationDisabled bool `json:"serverSideEncryptionConfigurationDisabled,omitempty"`
+
 	// +optional
 	// AutoPause allows the user to disable further reconciliation
 	// of the bucket after successfully created or updated.

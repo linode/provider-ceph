@@ -46,6 +46,9 @@ type S3Client interface {
 	GetBucketVersioning(context.Context, *s3.GetBucketVersioningInput, ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error)
 	PutObjectLockConfiguration(context.Context, *s3.PutObjectLockConfigurationInput, ...func(*s3.Options)) (*s3.PutObjectLockConfigurationOutput, error)
 	GetObjectLockConfiguration(context.Context, *s3.GetObjectLockConfigurationInput, ...func(*s3.Options)) (*s3.GetObjectLockConfigurationOutput, error)
+	PutBucketEncryption(context.Context, *s3.PutBucketEncryptionInput, ...func(*s3.Options)) (*s3.PutBucketEncryptionOutput, error)
+	GetBucketEncryption(context.Context, *s3.GetBucketEncryptionInput, ...func(*s3.Options)) (*s3.GetBucketEncryptionOutput, error)
+	DeleteBucketEncryption(context.Context, *s3.DeleteBucketEncryptionInput, ...func(*s3.Options)) (*s3.DeleteBucketEncryptionOutput, error)
 }
 
 //counterfeiter:generate . STSClient

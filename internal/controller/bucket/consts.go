@@ -31,6 +31,10 @@ const (
 	errObserveObjectLockConfig = "failed to observe object lock configuration"
 	errHandleObjectLockConfig  = "failed to handle object lock configuration"
 
+	// SSE configuration error messages.
+	errObserveSSEConfig = "failed to observe bucket server side encryption configuration"
+	errHandleSSEConfig  = "failed to handle bucket server side encryption configuration"
+
 	// ACL error messages.
 	errObserveAcl = "failed to observe bucket acl"
 	errHandleAcl  = "failed to handle bucket acl"

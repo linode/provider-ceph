@@ -81,6 +81,21 @@ func (b *bucketBackends) getLifecycleConfigCondition(bucketName, backendName str
 	return b.backends[bucketName][backendName].LifecycleConfigurationCondition
 }
 
+func (b *bucketBackends) setSSEConfigCondition(bucketName, backendName string, c *xpv1.Condition) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.backends[bucketName] == nil {
+		b.backends[bucketName] = make(v1alpha1.Backends)
+	}
+
+	if b.backends[bucketName][backendName] == nil {
+		b.backends[bucketName][backendName] = &v1alpha1.BackendInfo{}
+	}
+
+	b.backends[bucketName][backendName].ServerSideEncryptionConfigurationCondition = c
+}
+
 func (b *bucketBackends) setVersioningConfigCondition(bucketName, backendName string, c *xpv1.Condition) {
 	b.mu.Lock()
 	defer b.mu.Unlock()

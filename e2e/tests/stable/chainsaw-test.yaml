@@ -126,7 +126,13 @@ spec:
               provider-ceph.crossplane.io/validation-required: "true"
           spec:
             lifecycleConfigurationDisabled: false
+            serverSideEncryptionConfigurationDisabled: false
             forProvider:
+              serverSideEncryptionConfiguration:
+                rules:
+                - applyServerSideEncryptionByDefault:
+                    sseAlgorithm: "aws:kms"
+                    kmsMasterKeyId: "arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
               lifecycleConfiguration:
                 rules:
                 - id: "ImageExpiration"
@@ -180,6 +186,10 @@ spec:
                     reason: Available
                     status: "True"
                     type: Ready
+                  serverSideEncryptionConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
                   versioningConfigurationCondition:
                     reason: Available
                     status: "True"
@@ -197,6 +207,10 @@ spec:
                     reason: Available
                     status: "True"
                     type: Ready
+                  serverSideEncryptionConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
                   versioningConfigurationCondition:
                     reason: Available
                     status: "True"
@@ -211,6 +225,10 @@ spec:
                     status: "True"
                     type: Ready
                   lifecycleConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                  serverSideEncryptionConfigurationCondition:
                     reason: Available
                     status: "True"
                     type: Ready
@@ -283,7 +301,7 @@ spec:
               status: "True"
               type: Synced
 
-  - name: Disable LC config and remove object lock on subresource-configs.
+  - name: Disable LC config and SSE config and remove object lock on subresource-configs.
     try:
     - apply:
         resource:
@@ -299,6 +317,7 @@ spec:
             - localstack-b
             - localstack-c
             lifecycleConfigurationDisabled: true
+            serverSideEncryptionConfigurationDisabled: true
             forProvider:
               lifecycleConfiguration:
                 rules:
@@ -312,7 +331,7 @@ spec:
                 status: "Enabled"
               objectLockEnabledForBucket: true
               objectLockConfiguration:
-    # Assert that the LC config has been removed from subresource-configs.
+    # Assert that the LC config and SSE config have been removed from subresource-configs.
     # Assert that the object lock config remains - object lock cannot be disabled. 
     - assert:
         resource:

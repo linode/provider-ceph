@@ -96,6 +96,21 @@ func (b *bucketBackends) setSSEConfigCondition(bucketName, backendName string, c
 	b.backends[bucketName][backendName].ServerSideEncryptionConfigurationCondition = c
 }
 
+func (b *bucketBackends) getSSEConfigCondition(bucketName, backendName string) *xpv1.Condition {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if _, ok := b.backends[bucketName]; !ok {
+		return nil
+	}
+
+	if _, ok := b.backends[bucketName][backendName]; !ok {
+		return nil
+	}
+
+	return b.backends[bucketName][backendName].ServerSideEncryptionConfigurationCondition
+}
+
 func (b *bucketBackends) setVersioningConfigCondition(bucketName, backendName string, c *xpv1.Condition) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -251,6 +266,46 @@ func (b *bucketBackends) isLifecycleConfigRemovedFromBackends(bucket *v1alpha1.B
 		lcCondition := b.getLifecycleConfigCondition(bucket.Name, backendName)
 		if lcCondition != nil {
 			// The lifecycleconfig has not been created on this backend.
+			return false
+		}
+	}
+
+	return true
+}
+
+// isSSEConfigAvailableOnBackends checks the backends listed in providerNames against
+// bucketBackends to ensure SSE configurations are considered Available on all desired backends.
+func (b *bucketBackends) isSSEConfigAvailableOnBackends(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client) bool {
+	for _, backendName := range providerNames {
+		if _, ok := c[backendName]; !ok {
+			// This backend does not exist in the list of available backends.
+			// The backend may be offline, so it is skipped.
+			continue
+		}
+
+		sseCondition := b.getSSEConfigCondition(bucket.Name, backendName)
+		if sseCondition == nil || !sseCondition.Equal(xpv1.Available()) {
+			// The SSE config is not Available on this backend.
+			return false
+		}
+	}
+
+	return true
+}
+
+// isSSEConfigRemovedFromBackends checks the backends listed in providerNames against
+// bucketBackends to ensure SSE configurations are removed from all desired backends.
+func (b *bucketBackends) isSSEConfigRemovedFromBackends(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client) bool {
+	for _, backendName := range providerNames {
+		if _, ok := c[backendName]; !ok {
+			// This backend does not exist in the list of available backends.
+			// The backend may be offline, so it is skipped.
+			continue
+		}
+
+		sseCondition := b.getSSEConfigCondition(bucket.Name, backendName)
+		if sseCondition != nil {
+			// The SSE config has not been created on this backend.
 			return false
 		}
 	}

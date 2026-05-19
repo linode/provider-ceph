@@ -61,6 +61,20 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[stri
 		return false
 	}
 
+	// If SSE config is enabled and is specified in the spec, we should only pause once
+	// the SSE config is available on all backends.
+	if !bucket.Spec.ServerSideEncryptionConfigurationDisabled &&
+		bucket.Spec.ForProvider.ServerSideEncryptionConfiguration != nil &&
+		!bb.isSSEConfigAvailableOnBackends(bucket, providerNames, c) {
+		return false
+	}
+
+	// If SSE config is disabled, we should only pause once the SSE config is
+	// removed from all backends.
+	if bucket.Spec.ServerSideEncryptionConfigurationDisabled && !bb.isSSEConfigRemovedFromBackends(bucket, providerNames, c) {
+		return false
+	}
+
 	// Avoid pausing when a versioning configuration is specified in the spec, but not all
 	// versioning configs are available.
 	if bucket.Spec.ForProvider.VersioningConfiguration != nil && !bb.isVersioningConfigAvailableOnBackends(bucket.Name, providerNames, c) {

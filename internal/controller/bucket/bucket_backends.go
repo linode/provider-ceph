@@ -305,7 +305,7 @@ func (b *bucketBackends) isSSEConfigRemovedFromBackends(bucket *v1alpha1.Bucket,
 
 		sseCondition := b.getSSEConfigCondition(bucket.Name, backendName)
 		if sseCondition != nil {
-			// The SSE config has not been created on this backend.
+			// The SSE config is still present on this backend and has not been removed yet.
 			return false
 		}
 	}

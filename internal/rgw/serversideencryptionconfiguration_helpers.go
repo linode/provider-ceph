@@ -9,7 +9,7 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 )
 
-// GeneratePutBucketEncryptionInput creates the PutBucketEncryptionInput for the AWS SDK
+// GenerateServerSideEncryptionConfigurationInput creates the PutBucketEncryptionInput for the AWS SDK
 func GenerateServerSideEncryptionConfigurationInput(name string, config *v1alpha1.ServerSideEncryptionConfiguration) *awss3.PutBucketEncryptionInput {
 	if config == nil {
 		return nil
@@ -41,12 +41,12 @@ func GenerateServerSideEncryptionRules(inRules []v1alpha1.ServerSideEncryptionRu
 	return outRules
 }
 
-// ServerSideEncryptionConfigurationNotfoundErrCode is the error code sent by Ceph when the server side
-// encryption config does not exist.
+// ServerSideEncryptionConfigurationNotFoundErrCode is the error code sent by Ceph when the server-side
+// encryption configuration does not exist.
 var ServerSideEncryptionConfigurationNotFoundErrCode = "ServerSideEncryptionConfigurationNotFoundError"
 
-// ServerSideEncryptionConfigurationNotFound is parses the error and validates if the server side encryption
-// configuration does not exist
+// ServerSideEncryptionConfigurationNotFound parses the error and reports whether the server-side
+// encryption configuration does not exist.
 func ServerSideEncryptionConfigurationNotFound(err error) bool {
 	var awsErr smithy.APIError
 

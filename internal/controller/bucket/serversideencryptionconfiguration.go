@@ -12,7 +12,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
-	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
@@ -21,83 +20,51 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-
-	"go.opentelemetry.io/otel"
 )
 
 // ServerSideEncryptionConfigurationClient is the client for API methods and reconciling the ServerSideEncryptionConfiguration
 type ServerSideEncryptionConfigurationClient struct {
-	backendStore    *backendstore.BackendStore
-	s3ClientHandler *s3clienthandler.Handler
-	log             logr.Logger
+	BaseSubresourceClient
 }
 
 func NewServerSideEncryptionConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logr.Logger) *ServerSideEncryptionConfigurationClient {
-	return &ServerSideEncryptionConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
+	return &ServerSideEncryptionConfigurationClient{BaseSubresourceClient: NewBaseSubresourceClient(b, h, l)}
 }
 
-//nolint:dupl // ServerSideEncryptionConfiguration is similar to other subresource clients.
-func (l *ServerSideEncryptionConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
-	ctx, span := otel.Tracer("").Start(ctx, "bucket.ServerSideEncryptionConfigurationClient.Observe")
-	defer span.End()
-	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
+//nolint:dupl // ServerSideEncryptionConfiguration is a different feature.
+func (s *ServerSideEncryptionConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
+	return s.BaseSubresourceClient.Observe(ctx, bucket, backendNames, s)
+}
 
-	observationChan := make(chan ResourceStatus)
-	errChan := make(chan error)
+func (s *ServerSideEncryptionConfigurationClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+	return s.BaseSubresourceClient.Handle(ctx, b, backendName, bb, s)
+}
 
-	for _, backendName := range backendNames {
-		beName := backendName
-		go func() {
-			if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-				// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
-				// The backend may be down for some time and we do not want to block Create/Update/Delete
-				// calls on other backends. By returning NoAction here, we would never pass the Observe
-				// phase until the backend becomes Healthy or Disabled.
-				observationChan <- NoAction
+// Implement Subresource interface
 
-				return
-			}
+func (s *ServerSideEncryptionConfigurationClient) GetLogger() logr.Logger {
+	return s.log
+}
 
-			observation, err := l.observeBackend(ctx, bucket, beName)
-			if err != nil {
-				errChan <- err
+func (s *ServerSideEncryptionConfigurationClient) GetBackendStore() *backendstore.BackendStore {
+	return s.backendStore
+}
 
-				return
-			}
-			observationChan <- observation
-		}()
-	}
+func (s *ServerSideEncryptionConfigurationClient) GetS3ClientHandler() *s3clienthandler.Handler {
+	return s.s3ClientHandler
+}
 
-	for i := 0; i < len(backendNames); i++ {
-		select {
-		case <-ctx.Done():
-			log.Info("Context timeout during bucket server side encryption configuration observation", consts.KeyBucketName, bucket.Name)
-			err := errors.Wrap(ctx.Err(), errObserveSSEConfig)
-			traces.SetAndRecordError(span, err)
-
-			return NeedsUpdate, err
-		case observation := <-observationChan:
-			if observation == NeedsUpdate || observation == NeedsDeletion {
-				return observation, nil
-			}
-		case err := <-errChan:
-			err = errors.Wrap(err, errObserveSSEConfig)
-			traces.SetAndRecordError(span, err)
-
-			return NeedsUpdate, err
-		}
-	}
-
-	return Updated, nil
+func (s *ServerSideEncryptionConfigurationClient) GetObserveErrorMsg() string {
+	return errObserveSSEConfig
 }
 
 //nolint:gocyclo,cyclop // Function requires numerous checks.
-func (l *ServerSideEncryptionConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
-	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
+func (s *ServerSideEncryptionConfigurationClient) ObserveBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
+	ctx, log := traces.InjectTraceAndLogger(ctx, s.log)
 
 	log.V(1).Info("Observing subresource server side encryption configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
-	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
+	s3Client, err := s.s3ClientHandler.GetS3Client(ctx, bucket, backendName)
 	if err != nil {
 		return NeedsUpdate, err
 	}
@@ -146,25 +113,17 @@ func (l *ServerSideEncryptionConfigurationClient) observeBackend(ctx context.Con
 	return Updated, nil
 }
 
-//nolint:dupl // ServerSideEncryptionConfiguration and LifecycleConfiguration have similar Handle logic.
-func (l *ServerSideEncryptionConfigurationClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
-	ctx, span := otel.Tracer("").Start(ctx, "bucket.ServerSideEncryptionConfigurationClient.Handle")
-	defer span.End()
+// Implement Subresource interface
 
-	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-		traces.SetAndRecordError(span, errUnhealthyBackend)
+func (s *ServerSideEncryptionConfigurationClient) GetHandleErrorMsg() string {
+	return errHandleSSEConfig
+}
 
-		return errUnhealthyBackend
-	}
+func (s *ServerSideEncryptionConfigurationClient) GetSubresourceName() string {
+	return "ServerSideEncryptionConfigurationClient"
+}
 
-	observation, err := l.observeBackend(ctx, b, backendName)
-	if err != nil {
-		err = errors.Wrap(err, errHandleSSEConfig)
-		traces.SetAndRecordError(span, err)
-
-		return err
-	}
-
+func (s *ServerSideEncryptionConfigurationClient) HandleObservation(ctx context.Context, observation ResourceStatus, bucket *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	switch observation {
 	case NoAction:
 		return nil
@@ -172,42 +131,36 @@ func (l *ServerSideEncryptionConfigurationClient) Handle(ctx context.Context, b 
 		// The SSE config is updated, so we can consider this
 		// sub resource Available.
 		available := xpv1.Available()
-		bb.setSSEConfigCondition(b.Name, backendName, &available)
-
+		bb.setSSEConfigCondition(bucket.Name, backendName, &available)
+		return nil
 	case NeedsDeletion:
-		if err := l.delete(ctx, b, backendName); err != nil {
+		if err := s.delete(ctx, bucket, backendName); err != nil {
 			err = errors.Wrap(err, errHandleSSEConfig)
 			deleting := xpv1.Deleting().WithMessage(err.Error())
-			bb.setSSEConfigCondition(b.Name, backendName, &deleting)
-
-			traces.SetAndRecordError(span, err)
-
+			bb.setSSEConfigCondition(bucket.Name, backendName, &deleting)
 			return err
 		}
-		bb.setSSEConfigCondition(b.Name, backendName, nil)
-
+		bb.setSSEConfigCondition(bucket.Name, backendName, nil)
+		return nil
 	case NeedsUpdate:
-		if err := l.createOrUpdate(ctx, b, backendName); err != nil {
+		if err := s.createOrUpdate(ctx, bucket, backendName); err != nil {
 			err = errors.Wrap(err, errHandleSSEConfig)
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
-			bb.setSSEConfigCondition(b.Name, backendName, &unavailable)
-
-			traces.SetAndRecordError(span, err)
-
+			bb.setSSEConfigCondition(bucket.Name, backendName, &unavailable)
 			return err
 		}
 		available := xpv1.Available()
-		bb.setSSEConfigCondition(b.Name, backendName, &available)
+		bb.setSSEConfigCondition(bucket.Name, backendName, &available)
+		return nil
 	}
-
 	return nil
 }
 
-func (l *ServerSideEncryptionConfigurationClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
-	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
+func (s *ServerSideEncryptionConfigurationClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
+	ctx, log := traces.InjectTraceAndLogger(ctx, s.log)
 
 	log.Info("Updating server side encryption configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
-	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, b, backendName)
+	s3Client, err := s.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {
 		return err
 	}
@@ -220,11 +173,11 @@ func (l *ServerSideEncryptionConfigurationClient) createOrUpdate(ctx context.Con
 	return nil
 }
 
-func (l *ServerSideEncryptionConfigurationClient) delete(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
-	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
+func (s *ServerSideEncryptionConfigurationClient) delete(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
+	ctx, log := traces.InjectTraceAndLogger(ctx, s.log)
 
 	log.Info("Deleting server side encryption configuration", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
-	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, b, backendName)
+	s3Client, err := s.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {
 		return err
 	}

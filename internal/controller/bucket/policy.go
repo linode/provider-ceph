@@ -10,82 +10,50 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
-	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/rgw"
-	"go.opentelemetry.io/otel"
 )
 
 // PolicyClient is the client for API methods and reconciling a BucketPolicy
 type PolicyClient struct {
-	backendStore    *backendstore.BackendStore
-	s3ClientHandler *s3clienthandler.Handler
-	log             logr.Logger
+	BaseSubresourceClient
 }
 
 func NewPolicyClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logr.Logger) *PolicyClient {
-	return &PolicyClient{backendStore: b, s3ClientHandler: h, log: l}
+	return &PolicyClient{BaseSubresourceClient: NewBaseSubresourceClient(b, h, l)}
 }
 
-//nolint:dupl // LifecycleConfiguration and Policy are different feature.
+//nolint:dupl // Policy is a different feature.
 func (p *PolicyClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
-	ctx, span := otel.Tracer("").Start(ctx, "bucket.PolicyClient.Observe")
-	defer span.End()
-	ctx, log := traces.InjectTraceAndLogger(ctx, p.log)
-
-	observationChan := make(chan ResourceStatus)
-	errChan := make(chan error)
-
-	for _, backendName := range backendNames {
-		beName := backendName
-		go func() {
-			if p.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-				// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
-				// The backend may be down for some time and we do not want to block Create/Update/Delete
-				// calls on other backends. By returning NoAction here, we would never pass the Observe
-				// phase until the backend becomes Healthy or Disabled.
-				observationChan <- NoAction
-
-				return
-			}
-
-			observation, err := p.observeBackend(ctx, bucket, beName)
-			if err != nil {
-				errChan <- err
-
-				return
-			}
-			observationChan <- observation
-		}()
-	}
-
-	for i := 0; i < len(backendNames); i++ {
-		select {
-		case <-ctx.Done():
-			log.Info("Context timeout during bucket policy observation", consts.KeyBucketName, bucket.Name)
-			err := errors.Wrap(ctx.Err(), errObservePolicy)
-			traces.SetAndRecordError(span, err)
-
-			return NeedsUpdate, err
-		case observation := <-observationChan:
-			if observation == NeedsUpdate || observation == NeedsDeletion {
-				return observation, nil
-			}
-		case err := <-errChan:
-			err = errors.Wrap(err, errObservePolicy)
-			traces.SetAndRecordError(span, err)
-
-			return NeedsUpdate, err
-		}
-	}
-
-	return Updated, nil
+	return p.BaseSubresourceClient.Observe(ctx, bucket, backendNames, p)
 }
 
-func (p *PolicyClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
+func (p *PolicyClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+	return p.BaseSubresourceClient.Handle(ctx, b, backendName, bb, p)
+}
+
+// Implement Subresource interface
+
+func (p *PolicyClient) GetLogger() logr.Logger {
+	return p.log
+}
+
+func (p *PolicyClient) GetBackendStore() *backendstore.BackendStore {
+	return p.backendStore
+}
+
+func (p *PolicyClient) GetS3ClientHandler() *s3clienthandler.Handler {
+	return p.s3ClientHandler
+}
+
+func (p *PolicyClient) GetObserveErrorMsg() string {
+	return errObservePolicy
+}
+
+func (p *PolicyClient) ObserveBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
 	ctx, log := traces.InjectTraceAndLogger(ctx, p.log)
 
 	log.V(1).Info("Observing subresource policy on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
@@ -132,45 +100,25 @@ func (p *PolicyClient) observeBackend(ctx context.Context, bucket *v1alpha1.Buck
 	return Updated, nil
 }
 
-func (p *PolicyClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
-	ctx, span := otel.Tracer("").Start(ctx, "bucket.PolicyClient.Handle")
-	defer span.End()
+// Implement Subresource interface
 
-	if p.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-		traces.SetAndRecordError(span, errUnhealthyBackend)
+func (p *PolicyClient) GetHandleErrorMsg() string {
+	return errHandlePolicy
+}
 
-		return errUnhealthyBackend
-	}
+func (p *PolicyClient) GetSubresourceName() string {
+	return "PolicyClient"
+}
 
-	observation, err := p.observeBackend(ctx, b, backendName)
-	if err != nil {
-		err = errors.Wrap(err, errHandlePolicy)
-		traces.SetAndRecordError(span, err)
-
-		return err
-	}
-
+func (p *PolicyClient) HandleObservation(ctx context.Context, observation ResourceStatus, bucket *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	switch observation {
 	case NoAction, Updated:
 		return nil
 	case NeedsDeletion:
-		if err := p.delete(ctx, b, backendName); err != nil {
-			err = errors.Wrap(err, errHandlePolicy)
-
-			traces.SetAndRecordError(span, err)
-
-			return err
-		}
+		return p.delete(ctx, bucket, backendName)
 	case NeedsUpdate:
-		if err := p.createOrUpdate(ctx, b, backendName); err != nil {
-			err = errors.Wrap(err, errHandlePolicy)
-
-			traces.SetAndRecordError(span, err)
-
-			return err
-		}
+		return p.createOrUpdate(ctx, bucket, backendName)
 	}
-
 	return nil
 }
 

@@ -240,7 +240,8 @@ func TestACLObserveBackend(t *testing.T) {
 					s3clienthandler.WithBackendStore(tc.fields.backendStore)),
 				logr.Discard())
 
-			got := c.observeBackend(context.Background(), tc.args.bucket, tc.args.backendName)
+			got, err := c.ObserveBackend(context.Background(), tc.args.bucket, tc.args.backendName)
+			assert.Nil(t, err, "unexpected error")
 			assert.Equal(t, tc.want.status, got, "unexpected status")
 		})
 	}

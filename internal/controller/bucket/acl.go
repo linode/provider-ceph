@@ -96,6 +96,7 @@ func (a *ACLClient) HandleObservation(ctx context.Context, observation ResourceS
 	case NeedsUpdate, NeedsDeletion:
 		return a.createOrUpdate(ctx, bucket, backendName)
 	}
+
 	return nil
 }
 

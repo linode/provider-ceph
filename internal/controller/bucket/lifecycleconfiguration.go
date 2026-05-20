@@ -31,7 +31,6 @@ func NewLifecycleConfigurationClient(b *backendstore.BackendStore, h *s3clientha
 	return &LifecycleConfigurationClient{BaseSubresourceClient: NewBaseSubresourceClient(b, h, l)}
 }
 
-//nolint:dupl // LifecycleConfiguration is a different feature.
 func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	return l.BaseSubresourceClient.Observe(ctx, bucket, backendNames, l)
 }
@@ -122,6 +121,7 @@ func (l *LifecycleConfigurationClient) GetSubresourceName() string {
 	return "LifecycleConfigurationClient"
 }
 
+//nolint:dupl // Pattern is intentionally shared with other subresources (ServerSideEncryption)
 func (l *LifecycleConfigurationClient) HandleObservation(ctx context.Context, observation ResourceStatus, bucket *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	switch observation {
 	case NoAction:
@@ -131,27 +131,33 @@ func (l *LifecycleConfigurationClient) HandleObservation(ctx context.Context, ob
 		// sub resource Available.
 		available := xpv1.Available()
 		bb.setLifecycleConfigCondition(bucket.Name, backendName, &available)
+
 		return nil
 	case NeedsDeletion:
 		if err := l.delete(ctx, bucket, backendName); err != nil {
 			err = errors.Wrap(err, errHandleLifecycleConfig)
 			deleting := xpv1.Deleting().WithMessage(err.Error())
 			bb.setLifecycleConfigCondition(bucket.Name, backendName, &deleting)
+
 			return err
 		}
 		bb.setLifecycleConfigCondition(bucket.Name, backendName, nil)
+
 		return nil
 	case NeedsUpdate:
 		if err := l.createOrUpdate(ctx, bucket, backendName); err != nil {
 			err = errors.Wrap(err, errHandleLifecycleConfig)
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
 			bb.setLifecycleConfigCondition(bucket.Name, backendName, &unavailable)
+
 			return err
 		}
 		available := xpv1.Available()
 		bb.setLifecycleConfigCondition(bucket.Name, backendName, &available)
+
 		return nil
 	}
+
 	return nil
 }
 

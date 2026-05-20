@@ -31,7 +31,6 @@ func NewServerSideEncryptionConfigurationClient(b *backendstore.BackendStore, h 
 	return &ServerSideEncryptionConfigurationClient{BaseSubresourceClient: NewBaseSubresourceClient(b, h, l)}
 }
 
-//nolint:dupl // ServerSideEncryptionConfiguration is a different feature.
 func (s *ServerSideEncryptionConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	return s.BaseSubresourceClient.Observe(ctx, bucket, backendNames, s)
 }
@@ -123,6 +122,7 @@ func (s *ServerSideEncryptionConfigurationClient) GetSubresourceName() string {
 	return "ServerSideEncryptionConfigurationClient"
 }
 
+//nolint:dupl // Pattern is intentionally shared with other subresources (LifecycleConfiguration)
 func (s *ServerSideEncryptionConfigurationClient) HandleObservation(ctx context.Context, observation ResourceStatus, bucket *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	switch observation {
 	case NoAction:
@@ -132,27 +132,33 @@ func (s *ServerSideEncryptionConfigurationClient) HandleObservation(ctx context.
 		// sub resource Available.
 		available := xpv1.Available()
 		bb.setSSEConfigCondition(bucket.Name, backendName, &available)
+
 		return nil
 	case NeedsDeletion:
 		if err := s.delete(ctx, bucket, backendName); err != nil {
 			err = errors.Wrap(err, errHandleSSEConfig)
 			deleting := xpv1.Deleting().WithMessage(err.Error())
 			bb.setSSEConfigCondition(bucket.Name, backendName, &deleting)
+
 			return err
 		}
 		bb.setSSEConfigCondition(bucket.Name, backendName, nil)
+
 		return nil
 	case NeedsUpdate:
 		if err := s.createOrUpdate(ctx, bucket, backendName); err != nil {
 			err = errors.Wrap(err, errHandleSSEConfig)
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
 			bb.setSSEConfigCondition(bucket.Name, backendName, &unavailable)
+
 			return err
 		}
 		available := xpv1.Available()
 		bb.setSSEConfigCondition(bucket.Name, backendName, &available)
+
 		return nil
 	}
+
 	return nil
 }
 

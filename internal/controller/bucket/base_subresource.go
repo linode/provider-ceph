@@ -80,6 +80,7 @@ func (b *BaseSubresourceClient) Observe(ctx context.Context, bucket *v1alpha1.Bu
 	// Check if this subresource should be skipped
 	if subresource.SkipObservation(bucket) {
 		log.V(1).Info(subresource.GetSubresourceName() + " observation skipped")
+
 		return Updated, nil
 	}
 
@@ -95,12 +96,14 @@ func (b *BaseSubresourceClient) Observe(ctx context.Context, bucket *v1alpha1.Bu
 				// calls on other backends. By returning NoAction here, we would never pass the Observe
 				// phase until the backend becomes Healthy or Disabled.
 				observationChan <- NoAction
+
 				return
 			}
 
 			observation, err := subresource.ObserveBackend(ctx, bucket, beName)
 			if err != nil {
 				errChan <- err
+
 				return
 			}
 			observationChan <- observation
@@ -113,6 +116,7 @@ func (b *BaseSubresourceClient) Observe(ctx context.Context, bucket *v1alpha1.Bu
 			log.Info("Context timeout during bucket "+subresource.GetSubresourceName()+" observation", consts.KeyBucketName, bucket.Name)
 			err := errors.Wrap(ctx.Err(), subresource.GetObserveErrorMsg())
 			traces.SetAndRecordError(span, err)
+
 			return NeedsUpdate, err
 		case observation := <-observationChan:
 			if observation == NeedsUpdate || observation == NeedsDeletion {
@@ -121,6 +125,7 @@ func (b *BaseSubresourceClient) Observe(ctx context.Context, bucket *v1alpha1.Bu
 		case err := <-errChan:
 			err = errors.Wrap(err, subresource.GetObserveErrorMsg())
 			traces.SetAndRecordError(span, err)
+
 			return NeedsUpdate, err
 		}
 	}
@@ -141,6 +146,7 @@ func (b *BaseSubresourceClient) Handle(ctx context.Context, bucket *v1alpha1.Buc
 
 	if subresource.GetBackendStore().GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
 		traces.SetAndRecordError(span, errUnhealthyBackend)
+
 		return errUnhealthyBackend
 	}
 
@@ -148,6 +154,7 @@ func (b *BaseSubresourceClient) Handle(ctx context.Context, bucket *v1alpha1.Buc
 	if err != nil {
 		err = errors.Wrap(err, subresource.GetHandleErrorMsg())
 		traces.SetAndRecordError(span, err)
+
 		return err
 	}
 
@@ -155,5 +162,6 @@ func (b *BaseSubresourceClient) Handle(ctx context.Context, bucket *v1alpha1.Buc
 	if err != nil {
 		traces.SetAndRecordError(span, err)
 	}
+
 	return err
 }

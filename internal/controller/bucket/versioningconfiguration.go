@@ -31,7 +31,6 @@ func NewVersioningConfigurationClient(b *backendstore.BackendStore, h *s3clienth
 	return &VersioningConfigurationClient{BaseSubresourceClient: NewBaseSubresourceClient(b, h, l)}
 }
 
-//nolint:dupl // VersioningConfiguration is a different feature.
 func (v *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	return v.BaseSubresourceClient.Observe(ctx, bucket, backendNames, v)
 }
@@ -132,6 +131,7 @@ func (v *VersioningConfigurationClient) HandleObservation(ctx context.Context, o
 		// sub resource Available.
 		available := xpv1.Available()
 		bb.setVersioningConfigCondition(bucket.Name, backendName, &available)
+
 		return nil
 	case NeedsDeletion:
 		// Versioning Configurations are not deleted, only suspended, which requires an update.
@@ -149,6 +149,7 @@ func (v *VersioningConfigurationClient) HandleObservation(ctx context.Context, o
 			err = errors.Wrap(err, errHandleVersioningConfig)
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
 			bb.setVersioningConfigCondition(bucket.Name, backendName, &unavailable)
+
 			return err
 		}
 		// Successfully suspended versioning for the backend. Because we cannot
@@ -156,6 +157,7 @@ func (v *VersioningConfigurationClient) HandleObservation(ctx context.Context, o
 		// Instead, we set it as Available, signifying that the update was a success.
 		available := xpv1.Available()
 		bb.setVersioningConfigCondition(bucket.Name, backendName, &available)
+
 		return nil
 	case NeedsUpdate:
 		bucketCopy := bucket.DeepCopy()
@@ -183,12 +185,15 @@ func (v *VersioningConfigurationClient) HandleObservation(ctx context.Context, o
 			err = errors.Wrap(err, errHandleVersioningConfig)
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
 			bb.setVersioningConfigCondition(bucketCopy.Name, backendName, &unavailable)
+
 			return err
 		}
 		available := xpv1.Available()
 		bb.setVersioningConfigCondition(bucketCopy.Name, backendName, &available)
+
 		return nil
 	}
+
 	return nil
 }
 

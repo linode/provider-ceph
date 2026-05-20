@@ -110,6 +110,7 @@ func (o *ObjectLockConfigurationClient) HandleObservation(ctx context.Context, o
 		// sub resource Available.
 		available := xpv1.Available()
 		bb.setObjectLockConfigCondition(bucket.Name, backendName, &available)
+
 		return nil
 	case NeedsDeletion:
 		// Object lock configuration, once enabled, cannot be disabled/deleted.
@@ -130,13 +131,16 @@ func (o *ObjectLockConfigurationClient) HandleObservation(ctx context.Context, o
 			err = errors.Wrap(err, errHandleObjectLockConfig)
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
 			bb.setObjectLockConfigCondition(bucketCopy.Name, backendName, &unavailable)
+
 			return err
 		}
 
 		available := xpv1.Available()
 		bb.setObjectLockConfigCondition(bucketCopy.Name, backendName, &available)
+
 		return nil
 	}
+
 	return nil
 }
 

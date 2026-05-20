@@ -26,7 +26,6 @@ func NewPolicyClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l
 	return &PolicyClient{BaseSubresourceClient: NewBaseSubresourceClient(b, h, l)}
 }
 
-//nolint:dupl // Policy is a different feature.
 func (p *PolicyClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	return p.BaseSubresourceClient.Observe(ctx, bucket, backendNames, p)
 }
@@ -119,6 +118,7 @@ func (p *PolicyClient) HandleObservation(ctx context.Context, observation Resour
 	case NeedsUpdate:
 		return p.createOrUpdate(ctx, bucket, backendName)
 	}
+
 	return nil
 }
 

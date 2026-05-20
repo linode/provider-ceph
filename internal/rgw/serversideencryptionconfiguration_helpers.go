@@ -25,7 +25,7 @@ func GenerateServerSideEncryptionConfigurationInput(name string, config *v1alpha
 
 // GenerateServerSideEncryptionRules creates the list of ServerSideEncryptionRules for the AWS SDK
 func GenerateServerSideEncryptionRules(inRules []v1alpha1.ServerSideEncryptionRule) []types.ServerSideEncryptionRule {
-	outRules := make([]types.ServerSideEncryptionRule, 0, len(inRules))
+	var outRules []types.ServerSideEncryptionRule //nolint:prealloc // prealloc is disabled due to AWS requiring nil instead of 0-length for empty slices.
 	for _, inRule := range inRules {
 		sseByDefault := types.ServerSideEncryptionByDefault{
 			SSEAlgorithm:   types.ServerSideEncryption(inRule.ApplyServerSideEncryptionByDefault.SSEAlgorithm),

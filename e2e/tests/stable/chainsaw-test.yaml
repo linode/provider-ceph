@@ -125,6 +125,7 @@ spec:
             labels:
               provider-ceph.crossplane.io/validation-required: "true"
           spec:
+            autoPause: true
             lifecycleConfigurationDisabled: false
             serverSideEncryptionConfigurationDisabled: false
             forProvider:
@@ -171,6 +172,7 @@ spec:
             finalizers:
             - "finalizer.managedresource.crossplane.io"
             labels:
+              crossplane.io/paused: "true"
               provider-ceph.backends.localstack-a: "true"
               provider-ceph.backends.localstack-b: "true"
               provider-ceph.backends.localstack-c: "true"
@@ -500,13 +502,17 @@ spec:
   - name: Delete subresource-configs and auto-pause-bucket.
     try:
     - command:
+      # We need to "unpause" subresource-configs to allow deletion.
         args:
-        - delete
-        - bucket
+        - patch
+        - --type=merge
+        - buckets
         - subresource-configs
+        - -p
+        - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
         entrypoint: kubectl
     - command:
-      # We need to "unpause" subresource-configs to allow deletion.
+      # We need to "unpause" auto-pause-bucket to allow deletion.
         args:
         - patch
         - --type=merge
@@ -514,6 +520,12 @@ spec:
         - auto-pause-bucket
         - -p
         - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - delete
+        - bucket
+        - subresource-configs
         entrypoint: kubectl
     - command:
         args:

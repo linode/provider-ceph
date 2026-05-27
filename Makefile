@@ -402,9 +402,9 @@ NILAWAY := $(TOOLS_HOST_DIR)/nilaway-$(NILAWAY_VERSION)
 nilcheck: $(NILAWAY) ## Run nil check against codemake.
 	@# The bucket_backends.go is nil safe, covered by tests.
 	@# Backendstore contains mostly nil safe generated files.
-	@# Lifecycleconfig_helper has false positive reports: https://github.com/uber-go/nilaway/issues/207
+	@# RGW helpers have false positive reports: https://github.com/uber-go/nilaway/issues/207
 	go list ./... | xargs -I {} -d '\n' $(NILAWAY) \
-		-exclude-errors-in-files $(PWD)/cmd/provider/main.go,$(PWD)/internal/controller/bucket/bucket_backends.go,$(PWD)/internal/rgw/lifecycleconfig_helpers.go,$(PWD)/internal/rgw/objectlockconfiguration_helpers.go \
+		-exclude-errors-in-files $(PWD)/cmd/provider/main.go,$(PWD)/internal/controller/bucket/bucket_backends.go,$(PWD)/internal/rgw/lifecycleconfig_helpers.go,$(PWD)/internal/rgw/objectlockconfiguration_helpers.go,$(PWD)/internal/rgw/serversideencryptionconfiguration_helpers.go \
 		-exclude-pkgs github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1,github.com/linode/provider-ceph/internal/backendstore \
 		-include-pkgs {} ./...
 

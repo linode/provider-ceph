@@ -40,6 +40,21 @@ type FakeS3Client struct {
 		result1 *s3.DeleteBucketOutput
 		result2 error
 	}
+	DeleteBucketEncryptionStub        func(context.Context, *s3.DeleteBucketEncryptionInput, ...func(*s3.Options)) (*s3.DeleteBucketEncryptionOutput, error)
+	deleteBucketEncryptionMutex       sync.RWMutex
+	deleteBucketEncryptionArgsForCall []struct {
+		arg1 context.Context
+		arg2 *s3.DeleteBucketEncryptionInput
+		arg3 []func(*s3.Options)
+	}
+	deleteBucketEncryptionReturns struct {
+		result1 *s3.DeleteBucketEncryptionOutput
+		result2 error
+	}
+	deleteBucketEncryptionReturnsOnCall map[int]struct {
+		result1 *s3.DeleteBucketEncryptionOutput
+		result2 error
+	}
 	DeleteBucketLifecycleStub        func(context.Context, *s3.DeleteBucketLifecycleInput, ...func(*s3.Options)) (*s3.DeleteBucketLifecycleOutput, error)
 	deleteBucketLifecycleMutex       sync.RWMutex
 	deleteBucketLifecycleArgsForCall []struct {
@@ -98,6 +113,21 @@ type FakeS3Client struct {
 	}
 	getBucketAclReturnsOnCall map[int]struct {
 		result1 *s3.GetBucketAclOutput
+		result2 error
+	}
+	GetBucketEncryptionStub        func(context.Context, *s3.GetBucketEncryptionInput, ...func(*s3.Options)) (*s3.GetBucketEncryptionOutput, error)
+	getBucketEncryptionMutex       sync.RWMutex
+	getBucketEncryptionArgsForCall []struct {
+		arg1 context.Context
+		arg2 *s3.GetBucketEncryptionInput
+		arg3 []func(*s3.Options)
+	}
+	getBucketEncryptionReturns struct {
+		result1 *s3.GetBucketEncryptionOutput
+		result2 error
+	}
+	getBucketEncryptionReturnsOnCall map[int]struct {
+		result1 *s3.GetBucketEncryptionOutput
 		result2 error
 	}
 	GetBucketLifecycleConfigurationStub        func(context.Context, *s3.GetBucketLifecycleConfigurationInput, ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error)
@@ -233,6 +263,21 @@ type FakeS3Client struct {
 	}
 	putBucketAclReturnsOnCall map[int]struct {
 		result1 *s3.PutBucketAclOutput
+		result2 error
+	}
+	PutBucketEncryptionStub        func(context.Context, *s3.PutBucketEncryptionInput, ...func(*s3.Options)) (*s3.PutBucketEncryptionOutput, error)
+	putBucketEncryptionMutex       sync.RWMutex
+	putBucketEncryptionArgsForCall []struct {
+		arg1 context.Context
+		arg2 *s3.PutBucketEncryptionInput
+		arg3 []func(*s3.Options)
+	}
+	putBucketEncryptionReturns struct {
+		result1 *s3.PutBucketEncryptionOutput
+		result2 error
+	}
+	putBucketEncryptionReturnsOnCall map[int]struct {
+		result1 *s3.PutBucketEncryptionOutput
 		result2 error
 	}
 	PutBucketLifecycleConfigurationStub        func(context.Context, *s3.PutBucketLifecycleConfigurationInput, ...func(*s3.Options)) (*s3.PutBucketLifecycleConfigurationOutput, error)
@@ -442,6 +487,72 @@ func (fake *FakeS3Client) DeleteBucketReturnsOnCall(i int, result1 *s3.DeleteBuc
 	}
 	fake.deleteBucketReturnsOnCall[i] = struct {
 		result1 *s3.DeleteBucketOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) DeleteBucketEncryption(arg1 context.Context, arg2 *s3.DeleteBucketEncryptionInput, arg3 ...func(*s3.Options)) (*s3.DeleteBucketEncryptionOutput, error) {
+	fake.deleteBucketEncryptionMutex.Lock()
+	ret, specificReturn := fake.deleteBucketEncryptionReturnsOnCall[len(fake.deleteBucketEncryptionArgsForCall)]
+	fake.deleteBucketEncryptionArgsForCall = append(fake.deleteBucketEncryptionArgsForCall, struct {
+		arg1 context.Context
+		arg2 *s3.DeleteBucketEncryptionInput
+		arg3 []func(*s3.Options)
+	}{arg1, arg2, arg3})
+	stub := fake.DeleteBucketEncryptionStub
+	fakeReturns := fake.deleteBucketEncryptionReturns
+	fake.recordInvocation("DeleteBucketEncryption", []interface{}{arg1, arg2, arg3})
+	fake.deleteBucketEncryptionMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeS3Client) DeleteBucketEncryptionCallCount() int {
+	fake.deleteBucketEncryptionMutex.RLock()
+	defer fake.deleteBucketEncryptionMutex.RUnlock()
+	return len(fake.deleteBucketEncryptionArgsForCall)
+}
+
+func (fake *FakeS3Client) DeleteBucketEncryptionCalls(stub func(context.Context, *s3.DeleteBucketEncryptionInput, ...func(*s3.Options)) (*s3.DeleteBucketEncryptionOutput, error)) {
+	fake.deleteBucketEncryptionMutex.Lock()
+	defer fake.deleteBucketEncryptionMutex.Unlock()
+	fake.DeleteBucketEncryptionStub = stub
+}
+
+func (fake *FakeS3Client) DeleteBucketEncryptionArgsForCall(i int) (context.Context, *s3.DeleteBucketEncryptionInput, []func(*s3.Options)) {
+	fake.deleteBucketEncryptionMutex.RLock()
+	defer fake.deleteBucketEncryptionMutex.RUnlock()
+	argsForCall := fake.deleteBucketEncryptionArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeS3Client) DeleteBucketEncryptionReturns(result1 *s3.DeleteBucketEncryptionOutput, result2 error) {
+	fake.deleteBucketEncryptionMutex.Lock()
+	defer fake.deleteBucketEncryptionMutex.Unlock()
+	fake.DeleteBucketEncryptionStub = nil
+	fake.deleteBucketEncryptionReturns = struct {
+		result1 *s3.DeleteBucketEncryptionOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) DeleteBucketEncryptionReturnsOnCall(i int, result1 *s3.DeleteBucketEncryptionOutput, result2 error) {
+	fake.deleteBucketEncryptionMutex.Lock()
+	defer fake.deleteBucketEncryptionMutex.Unlock()
+	fake.DeleteBucketEncryptionStub = nil
+	if fake.deleteBucketEncryptionReturnsOnCall == nil {
+		fake.deleteBucketEncryptionReturnsOnCall = make(map[int]struct {
+			result1 *s3.DeleteBucketEncryptionOutput
+			result2 error
+		})
+	}
+	fake.deleteBucketEncryptionReturnsOnCall[i] = struct {
+		result1 *s3.DeleteBucketEncryptionOutput
 		result2 error
 	}{result1, result2}
 }
@@ -706,6 +817,72 @@ func (fake *FakeS3Client) GetBucketAclReturnsOnCall(i int, result1 *s3.GetBucket
 	}
 	fake.getBucketAclReturnsOnCall[i] = struct {
 		result1 *s3.GetBucketAclOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) GetBucketEncryption(arg1 context.Context, arg2 *s3.GetBucketEncryptionInput, arg3 ...func(*s3.Options)) (*s3.GetBucketEncryptionOutput, error) {
+	fake.getBucketEncryptionMutex.Lock()
+	ret, specificReturn := fake.getBucketEncryptionReturnsOnCall[len(fake.getBucketEncryptionArgsForCall)]
+	fake.getBucketEncryptionArgsForCall = append(fake.getBucketEncryptionArgsForCall, struct {
+		arg1 context.Context
+		arg2 *s3.GetBucketEncryptionInput
+		arg3 []func(*s3.Options)
+	}{arg1, arg2, arg3})
+	stub := fake.GetBucketEncryptionStub
+	fakeReturns := fake.getBucketEncryptionReturns
+	fake.recordInvocation("GetBucketEncryption", []interface{}{arg1, arg2, arg3})
+	fake.getBucketEncryptionMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeS3Client) GetBucketEncryptionCallCount() int {
+	fake.getBucketEncryptionMutex.RLock()
+	defer fake.getBucketEncryptionMutex.RUnlock()
+	return len(fake.getBucketEncryptionArgsForCall)
+}
+
+func (fake *FakeS3Client) GetBucketEncryptionCalls(stub func(context.Context, *s3.GetBucketEncryptionInput, ...func(*s3.Options)) (*s3.GetBucketEncryptionOutput, error)) {
+	fake.getBucketEncryptionMutex.Lock()
+	defer fake.getBucketEncryptionMutex.Unlock()
+	fake.GetBucketEncryptionStub = stub
+}
+
+func (fake *FakeS3Client) GetBucketEncryptionArgsForCall(i int) (context.Context, *s3.GetBucketEncryptionInput, []func(*s3.Options)) {
+	fake.getBucketEncryptionMutex.RLock()
+	defer fake.getBucketEncryptionMutex.RUnlock()
+	argsForCall := fake.getBucketEncryptionArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeS3Client) GetBucketEncryptionReturns(result1 *s3.GetBucketEncryptionOutput, result2 error) {
+	fake.getBucketEncryptionMutex.Lock()
+	defer fake.getBucketEncryptionMutex.Unlock()
+	fake.GetBucketEncryptionStub = nil
+	fake.getBucketEncryptionReturns = struct {
+		result1 *s3.GetBucketEncryptionOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) GetBucketEncryptionReturnsOnCall(i int, result1 *s3.GetBucketEncryptionOutput, result2 error) {
+	fake.getBucketEncryptionMutex.Lock()
+	defer fake.getBucketEncryptionMutex.Unlock()
+	fake.GetBucketEncryptionStub = nil
+	if fake.getBucketEncryptionReturnsOnCall == nil {
+		fake.getBucketEncryptionReturnsOnCall = make(map[int]struct {
+			result1 *s3.GetBucketEncryptionOutput
+			result2 error
+		})
+	}
+	fake.getBucketEncryptionReturnsOnCall[i] = struct {
+		result1 *s3.GetBucketEncryptionOutput
 		result2 error
 	}{result1, result2}
 }
@@ -1300,6 +1477,72 @@ func (fake *FakeS3Client) PutBucketAclReturnsOnCall(i int, result1 *s3.PutBucket
 	}
 	fake.putBucketAclReturnsOnCall[i] = struct {
 		result1 *s3.PutBucketAclOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) PutBucketEncryption(arg1 context.Context, arg2 *s3.PutBucketEncryptionInput, arg3 ...func(*s3.Options)) (*s3.PutBucketEncryptionOutput, error) {
+	fake.putBucketEncryptionMutex.Lock()
+	ret, specificReturn := fake.putBucketEncryptionReturnsOnCall[len(fake.putBucketEncryptionArgsForCall)]
+	fake.putBucketEncryptionArgsForCall = append(fake.putBucketEncryptionArgsForCall, struct {
+		arg1 context.Context
+		arg2 *s3.PutBucketEncryptionInput
+		arg3 []func(*s3.Options)
+	}{arg1, arg2, arg3})
+	stub := fake.PutBucketEncryptionStub
+	fakeReturns := fake.putBucketEncryptionReturns
+	fake.recordInvocation("PutBucketEncryption", []interface{}{arg1, arg2, arg3})
+	fake.putBucketEncryptionMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeS3Client) PutBucketEncryptionCallCount() int {
+	fake.putBucketEncryptionMutex.RLock()
+	defer fake.putBucketEncryptionMutex.RUnlock()
+	return len(fake.putBucketEncryptionArgsForCall)
+}
+
+func (fake *FakeS3Client) PutBucketEncryptionCalls(stub func(context.Context, *s3.PutBucketEncryptionInput, ...func(*s3.Options)) (*s3.PutBucketEncryptionOutput, error)) {
+	fake.putBucketEncryptionMutex.Lock()
+	defer fake.putBucketEncryptionMutex.Unlock()
+	fake.PutBucketEncryptionStub = stub
+}
+
+func (fake *FakeS3Client) PutBucketEncryptionArgsForCall(i int) (context.Context, *s3.PutBucketEncryptionInput, []func(*s3.Options)) {
+	fake.putBucketEncryptionMutex.RLock()
+	defer fake.putBucketEncryptionMutex.RUnlock()
+	argsForCall := fake.putBucketEncryptionArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeS3Client) PutBucketEncryptionReturns(result1 *s3.PutBucketEncryptionOutput, result2 error) {
+	fake.putBucketEncryptionMutex.Lock()
+	defer fake.putBucketEncryptionMutex.Unlock()
+	fake.PutBucketEncryptionStub = nil
+	fake.putBucketEncryptionReturns = struct {
+		result1 *s3.PutBucketEncryptionOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) PutBucketEncryptionReturnsOnCall(i int, result1 *s3.PutBucketEncryptionOutput, result2 error) {
+	fake.putBucketEncryptionMutex.Lock()
+	defer fake.putBucketEncryptionMutex.Unlock()
+	fake.PutBucketEncryptionStub = nil
+	if fake.putBucketEncryptionReturnsOnCall == nil {
+		fake.putBucketEncryptionReturnsOnCall = make(map[int]struct {
+			result1 *s3.PutBucketEncryptionOutput
+			result2 error
+		})
+	}
+	fake.putBucketEncryptionReturnsOnCall[i] = struct {
+		result1 *s3.PutBucketEncryptionOutput
 		result2 error
 	}{result1, result2}
 }

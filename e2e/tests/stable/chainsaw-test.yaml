@@ -125,8 +125,15 @@ spec:
             labels:
               provider-ceph.crossplane.io/validation-required: "true"
           spec:
+            autoPause: true
             lifecycleConfigurationDisabled: false
+            serverSideEncryptionConfigurationDisabled: false
             forProvider:
+              serverSideEncryptionConfiguration:
+                rules:
+                - applyServerSideEncryptionByDefault:
+                    sseAlgorithm: "aws:kms"
+                    kmsMasterKeyId: "arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
               lifecycleConfiguration:
                 rules:
                 - id: "ImageExpiration"
@@ -165,6 +172,7 @@ spec:
             finalizers:
             - "finalizer.managedresource.crossplane.io"
             labels:
+              crossplane.io/paused: "true"
               provider-ceph.backends.localstack-a: "true"
               provider-ceph.backends.localstack-b: "true"
               provider-ceph.backends.localstack-c: "true"
@@ -177,6 +185,10 @@ spec:
                     status: "True"
                     type: Ready
                   lifecycleConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                  serverSideEncryptionConfigurationCondition:
                     reason: Available
                     status: "True"
                     type: Ready
@@ -197,6 +209,10 @@ spec:
                     reason: Available
                     status: "True"
                     type: Ready
+                  serverSideEncryptionConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
                   versioningConfigurationCondition:
                     reason: Available
                     status: "True"
@@ -211,6 +227,10 @@ spec:
                     status: "True"
                     type: Ready
                   lifecycleConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                  serverSideEncryptionConfigurationCondition:
                     reason: Available
                     status: "True"
                     type: Ready
@@ -283,7 +303,7 @@ spec:
               status: "True"
               type: Synced
 
-  - name: Disable LC config and remove object lock on subresource-configs.
+  - name: Disable LC config and SSE config and remove object lock on subresource-configs.
     try:
     - apply:
         resource:
@@ -299,6 +319,7 @@ spec:
             - localstack-b
             - localstack-c
             lifecycleConfigurationDisabled: true
+            serverSideEncryptionConfigurationDisabled: true
             forProvider:
               lifecycleConfiguration:
                 rules:
@@ -312,7 +333,7 @@ spec:
                 status: "Enabled"
               objectLockEnabledForBucket: true
               objectLockConfiguration:
-    # Assert that the LC config has been removed from subresource-configs.
+    # Assert that the LC config and SSE config have been removed from subresource-configs.
     # Assert that the object lock config remains - object lock cannot be disabled. 
     - assert:
         resource:
@@ -481,13 +502,17 @@ spec:
   - name: Delete subresource-configs and auto-pause-bucket.
     try:
     - command:
+      # We need to "unpause" subresource-configs to allow deletion.
         args:
-        - delete
-        - bucket
+        - patch
+        - --type=merge
+        - buckets
         - subresource-configs
+        - -p
+        - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
         entrypoint: kubectl
     - command:
-      # We need to "unpause" subresource-configs to allow deletion.
+      # We need to "unpause" auto-pause-bucket to allow deletion.
         args:
         - patch
         - --type=merge
@@ -495,6 +520,12 @@ spec:
         - auto-pause-bucket
         - -p
         - '{"metadata":{"labels":{"crossplane.io/paused":"false"}}}'
+        entrypoint: kubectl
+    - command:
+        args:
+        - delete
+        - bucket
+        - subresource-configs
         entrypoint: kubectl
     - command:
         args:

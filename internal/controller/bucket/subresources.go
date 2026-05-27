@@ -51,6 +51,9 @@ func NewSubresourceClients(b *backendstore.BackendStore, h *s3clienthandler.Hand
 	if !config.ObjectLockConfigurationClientDisabled {
 		subresourceClients = append(subresourceClients, NewObjectLockConfigurationClient(b, h, l.WithValues("object-lock-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))))
 	}
+	if !config.ServerSideEncryptionConfigurationClientDisabled {
+		subresourceClients = append(subresourceClients, NewServerSideEncryptionConfigurationClient(b, h, l.WithValues("server-side-encryption-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))))
+	}
 
 	return subresourceClients
 }
@@ -70,9 +73,10 @@ const (
 )
 
 type SubresourceClientConfig struct {
-	LifecycleConfigurationClientDisabled  bool
-	ACLClientDisabled                     bool
-	PolicyClientDisabled                  bool
-	VersioningConfigurationClientDisabled bool
-	ObjectLockConfigurationClientDisabled bool
+	LifecycleConfigurationClientDisabled            bool
+	ACLClientDisabled                               bool
+	PolicyClientDisabled                            bool
+	VersioningConfigurationClientDisabled           bool
+	ObjectLockConfigurationClientDisabled           bool
+	ServerSideEncryptionConfigurationClientDisabled bool
 }

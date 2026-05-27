@@ -1,3 +1,4 @@
+//nolint:dupl // Similar to serversideencryptionconfiguration.go
 package rgw
 
 import (

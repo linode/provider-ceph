@@ -145,6 +145,7 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	return Updated, nil
 }
 
+//nolint:dupl // LifecycleConfiguration and ServerSideEncryptionConfiguration have similar Handle logic.
 func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.LifecycleConfigurationClient.Handle")
 	defer span.End()

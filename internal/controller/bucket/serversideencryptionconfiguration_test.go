@@ -164,7 +164,7 @@ func TestSSEConfigObserveBackend(t *testing.T) {
 				err:    nil,
 			},
 		},
-		"SSE config not specified in CR and does exists on backend so NoAction": {
+		"SSE config not specified in CR and does not exist on backend so NoAction": {
 			fields: fields{
 				backendStore: func() *backendstore.BackendStore {
 					fake := backendstorefakes.FakeS3Client{

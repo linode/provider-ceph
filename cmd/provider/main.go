@@ -337,7 +337,7 @@ func main() {
 		webhookHost          = app.Flag("webhook-host", "The host of the webhook server.").Default("0.0.0.0").Envar("WEBHOOK_HOST").String()
 		webhookTLSCertDir    = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
 		_                    = app.Flag("enable-validation-webhooks", "Enable support for Webhooks. [Deprecated, has no effect]").Default("false").Bool()
-		disableBucketWebhook = app.Flag("disable-bucket-validation-webhook", "Disable validation webhook for bucket managed resources").Default("false").Bool()
+		disableBucketWebhook = app.Flag("disable-bucket-validation-webhook", "Disable validation webhook for Bucket managed resources").Default("false").Envar("DISABLE_BUCKET_VALIDATION_WEBHOOK").Bool()
 		enableChangeLogs     = app.Flag("enable-changelogs", "Enable support for capturing change logs during reconciliation.").Default("false").Envar("ENABLE_CHANGE_LOGS").Bool()
 		changelogsSocketPath = app.Flag("changelogs-socket-path", "Path for changelogs socket (if enabled)").Default("/var/run/changelogs/changelogs.sock").Envar("CHANGELOGS_SOCKET_PATH").String()
 		// Subresource Client Flags.

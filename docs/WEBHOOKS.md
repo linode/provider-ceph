@@ -9,7 +9,7 @@ Provider Ceph provides Dynamic Admission Control for Buckets.
 ### Bucket Validation Webhook
 Validates Bucket CRs for Create and Update operations.
 This webhook is also configured with an `objectSelector` label `provider-ceph.crossplane.io/validation-required: true`.
-It is the responsibility of the user (or the external system) to ensure that incoming Bucket CRs are given this label to enable webhook validation, should validation for the CR be desired.
+It is the responsibility of the user (or the external system) to ensure that incoming Bucket CRs are given this label to enable webhook validation, should validation for the CR be desired. This webhook can be disabled completely by the command line argument `--disable-bucket-validation-webhook` when starting the provider.
 
 Create and Update operations on Buckets are blocked by the bucket admission webhook when:
 - The Bucket contains one or more providers (`bucket.spec.Providers`) that do not exist (i.e. a `ProviderConfig` of the same name does not exist in the k8s cluster).

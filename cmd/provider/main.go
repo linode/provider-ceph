@@ -479,7 +479,7 @@ func main() {
 	})
 	kingpin.FatalIfError(err, "Cannot create Kube client")
 
-	if disableBucketWebhook == nil || !*disableBucketWebhook {
+	if !*disableBucketWebhook {
 		setupBucketWebhook(mgr, backendStore)
 	}
 	setupProviderConfigControllers(

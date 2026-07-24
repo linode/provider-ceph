@@ -111,6 +111,36 @@ func (b *bucketBackends) getSSEConfigCondition(bucketName, backendName string) *
 	return b.backends[bucketName][backendName].ServerSideEncryptionConfigurationCondition
 }
 
+func (b *bucketBackends) setCORSConfigCondition(bucketName, backendName string, c *xpv1.Condition) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.backends[bucketName] == nil {
+		b.backends[bucketName] = make(v1alpha1.Backends)
+	}
+
+	if b.backends[bucketName][backendName] == nil {
+		b.backends[bucketName][backendName] = &v1alpha1.BackendInfo{}
+	}
+
+	b.backends[bucketName][backendName].CORSConfigurationCondition = c
+}
+
+func (b *bucketBackends) getCORSConfigCondition(bucketName, backendName string) *xpv1.Condition {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if _, ok := b.backends[bucketName]; !ok {
+		return nil
+	}
+
+	if _, ok := b.backends[bucketName][backendName]; !ok {
+		return nil
+	}
+
+	return b.backends[bucketName][backendName].CORSConfigurationCondition
+}
+
 func (b *bucketBackends) setVersioningConfigCondition(bucketName, backendName string, c *xpv1.Condition) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -306,6 +336,46 @@ func (b *bucketBackends) isSSEConfigRemovedFromBackends(bucket *v1alpha1.Bucket,
 		sseCondition := b.getSSEConfigCondition(bucket.Name, backendName)
 		if sseCondition != nil {
 			// The SSE config is still present on this backend and has not been removed yet.
+			return false
+		}
+	}
+
+	return true
+}
+
+// isCORSConfigAvailableOnBackends checks the backends listed in providerNames against
+// bucketBackends to ensure CORS configurations are considered Available on all desired backends.
+func (b *bucketBackends) isCORSConfigAvailableOnBackends(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client) bool {
+	for _, backendName := range providerNames {
+		if _, ok := c[backendName]; !ok {
+			// This backend does not exist in the list of available backends.
+			// The backend may be offline, so it is skipped.
+			continue
+		}
+
+		corsCondition := b.getCORSConfigCondition(bucket.Name, backendName)
+		if corsCondition == nil || !corsCondition.Equal(xpv1.Available()) {
+			// The CORS config is not Available on this backend.
+			return false
+		}
+	}
+
+	return true
+}
+
+// isCORSConfigRemovedFromBackends checks the backends listed in providerNames against
+// bucketBackends to ensure CORS configurations are removed from all desired backends.
+func (b *bucketBackends) isCORSConfigRemovedFromBackends(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client) bool {
+	for _, backendName := range providerNames {
+		if _, ok := c[backendName]; !ok {
+			// This backend does not exist in the list of available backends.
+			// The backend may be offline, so it is skipped.
+			continue
+		}
+
+		corsCondition := b.getCORSConfigCondition(bucket.Name, backendName)
+		if corsCondition != nil {
+			// The CORS config is still present on this backend and has not been removed yet.
 			return false
 		}
 	}

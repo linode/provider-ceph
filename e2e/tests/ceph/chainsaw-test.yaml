@@ -158,6 +158,22 @@ spec:
                     mode: "COMPLIANCE"
               versioningConfiguration:
                 status: "Enabled"
+              corsConfiguration:
+                rules:
+                - allowedOrigins:
+                  - "*"
+                  allowedMethods:
+                  - GET
+                  - PUT
+                  - POST
+                  - DELETE
+                  - HEAD
+                  allowedHeaders:
+                  - "*"
+                  exposeHeaders:
+                  - ETag
+                  - x-amz-request-id
+                  maxAgeSeconds: 3600
               lifecycleConfiguration:
                 # Example rules from https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-configuration-examples.html
                 rules:
@@ -211,6 +227,10 @@ spec:
                     status: "True"
                     type: Ready
                   objectLockConfigurationCondition:
+                    reason: Available
+                    status: "True"
+                    type: Ready
+                  corsConfigurationCondition:
                     reason: Available
                     status: "True"
                     type: Ready

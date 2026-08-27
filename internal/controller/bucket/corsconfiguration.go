@@ -40,8 +40,8 @@ func (l *CORSConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.
 	defer span.End()
 	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
 
-	observationChan := make(chan ResourceStatus)
-	errChan := make(chan error)
+	observationChan := make(chan ResourceStatus, len(backendNames))
+	errChan := make(chan error, len(backendNames))
 
 	for _, backendName := range backendNames {
 		beName := backendName

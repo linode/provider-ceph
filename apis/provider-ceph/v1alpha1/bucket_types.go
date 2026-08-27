@@ -98,6 +98,10 @@ type BucketParameters struct {
 	// +optional
 	ServerSideEncryptionConfiguration *ServerSideEncryptionConfiguration `json:"serverSideEncryptionConfiguration,omitempty"`
 
+	// CORSConfiguration describes the cross-origin access configuration for the bucket.
+	// +optional
+	CORSConfiguration *CORSConfiguration `json:"corsConfiguration,omitempty"`
+
 	// AssumeRoleTags may be used to add custom values to an AssumeRole request.
 	// +optional
 	AssumeRoleTags []Tag `json:"assumeRoleTags,omitempty"`
@@ -107,10 +111,6 @@ type BucketParameters struct {
 	// Before adding it, you should validate the JSON string.
 	// +optional
 	Policy string `json:"policy,omitempty"`
-
-	// CORSConfiguration describes the cross-origin access configuration for the bucket.
-	// +optional
-	CORSConfiguration *CORSConfiguration `json:"corsConfiguration,omitempty"`
 }
 
 // BackendInfo contains relevant information about an S3 backend for

@@ -323,15 +323,15 @@ func (in *BucketParameters) DeepCopyInto(out *BucketParameters) {
 		*out = new(ServerSideEncryptionConfiguration)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.AssumeRoleTags != nil {
-		in, out := &in.AssumeRoleTags, &out.AssumeRoleTags
-		*out = make([]Tag, len(*in))
-		copy(*out, *in)
-	}
 	if in.CORSConfiguration != nil {
 		in, out := &in.CORSConfiguration, &out.CORSConfiguration
 		*out = new(CORSConfiguration)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.AssumeRoleTags != nil {
+		in, out := &in.AssumeRoleTags, &out.AssumeRoleTags
+		*out = make([]Tag, len(*in))
+		copy(*out, *in)
 	}
 }
 

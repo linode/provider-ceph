@@ -34,7 +34,6 @@ func NewCORSConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler
 	return &CORSConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
 }
 
-//nolint:dupl // CORSConfiguration is similar to other subresource clients.
 func (l *CORSConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
 	ctx, span := otel.Tracer("").Start(ctx, "bucket.CORSConfigurationClient.Observe")
 	defer span.End()

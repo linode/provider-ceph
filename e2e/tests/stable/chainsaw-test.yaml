@@ -611,8 +611,19 @@ spec:
             - localstack-b
             disabled: true
           status:
+            atProvider: {}
+    # The assertion above only requires status.atProvider to exist - an empty tree
+    # places no constraint on its children. Assert the absence of the backends map
+    # itself, which is what "no backends in the Bucket Status" means.
+    - error:
+        resource:
+          apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+          kind: Bucket
+          metadata:
+            name: localstack-b-bucket
+          status:
             atProvider:
-              configurableField: ""
+              backends: {}
 
   - name: Check that localstack-b-bucket does not exist on any backends after being disabled.
     try:

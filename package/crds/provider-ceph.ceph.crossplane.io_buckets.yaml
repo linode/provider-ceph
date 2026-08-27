@@ -951,12 +951,6 @@ spec:
                     description: Backends is a map of the names of the S3 backends
                       to BackendInfo.
                     type: object
-                  configurableField:
-                    type: string
-                  observableField:
-                    type: string
-                required:
-                - configurableField
                 type: object
               conditions:
                 description: Conditions of the resource.

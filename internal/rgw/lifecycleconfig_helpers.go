@@ -91,16 +91,19 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 			rule.Prefix = local.Prefix
 		} else {
 			// This is done because S3 expects an empty filter, and never nil if Prefix is not set.
-			rule.Filter = &types.LifecycleRuleFilterMemberPrefix{}
+			rule.Filter = &types.LifecycleRuleFilter{Prefix: aws.String("")}
 		}
-
 		//nolint:nestif // Multiple checks required
 		if local.Filter != nil {
+			filter := &types.LifecycleRuleFilter{}
 			if local.Filter.Prefix != nil {
-				rule.Filter = &types.LifecycleRuleFilterMemberPrefix{Value: *local.Filter.Prefix}
+				filter.Prefix = local.Filter.Prefix
 			}
 			if local.Filter.Tag != nil {
-				rule.Filter = &types.LifecycleRuleFilterMemberTag{Value: types.Tag{Key: aws.String(local.Filter.Tag.Key), Value: aws.String(local.Filter.Tag.Value)}}
+				filter.Tag = &types.Tag{
+					Key:   aws.String(local.Filter.Tag.Key),
+					Value: aws.String(local.Filter.Tag.Value),
+				}
 			}
 			if local.Filter.And != nil {
 				andOperator := types.LifecycleRuleAndOperator{}
@@ -111,8 +114,9 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 				if local.Filter.And.Tags != nil {
 					andOperator.Tags = sortS3TagSet(copyTags(local.Filter.And.Tags))
 				}
-				rule.Filter = &types.LifecycleRuleFilterMemberAnd{Value: andOperator}
+				filter.And = &andOperator
 			}
+			rule.Filter = filter
 		}
 		result = append(result, rule)
 	}
@@ -143,9 +147,9 @@ func sortS3TagSet(tags []types.Tag) []types.Tag {
 
 func SortFilterTags(rules []types.LifecycleRule) {
 	for i := range rules {
-		andOperator, ok := rules[i].Filter.(*types.LifecycleRuleFilterMemberAnd)
-		if ok {
-			andOperator.Value.Tags = sortS3TagSet(andOperator.Value.Tags)
+		filter := rules[i].Filter
+		if filter != nil && filter.And != nil {
+			filter.And.Tags = sortS3TagSet(filter.And.Tags)
 		}
 	}
 }

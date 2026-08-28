@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
@@ -349,7 +350,7 @@ func TestObserveBackend(t *testing.T) {
 										Expiration: &s3types.LifecycleExpiration{
 											Days: &days2,
 										},
-										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
+										Filter: &s3types.LifecycleRuleFilter{Prefix: aws.String("")},
 									},
 								},
 							}, &smithy.GenericAPIError{Code: rgw.LifecycleNotFoundErrCode}
@@ -402,7 +403,7 @@ func TestObserveBackend(t *testing.T) {
 										Expiration: &s3types.LifecycleExpiration{
 											Days: &days3,
 										},
-										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
+										Filter: &s3types.LifecycleRuleFilter{Prefix: aws.String("")},
 									},
 								},
 							}, &smithy.GenericAPIError{Code: rgw.LifecycleNotFoundErrCode}
@@ -665,7 +666,7 @@ func TestHandle(t *testing.T) {
 										Expiration: &s3types.LifecycleExpiration{
 											Days: &days2,
 										},
-										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
+										Filter: &s3types.LifecycleRuleFilter{Prefix: aws.String("")},
 									},
 								},
 							}, &smithy.GenericAPIError{Code: rgw.LifecycleNotFoundErrCode}
@@ -725,7 +726,7 @@ func TestHandle(t *testing.T) {
 										Expiration: &s3types.LifecycleExpiration{
 											Days: &days2,
 										},
-										Filter: &s3types.LifecycleRuleFilterMemberPrefix{},
+										Filter: &s3types.LifecycleRuleFilter{Prefix: aws.String("")},
 									},
 								},
 							}, &smithy.GenericAPIError{Code: rgw.LifecycleNotFoundErrCode}

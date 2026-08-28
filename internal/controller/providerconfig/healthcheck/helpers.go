@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -47,19 +46,26 @@ import (
 func UpdateProviderConfigStatus(ctx context.Context, kubeClient client.Client, pc *apisv1alpha1.ProviderConfig, callback func(*apisv1alpha1.ProviderConfig, *apisv1alpha1.ProviderConfig)) error {
 	const (
 		steps  = 4
-		factor = 0.5
+		factor = 5.0
 		jitter = 0.1
 	)
 
 	nn := types.NamespacedName{Name: pc.GetName(), Namespace: pc.Namespace}
 	pcDeepCopy := pc.DeepCopy()
 
+	shouldRetry := func(err error) bool {
+		return kerrors.IsConflict(err) ||
+			kerrors.IsInternalError(err) ||
+			kerrors.IsServerTimeout(err) ||
+			kerrors.IsServiceUnavailable(err)
+	}
+
 	err := retry.OnError(wait.Backoff{
 		Steps:    steps,
 		Duration: (time.Duration(pc.Spec.HealthCheckIntervalSeconds) * time.Second) - time.Second,
 		Factor:   factor,
 		Jitter:   jitter,
-	}, resource.IsAPIError, func() error {
+	}, shouldRetry, func() error {
 		if err := kubeClient.Get(ctx, nn, pc); err != nil {
 			return err
 		}

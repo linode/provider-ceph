@@ -132,8 +132,8 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 								Expiration: &types.LifecycleExpiration{
 									Days: &days3650,
 								},
-								Filter: &types.LifecycleRuleFilterMemberPrefix{
-									Value: prefix,
+								Filter: &types.LifecycleRuleFilter{
+									Prefix: &prefix,
 								},
 								Transitions: []types.Transition{
 									{
@@ -161,8 +161,8 @@ func TestGenerateLifecycleConfigurationInput(t *testing.T) {
 								Expiration: &types.LifecycleExpiration{
 									Days: &days365,
 								},
-								Filter: &types.LifecycleRuleFilterMemberPrefix{
-									Value: prefix,
+								Filter: &types.LifecycleRuleFilter{
+									Prefix: &prefix,
 								},
 								Transitions: []types.Transition{
 									{

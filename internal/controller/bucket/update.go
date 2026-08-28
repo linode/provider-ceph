@@ -179,6 +179,8 @@ func (c *external) updateOnBackend(ctx context.Context, beName string, bucket *v
 			_, err := rgw.CreateBucket(ctx, cl, rgw.BucketToCreateBucketInput(bucket))
 			if err != nil {
 				log.Info("Failed to recreate missing bucket on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, beName, "err", err.Error())
+				// Record the failure so the backend is not dropped from the Status.
+				bb.setBucketCondition(bucket.Name, beName, xpv1.Unavailable().WithMessage(err.Error()))
 
 				return err
 			}

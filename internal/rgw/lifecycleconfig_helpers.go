@@ -92,7 +92,8 @@ func GenerateLifecycleRules(in []v1alpha1.LifecycleRule) []types.LifecycleRule {
 		} else {
 			// This is done because S3 expects an empty filter, and never nil if Prefix is not set.
 			rule.Filter = &types.LifecycleRuleFilter{Prefix: aws.String("")}
-		} //nolint:nestif // Multiple checks required
+		}
+		//nolint:nestif // Multiple checks required
 		if local.Filter != nil {
 			filter := &types.LifecycleRuleFilter{}
 			if local.Filter.Prefix != nil {

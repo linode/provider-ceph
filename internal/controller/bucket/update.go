@@ -73,6 +73,10 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, err
 	}
 
+	// observedGeneration pins the spec that the backend updates below are based on.
+	// metadata.generation only changes when the spec changes.
+	observedGeneration := bucket.GetGeneration()
+
 	bucketBackends := newBucketBackends()
 	updateAllErr := c.updateOnAllBackends(ctx, bucket, bucketBackends, backendsToUpdateOnNames)
 	if updateAllErr != nil {
@@ -96,7 +100,10 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 			// Auto pause the Bucket CR if required - ie if auto-pause has been enabled and the
 			// criteria is met before pausing a Bucket CR.
-			if isPauseRequired(
+			// bucketBackends describes the spec at observedGeneration. If the spec has
+			// moved on since, the pause decision would mix stale and fresh inputs, so
+			// skip it and let the requeue reconcile the new spec.
+			if bucketLatest.GetGeneration() == observedGeneration && isPauseRequired(
 				bucketLatest,
 				backendsToUpdateOnNames,
 				c.backendStore.GetBackendS3Clients(backendsToUpdateOnNames),

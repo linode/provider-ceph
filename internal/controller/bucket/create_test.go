@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	v1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/go-logr/logr"
@@ -18,6 +19,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
+	"github.com/linode/provider-ceph/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -126,14 +128,18 @@ func TestCreateBasicErrors(t *testing.T) {
 			s := runtime.NewScheme()
 			s.AddKnownTypes(v1alpha1.SchemeGroupVersion, &v1alpha1.Bucket{}, &v1alpha1.BucketList{})
 
+			// One client serves both fields. kubeReader stands in for the uncached
+			// API reader, which reads the same store that the writes go to. Two
+			// fake clients would have two independent stores.
 			cl := fake.NewClientBuilder().
 				WithScheme(s).
 				WithObjects(tc.args.mg).
-				WithStatusSubresource(tc.args.mg)
+				WithStatusSubresource(tc.args.mg).
+				Build()
 
 			e := external{
-				kubeClient:   cl.Build(),
-				kubeReader:   cl.Build(),
+				kubeClient:   cl,
+				kubeReader:   cl,
 				backendStore: tc.fields.backendStore,
 				log:          logr.Discard(),
 			}
@@ -148,6 +154,7 @@ func TestCreateBasicErrors(t *testing.T) {
 func TestCreate(t *testing.T) {
 	randomErr := errors.New("some error")
 	roleArn := "role-arn"
+	deletionTimestamp := metav1.Now()
 
 	type fields struct {
 		backendStore    *backendstore.BackendStore
@@ -255,6 +262,52 @@ func TestCreate(t *testing.T) {
 
 					assert.Empty(t, bucket.Status.Conditions, "no bucket conditions expected")
 					assert.Empty(t, bucket.Status.AtProvider.Backends, "backends should not exist in status")
+				},
+			},
+		},
+
+		"Create does not pause a deleting Bucket CR when no backend is available": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeSTSClient{
+						AssumeRoleStub: func(ctx context.Context, ari *sts.AssumeRoleInput, f ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+							return &sts.AssumeRoleOutput{}, randomErr
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend(consts.S3Backend1, nil, &fake, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				roleArn: &roleArn,
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              consts.TestBucket,
+						DeletionTimestamp: &deletionTimestamp,
+						Finalizers:        []string{"finalizer.managedresource.crossplane.io"},
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							consts.S3Backend1,
+						},
+					},
+				},
+			},
+			want: want{
+				statusDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					// Pausing here would drop the Bucket CR out of the controller's
+					// cache, so Delete would never run and the finalizer would never
+					// be removed.
+					assert.NotContains(t, bucket.Labels, meta.AnnotationKeyReconciliationPaused,
+						"a deleting Bucket CR should not be paused")
+					assert.Contains(t, bucket.Labels, utils.GetBackendLabel(consts.S3Backend1),
+						"the backend label should still be applied")
 				},
 			},
 		},
@@ -398,9 +451,14 @@ func TestCreate(t *testing.T) {
 				cl.WithLists(tc.fields.providerConfigs)
 			}
 
+			// One client serves both fields. kubeReader stands in for the uncached
+			// API reader, which reads the same store that the writes go to. Two
+			// fake clients would have two independent stores.
+			kubeClient := cl.Build()
+
 			e := external{
-				kubeClient:   cl.Build(),
-				kubeReader:   cl.Build(),
+				kubeClient:   kubeClient,
+				kubeReader:   kubeClient,
 				backendStore: tc.fields.backendStore,
 				s3ClientHandler: s3clienthandler.NewHandler(
 					s3clienthandler.WithAssumeRoleArn(tc.fields.roleArn),

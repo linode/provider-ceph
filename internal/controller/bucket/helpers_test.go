@@ -35,6 +35,7 @@ func TestIsPauseRequired(t *testing.T) {
 	t.Parallel()
 	available := xpv1.Available()
 	unavailable := xpv1.Unavailable()
+	deletionTimestamp := metav1.Now()
 	vEnabled := v1alpha1.VersioningStatusEnabled
 	someErr := errors.New("some error")
 	type args struct {
@@ -462,6 +463,55 @@ func TestIsPauseRequired(t *testing.T) {
 					},
 					Spec: v1alpha1.BucketSpec{
 						Disabled: true,
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: xpv1.ResourceStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									xpv1.Available(),
+									xpv1.ReconcileSuccess(),
+								},
+							},
+						},
+					},
+				},
+				providerNames: []string{consts.S3Backend1, consts.S3Backend2, consts.S3Backend3},
+				clients: map[string]backendstore.S3Client{
+					consts.S3Backend1: nil,
+					consts.S3Backend2: nil,
+					consts.S3Backend3: nil,
+				},
+				bucketBackends: &bucketBackends{
+					backends: map[string]v1alpha1.Backends{
+						consts.TestBucket: {
+							consts.S3Backend1: &v1alpha1.BackendInfo{
+								BucketCondition: xpv1.Available(),
+							},
+							consts.S3Backend2: &v1alpha1.BackendInfo{
+								BucketCondition: xpv1.Available(),
+							},
+							consts.S3Backend3: &v1alpha1.BackendInfo{
+								BucketCondition: xpv1.Available(),
+							},
+						},
+					},
+				},
+				autoPauseEnabled: true,
+			},
+			want: want{
+				pauseIsRequired: false,
+			},
+		},
+		"All backends available in bucket backends and autopause enabled but Bucket CR deleting - no pause": {
+			args: args{
+				bucket: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              consts.TestBucket,
+						DeletionTimestamp: &deletionTimestamp,
+						Finalizers:        []string{"finalizer.managedresource.crossplane.io"},
+						Labels: map[string]string{
+							meta.AnnotationKeyReconciliationPaused: "",
+						},
 					},
 					Status: v1alpha1.BucketStatus{
 						ResourceStatus: xpv1.ResourceStatus{

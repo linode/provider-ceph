@@ -21,6 +21,7 @@ import (
 	"github.com/linode/provider-ceph/internal/backendstore/backendstorefakes"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
+	"github.com/linode/provider-ceph/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -512,6 +513,61 @@ func TestUpdate(t *testing.T) {
 						},
 						bucket.Labels,
 						"unexpected bucket labels",
+					)
+				},
+			},
+		},
+		"Single backend updates successfully but the spec moved on - no autopause": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return &s3.HeadBucketOutput{}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				autoPauseBucket: true,
+				// The stored Bucket CR is a generation ahead of the one this reconcile
+				// started from, so the spec changed while the backends were updated.
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:       consts.TestBucket,
+							Generation: 2,
+						},
+					},
+				},
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:       consts.TestBucket,
+						Generation: 1,
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							consts.S3Backend1,
+						},
+					},
+				},
+			},
+			want: want{
+				o: managed.ExternalUpdate{},
+				specificDiff: func(t *testing.T, mg resource.Managed) {
+					t.Helper()
+					bucket, _ := mg.(*v1alpha1.Bucket)
+
+					assert.Equal(t,
+						map[string]string{
+							utils.GetBackendLabel(consts.S3Backend1): consts.TrueStr,
+						},
+						bucket.Labels,
+						"a Bucket CR whose spec moved on should not be autopaused",
 					)
 				},
 			},

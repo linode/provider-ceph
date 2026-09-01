@@ -12,7 +12,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
-	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
@@ -21,77 +20,44 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-
-	"go.opentelemetry.io/otel"
 )
 
 // VersioningConfigurationClient is the client for API methods and reconciling the VersioningConfiguration
 type VersioningConfigurationClient struct {
-	backendStore    *backendstore.BackendStore
-	s3ClientHandler *s3clienthandler.Handler
-	log             logr.Logger
+	BaseSubresourceClient
 }
 
 func NewVersioningConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logr.Logger) *VersioningConfigurationClient {
-	return &VersioningConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
+	return &VersioningConfigurationClient{BaseSubresourceClient: NewBaseSubresourceClient(b, h, l)}
 }
 
-//nolint:dupl // VersioningConfiguration and Policy are different feature.
 func (v *VersioningConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
-	ctx, span := otel.Tracer("").Start(ctx, "bucket.VersioningConfigurationClient.Observe")
-	defer span.End()
-	ctx, log := traces.InjectTraceAndLogger(ctx, v.log)
-
-	observationChan := make(chan ResourceStatus)
-	errChan := make(chan error)
-
-	for _, backendName := range backendNames {
-		beName := backendName
-		go func() {
-			if v.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-				// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
-				// The backend may be down for some time and we do not want to block Create/Update/Delete
-				// calls on other backends. By returning NoAction here, we would never pass the Observe
-				// phase until the backend becomes Healthy or Disabled.
-				observationChan <- NoAction
-
-				return
-			}
-
-			observation, err := v.observeBackend(ctx, bucket, beName)
-			if err != nil {
-				errChan <- err
-
-				return
-			}
-			observationChan <- observation
-		}()
-	}
-
-	for i := 0; i < len(backendNames); i++ {
-		select {
-		case <-ctx.Done():
-			log.Info("Context timeout during bucket versioning configuration observation", consts.KeyBucketName, bucket.Name)
-			err := errors.Wrap(ctx.Err(), errObserveVersioningConfig)
-			traces.SetAndRecordError(span, err)
-
-			return NeedsUpdate, err
-		case observation := <-observationChan:
-			if observation == NeedsUpdate || observation == NeedsDeletion {
-				return observation, nil
-			}
-		case err := <-errChan:
-			err = errors.Wrap(err, errObserveVersioningConfig)
-			traces.SetAndRecordError(span, err)
-
-			return NeedsUpdate, err
-		}
-	}
-
-	return Updated, nil
+	return v.BaseSubresourceClient.Observe(ctx, bucket, backendNames, v)
 }
 
-func (v *VersioningConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
+func (v *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+	return v.BaseSubresourceClient.Handle(ctx, b, backendName, bb, v)
+}
+
+// Implement Subresource interface
+
+func (v *VersioningConfigurationClient) GetLogger() logr.Logger {
+	return v.log
+}
+
+func (v *VersioningConfigurationClient) GetBackendStore() *backendstore.BackendStore {
+	return v.backendStore
+}
+
+func (v *VersioningConfigurationClient) GetS3ClientHandler() *s3clienthandler.Handler {
+	return v.s3ClientHandler
+}
+
+func (v *VersioningConfigurationClient) GetObserveErrorMsg() string {
+	return errObserveVersioningConfig
+}
+
+func (v *VersioningConfigurationClient) ObserveBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
 	ctx, log := traces.InjectTraceAndLogger(ctx, v.log)
 
 	log.V(1).Info("Observing subresource versioning configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
@@ -146,24 +112,17 @@ func (v *VersioningConfigurationClient) observeBackend(ctx context.Context, buck
 	return Updated, nil
 }
 
-func (v *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
-	ctx, span := otel.Tracer("").Start(ctx, "bucket.VersioningConfigurationClient.Handle")
-	defer span.End()
+// Implement Subresource interface
 
-	if v.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-		traces.SetAndRecordError(span, errUnhealthyBackend)
+func (v *VersioningConfigurationClient) GetHandleErrorMsg() string {
+	return errHandleVersioningConfig
+}
 
-		return errUnhealthyBackend
-	}
+func (v *VersioningConfigurationClient) GetSubresourceName() string {
+	return "VersioningConfigurationClient"
+}
 
-	observation, err := v.observeBackend(ctx, b, backendName)
-	if err != nil {
-		err = errors.Wrap(err, errHandleVersioningConfig)
-		traces.SetAndRecordError(span, err)
-
-		return err
-	}
-
+func (v *VersioningConfigurationClient) HandleObservation(ctx context.Context, observation ResourceStatus, bucket *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	switch observation {
 	case NoAction:
 		return nil
@@ -171,14 +130,14 @@ func (v *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 		// The versioning config is updated, so we can consider this
 		// sub resource Available.
 		available := xpv1.Available()
-		bb.setVersioningConfigCondition(b.Name, backendName, &available)
+		bb.setVersioningConfigCondition(bucket.Name, backendName, &available)
 
 		return nil
 	case NeedsDeletion:
 		// Versioning Configurations are not deleted, only suspended, which requires an update.
 		// Create a deep copy of bucket and give it a suspended version config.
 		// This will be used in th PutBucketVersioning request to suspend versioning.
-		bucketCopy := b.DeepCopy()
+		bucketCopy := bucket.DeepCopy()
 		disabled := v1alpha1.MFADeleteDisabled
 		suspended := v1alpha1.VersioningStatusSuspended
 
@@ -189,9 +148,7 @@ func (v *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 		if err := v.createOrUpdate(ctx, bucketCopy, backendName); err != nil {
 			err = errors.Wrap(err, errHandleVersioningConfig)
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
-			bb.setVersioningConfigCondition(b.Name, backendName, &unavailable)
-
-			traces.SetAndRecordError(span, err)
+			bb.setVersioningConfigCondition(bucket.Name, backendName, &unavailable)
 
 			return err
 		}
@@ -199,11 +156,11 @@ func (v *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 		// un-version a bucket, we must not remove its versioningConfigCondition.
 		// Instead, we set it as Available, signifying that the update was a success.
 		available := xpv1.Available()
-		bb.setVersioningConfigCondition(b.Name, backendName, &available)
+		bb.setVersioningConfigCondition(bucket.Name, backendName, &available)
 
 		return nil
 	case NeedsUpdate:
-		bucketCopy := b.DeepCopy()
+		bucketCopy := bucket.DeepCopy()
 
 		// If no versioning configuration was specified, but object lock is enabled
 		// for the bucket, then versioning should be enabled without mfa delete.
@@ -212,9 +169,9 @@ func (v *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 		// If objectLockEnabledForBucket was true upon bucket creation, then this
 		// versioning configuration should already exist. But we perform the operation
 		// anyway to make sure, as it is idempotent.
-		if b.Spec.ForProvider.VersioningConfiguration == nil &&
-			b.Spec.ForProvider.ObjectLockEnabledForBucket != nil &&
-			*b.Spec.ForProvider.ObjectLockEnabledForBucket {
+		if bucket.Spec.ForProvider.VersioningConfiguration == nil &&
+			bucket.Spec.ForProvider.ObjectLockEnabledForBucket != nil &&
+			*bucket.Spec.ForProvider.ObjectLockEnabledForBucket {
 			enabled := v1alpha1.VersioningStatusEnabled
 			disabled := v1alpha1.MFADeleteDisabled
 
@@ -229,12 +186,12 @@ func (v *VersioningConfigurationClient) Handle(ctx context.Context, b *v1alpha1.
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
 			bb.setVersioningConfigCondition(bucketCopy.Name, backendName, &unavailable)
 
-			traces.SetAndRecordError(span, err)
-
 			return err
 		}
 		available := xpv1.Available()
 		bb.setVersioningConfigCondition(bucketCopy.Name, backendName, &available)
+
+		return nil
 	}
 
 	return nil

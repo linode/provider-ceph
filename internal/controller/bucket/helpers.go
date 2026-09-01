@@ -258,13 +258,21 @@ func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, 
 	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
 	for i, cb := range callbacks {
+		attempt := 0
+
 		err := retry.OnError(retry.DefaultRetry, resource.IsAPIError, func() error {
 			// If there are multiple callbacks, we can only use the cached kube client for
 			// the first Get(). Subsequent Get() calls must use the kube reader which reads
 			// directly from the API. This is necessary as we are doing Patch and Get calls
 			// in quick succession and need to avoid reading stale data from the client cache.
-			switch i {
-			case 0:
+			// A retry means the previous attempt was rejected, which for a patch
+			// means the object moved on since it was read. So a retry must also
+			// read directly from the API, or it cannot converge.
+			useCache := i == 0 && attempt == 0
+			attempt++
+
+			switch {
+			case useCache:
 				if err := c.kubeClient.Get(
 					ctx,
 					types.NamespacedName{Name: bucket.GetName()},
@@ -287,7 +295,13 @@ func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, 
 			case NeedsStatusUpdate:
 				return c.kubeClient.Status().Patch(ctx, bucket, client.MergeFrom(bucketCopy))
 			case NeedsObjectUpdate:
-				return c.kubeClient.Patch(ctx, bucket, client.MergeFrom(bucketCopy))
+				// Patch with an optimistic lock so a write made by another client
+				// between the Get above and this Patch is rejected with a conflict and
+				// retried, rather than silently overwritten. A plain merge patch
+				// carries no resourceVersion precondition, so it always wins over
+				// the health-check controller and any external client that writes
+				// the Bucket CR with a full Update.
+				return c.kubeClient.Patch(ctx, bucket, client.MergeFromWithOptions(bucketCopy, client.MergeFromWithOptimisticLock{}))
 			default:
 				return nil
 			}

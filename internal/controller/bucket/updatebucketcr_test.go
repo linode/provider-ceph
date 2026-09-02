@@ -165,7 +165,7 @@ func TestUpdateBucketCRRejectsEmptyResourceVersion(t *testing.T) {
 	})
 
 	e := external{
-		kubeClient: cl,
+		kubeClient: noResourceVersionClient{Client: cl},
 		kubeReader: noResourceVersionReader{Reader: cl},
 		log:        logr.Discard(),
 	}
@@ -180,12 +180,28 @@ func TestUpdateBucketCRRejectsEmptyResourceVersion(t *testing.T) {
 }
 
 // noResourceVersionReader strips the resourceVersion from every object it reads.
+// updateBucketCR reads from the cached client on its first attempt and from the
+// reader after that, so both need to strip it.
 type noResourceVersionReader struct {
 	client.Reader
 }
 
 func (r noResourceVersionReader) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	if err := r.Reader.Get(ctx, key, obj, opts...); err != nil {
+		return err
+	}
+	obj.SetResourceVersion("")
+
+	return nil
+}
+
+// noResourceVersionClient does the same for the cached client.
+type noResourceVersionClient struct {
+	client.Client
+}
+
+func (c noResourceVersionClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	if err := c.Client.Get(ctx, key, obj, opts...); err != nil {
 		return err
 	}
 	obj.SetResourceVersion("")

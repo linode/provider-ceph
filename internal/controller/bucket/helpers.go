@@ -296,14 +296,24 @@ func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, 
 	defer span.End()
 	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
-	for _, cb := range callbacks {
+	for i, cb := range callbacks {
+		firstAttempt := true
+
 		err := retry.RetryOnConflict(patchBackoff, func() error {
-			// Read directly from the API rather than from the client cache. Both patches
-			// below carry a resourceVersion precondition, so a cached read that is a
-			// revision behind buys nothing - it turns one Get into a rejected Patch, a
-			// backoff and a Get anyway. And a retry means the object moved on since the
-			// last read, so it has to read from the API to converge.
-			if err := c.kubeReader.Get(
+			// Only the first read of the first callback comes from the client cache.
+			// Every later read goes straight to the API, because a Patch has just landed
+			// and the cache lags it, and because a retry means the object moved on since
+			// the last read. Reading everything from the API would multiply the request
+			// count on a rate limited rest config, and the optimistic lock below already
+			// turns a stale read into a conflict instead of a silent overwrite.
+			reader := c.kubeReader
+			if i == 0 && firstAttempt {
+				reader = c.kubeClient
+			}
+
+			firstAttempt = false
+
+			if err := reader.Get(
 				ctx,
 				types.NamespacedName{Name: bucket.GetName()},
 				bucket,

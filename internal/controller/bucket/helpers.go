@@ -75,6 +75,20 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[stri
 		return false
 	}
 
+	// If CORS config is enabled and is specified in the spec, we should only pause once
+	// the CORS config is available on all backends.
+	if !bucket.Spec.CORSConfigurationDisabled &&
+		bucket.Spec.ForProvider.CORSConfiguration != nil &&
+		!bb.isCORSConfigAvailableOnBackends(bucket, providerNames, c) {
+		return false
+	}
+
+	// If CORS config is disabled, we should only pause once the CORS config is
+	// removed from all backends.
+	if bucket.Spec.CORSConfigurationDisabled && !bb.isCORSConfigRemovedFromBackends(bucket, providerNames, c) {
+		return false
+	}
+
 	// Avoid pausing when a versioning configuration is specified in the spec, but not all
 	// versioning configs are available.
 	if bucket.Spec.ForProvider.VersioningConfiguration != nil && !bb.isVersioningConfigAvailableOnBackends(bucket.Name, providerNames, c) {

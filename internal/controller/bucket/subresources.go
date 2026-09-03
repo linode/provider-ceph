@@ -54,6 +54,9 @@ func NewSubresourceClients(b *backendstore.BackendStore, h *s3clienthandler.Hand
 	if !config.ServerSideEncryptionConfigurationClientDisabled {
 		subresourceClients = append(subresourceClients, NewServerSideEncryptionConfigurationClient(b, h, l.WithValues("server-side-encryption-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))))
 	}
+	if !config.CORSConfigurationClientDisabled {
+		subresourceClients = append(subresourceClients, NewCORSConfigurationClient(b, h, l.WithValues("cors-configuration-client", managed.ControllerName(v1alpha1.BucketGroupKind))))
+	}
 
 	return subresourceClients
 }
@@ -79,4 +82,5 @@ type SubresourceClientConfig struct {
 	VersioningConfigurationClientDisabled           bool
 	ObjectLockConfigurationClientDisabled           bool
 	ServerSideEncryptionConfigurationClientDisabled bool
+	CORSConfigurationClientDisabled                 bool
 }

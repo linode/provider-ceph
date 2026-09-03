@@ -98,6 +98,10 @@ type BucketParameters struct {
 	// +optional
 	ServerSideEncryptionConfiguration *ServerSideEncryptionConfiguration `json:"serverSideEncryptionConfiguration,omitempty"`
 
+	// CORSConfiguration describes the cross-origin access configuration for the bucket.
+	// +optional
+	CORSConfiguration *CORSConfiguration `json:"corsConfiguration,omitempty"`
+
 	// AssumeRoleTags may be used to add custom values to an AssumeRole request.
 	// +optional
 	AssumeRoleTags []Tag `json:"assumeRoleTags,omitempty"`
@@ -134,6 +138,11 @@ type BackendInfo struct {
 	// side encryption configuration on the S3 backend. Use a pointer to allow nil
 	// value when there is no serverside encryption configuration.
 	ServerSideEncryptionConfigurationCondition *xpv1.Condition `json:"serverSideEncryptionConfigurationCondition,omitempty"`
+	// +optional
+	// CORSConfigurationCondition is the condition of the CORS configuration
+	// on the S3 backend. Use a pointer to allow nil value when there is
+	// no CORS configuration.
+	CORSConfigurationCondition *xpv1.Condition `json:"corsConfigurationCondition,omitempty"`
 }
 
 // Backends is a map of the names of the S3 backends to BackendInfo.
@@ -172,6 +181,10 @@ type BucketSpec struct {
 	// for the bucket on all of the bucket's backends. The Bucket CR's
 	// status is updated accordingly.
 	ServerSideEncryptionConfigurationDisabled bool `json:"serverSideEncryptionConfigurationDisabled,omitempty"`
+	// CORSConfigurationDisabled causes provider-ceph to attempt deletion
+	// and/or avoid create/updates of the CORS config for the bucket on
+	// all of the bucket's backends. The Bucket CR's status is updated accordingly.
+	CORSConfigurationDisabled bool `json:"corsConfigurationDisabled,omitempty"`
 
 	// +optional
 	// AutoPause allows the user to disable further reconciliation

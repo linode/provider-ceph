@@ -1,0 +1,22 @@
+apiVersion: provider-ceph.ceph.crossplane.io/v1alpha1
+kind: Bucket
+metadata:
+  name: test-bucket-cors
+spec:
+  forProvider:
+    corsConfiguration:
+      rules:
+        - allowedOrigins:
+            - "*"
+          allowedMethods:
+            - GET
+            - PUT
+            - POST
+            - DELETE
+            - HEAD
+          allowedHeaders:
+            - "*"
+          exposeHeaders:
+            - ETag
+            - x-amz-request-id
+          maxAgeSeconds: 3600

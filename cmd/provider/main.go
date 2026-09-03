@@ -207,6 +207,7 @@ func createBucketConnector(
 	disableVersioningConfigReconcile *bool,
 	disableObjectLockConfigReconcile *bool,
 	disableSSEConfigReconcile *bool,
+	disableCORSConfigReconcile *bool,
 ) *bucket.Connector {
 	return bucket.NewConnector(
 		bucket.WithAutoPause(autoPauseBucket),
@@ -229,7 +230,8 @@ func createBucketConnector(
 					PolicyClientDisabled:                            *disablePolicyReconcile,
 					VersioningConfigurationClientDisabled:           *disableVersioningConfigReconcile,
 					ObjectLockConfigurationClientDisabled:           *disableObjectLockConfigReconcile,
-					ServerSideEncryptionConfigurationClientDisabled: *disableSSEConfigReconcile},
+					ServerSideEncryptionConfigurationClientDisabled: *disableSSEConfigReconcile,
+					CORSConfigurationClientDisabled:                 *disableCORSConfigReconcile},
 				log)),
 		bucket.WithS3ClientHandler(s3ClientHandler),
 		bucket.WithUsage(resource.NewLegacyProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{})),
@@ -347,6 +349,7 @@ func main() {
 		disableVersioningConfigReconcile = app.Flag("disable-versioning-config-reconcile", "Disable reconciliation of Bucket Versioning Configurations.").Default("false").Envar("DISABLE_VERSIONING_CONFIG_RECONCILE").Bool()
 		disableObjectLockConfigReconcile = app.Flag("disable-object-lock-config-reconcile", "Disable reconciliation of Object Lock Configurations.").Default("false").Envar("DISABLE_OBJECT_LOCK_CONFIG_RECONCILE").Bool()
 		disableSSEConfigReconcile        = app.Flag("disable-sse-config-reconcile", "Disable reconciliation of Server Side Encryption Configurations.").Default("false").Envar("DISABLE_SSE_CONFIG_RECONCILE").Bool()
+		disableCORSConfigReconcile       = app.Flag("disable-cors-config-reconcile", "Disable reconciliation of CORS Configurations.").Default("false").Envar("DISABLE_CORS_CONFIG_RECONCILE").Bool()
 	)
 
 	debugFlag := app.Flag("debug", "Enable debug logging (sets zap-log-level to debug)").Default("false").Bool()
@@ -517,6 +520,7 @@ func main() {
 		disableVersioningConfigReconcile,
 		disableObjectLockConfigReconcile,
 		disableSSEConfigReconcile,
+		disableCORSConfigReconcile,
 	)
 
 	setupControllers(mgr, o, connector, canSafeStart, log)

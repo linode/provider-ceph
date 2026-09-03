@@ -7,6 +7,14 @@ The Provider Ceph controller manager, created upon start-up, caches only Bucket 
 
 If Autopause is enabled, Provider Ceph will automatically pause a Bucket CR once all corresponding S3 buckets are in a `Ready` state on the relevant backends and the CR is considered `Synced`.
 
+## When Autopause is Withheld
+Pausing a Bucket CR removes it from the controller manager's cache, so the loop that is still working on it would never run again. Provider Ceph therefore never autopauses a Bucket CR that is:
+ - **Disabled** - `disabled: true` is set in the Bucket CR Spec. The Update flow hands over to Delete, which removes the S3 buckets from the backends.
+ - **Being deleted** - the Bucket CR has a deletion timestamp. Delete removes the S3 buckets from the backends and then removes the finalizer.
+ - **Mid-change** - the Bucket CR Spec changed while the current reconciliation was updating the backends. The next reconciliation makes the decision against the new Spec.
+
+This applies to Autopause only. A Bucket CR that a user or client has paused by hand stays paused, which is why the sections below exist.
+
 ## Enabling Autopause
  - Autopause can be enabled globally for **all Bucket CRs** by setting the appropriate Provider Ceph flag `--auto-pause-bucket=true`.
  - Autopause can also be enabled **per Bucket CR** by setting `autoPause: true` in the Bucket CR Spec. 

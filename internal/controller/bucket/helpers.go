@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
@@ -20,10 +20,30 @@ import (
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
 
 const errUnavailableBackends = "Bucket is unavailable on the following backends: %s"
+
+const errNoResourceVersion = "cannot patch Bucket CR with an optimistic lock: the read returned no resourceVersion"
+
+const (
+	patchRetrySteps    = 5
+	patchRetryDuration = 10 * time.Millisecond
+	patchRetryFactor   = 2.0
+	patchRetryJitter   = 0.1
+)
+
+// patchBackoff is the conflict budget for updateBucketCR. Both of its patches carry an
+// optimistic lock, so conflicts with the health-check controller and with external
+// clients are expected and have to be absorbed here.
+var patchBackoff = wait.Backoff{
+	Steps:    patchRetrySteps,
+	Duration: patchRetryDuration,
+	Factor:   patchRetryFactor,
+	Jitter:   patchRetryJitter,
+}
 
 // isBucketPaused returns true if the bucket has the paused label set.
 func isBucketPaused(bucket *v1alpha1.Bucket) bool {
@@ -34,10 +54,24 @@ func isBucketPaused(bucket *v1alpha1.Bucket) bool {
 	return false
 }
 
+// pauseAllowed returns false when the Bucket CR must stay in the controller's
+// cache. A paused Bucket CR is filtered out of that cache, so pausing one that
+// is disabled or deleting means the loops that tear it down never run again.
+func pauseAllowed(bucket *v1alpha1.Bucket) bool {
+	return !bucket.Spec.Disabled && bucket.GetDeletionTimestamp().IsZero()
+}
+
 // isPauseRequired determines if the Bucket should be paused.
 //
 //nolint:gocyclo,cyclop // Function requires numerous checks.
 func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[string]backendstore.S3Client, bb *bucketBackends, autopauseEnabled bool) bool {
+	// Avoid pausing a Bucket CR that is being torn down. A disabled Bucket CR has
+	// its buckets removed from the backends by the Update loop, and a deleting one
+	// has them removed by the Delete loop.
+	if !pauseAllowed(bucket) {
+		return false
+	}
+
 	// Avoid pausing if the Bucket CR is not Ready or not Synced.
 	if !bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) ||
 		!bucket.Status.GetCondition(xpv1.TypeSynced).Equal(xpv1.ReconcileSuccess()) {
@@ -224,18 +258,23 @@ const (
 	NeedsObjectUpdate
 )
 
-// updateBucketCR updates the Bucket CR and/or the Bucket CR Status by applying a series of callbacks.
-// The function uses an exponential backoff retry mechanism to handle potential conflicts during updates.
+// updateBucketCR applies a series of callbacks to the latest version of the Bucket CR
+// and patches the result.
 //
-// Callbacks return an UpdateRequired status, depending on whether the update that is performed by the callback
-// requires a Bucket Status update (NeedsStatusUpdate) or a full Bucket object update (NeedsObjectUpdate).
-// This enables updateObject to make a decision on whether to perform kubeclient.Status().Update() or
-// kubeClient.Update() respectively.
+// Callbacks return an UpdateRequired status, depending on whether the callback changed
+// the Bucket CR Status (NeedsStatusUpdate) or the Bucket CR object (NeedsObjectUpdate).
+// This tells updateBucketCR whether to patch the status subresource or the object.
 //
-// Callback example, updating the latest version of bucket Status with a string, so NeedsStatusUpdate is
-// returned to enabled updateBucketCR to perform kubeClient.Status().Update().
+// Both patches carry an optimistic lock, so a write made by another client between the
+// read and the patch is rejected with a conflict instead of being silently overwritten,
+// and the conflict is retried against a fresh read from the API. A callback must
+// therefore be safe to run more than once, and must base its decisions only on the
+// Bucket CR it is handed, because that object changes between attempts.
 //
-//	func(bucketLatest *v1alpha1.Bucket) {
+// Callback example, updating the latest version of bucket Status with a string, so
+// NeedsStatusUpdate is returned to have updateBucketCR patch the status subresource.
+//
+//	func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 //	  bucketLatest.Status.SomeOtherField = "some-value"
 //
 //	  return NeedsStatusUpdate
@@ -243,7 +282,7 @@ const (
 //
 // Example usage with above callback example:
 //
-//	err := updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) {
+//	err := updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 //	  bucketLatest.Status.SomeOtherField = "some-value"
 //
 //	  return NeedsStatusUpdate
@@ -258,36 +297,56 @@ func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, 
 	ctx, log := traces.InjectTraceAndLogger(ctx, c.log)
 
 	for i, cb := range callbacks {
-		err := retry.OnError(retry.DefaultRetry, resource.IsAPIError, func() error {
-			// If there are multiple callbacks, we can only use the cached kube client for
-			// the first Get(). Subsequent Get() calls must use the kube reader which reads
-			// directly from the API. This is necessary as we are doing Patch and Get calls
-			// in quick succession and need to avoid reading stale data from the client cache.
-			switch i {
-			case 0:
-				if err := c.kubeClient.Get(
-					ctx,
-					types.NamespacedName{Name: bucket.GetName()},
-					bucket,
-				); err != nil {
-					return err
-				}
-			default:
-				if err := c.kubeReader.Get(
-					ctx,
-					types.NamespacedName{Name: bucket.GetName()},
-					bucket,
-				); err != nil {
-					return err
-				}
+		firstAttempt := true
+
+		err := retry.RetryOnConflict(patchBackoff, func() error {
+			// Only the first read of the first callback comes from the client cache.
+			// Every later read goes straight to the API, because a Patch has just landed
+			// and the cache lags it, and because a retry means the object moved on since
+			// the last read. Reading everything from the API would multiply the request
+			// count on a rate limited rest config, and the optimistic lock below already
+			// turns a stale read into a conflict instead of a silent overwrite.
+			reader := c.kubeReader
+			if i == 0 && firstAttempt {
+				reader = c.kubeClient
+			}
+
+			firstAttempt = false
+
+			if err := reader.Get(
+				ctx,
+				types.NamespacedName{Name: bucket.GetName()},
+				bucket,
+			); err != nil {
+				return err
+			}
+
+			// MergeFromWithOptimisticLock turns an empty resourceVersion into an opaque
+			// error that is neither a conflict nor a NotFound, so it would be neither
+			// retried nor recognised below. A reader that returns an object without one
+			// is a bug, so name it.
+			if bucket.GetResourceVersion() == "" {
+				return errors.New(errNoResourceVersion)
 			}
 
 			bucketCopy := bucket.DeepCopy()
 			switch cb(bucket) {
 			case NeedsStatusUpdate:
-				return c.kubeClient.Status().Patch(ctx, bucket, client.MergeFrom(bucketCopy))
+				// status.atProvider.backends is only ever written here, and a merge patch
+				// built from a stale read omits the backends key entirely, which leaves
+				// the old value on the server. So this patch needs the lock just as much
+				// as the object patch does.
+				return c.kubeClient.Status().Patch(ctx, bucket,
+					client.MergeFromWithOptions(bucketCopy, client.MergeFromWithOptimisticLock{}))
 			case NeedsObjectUpdate:
-				return c.kubeClient.Patch(ctx, bucket, client.MergeFrom(bucketCopy))
+				// Patch with an optimistic lock so a write made by another client
+				// between the Get above and this Patch is rejected with a conflict and
+				// retried, rather than silently overwritten. A plain merge patch
+				// carries no resourceVersion precondition, so it always wins over
+				// the health-check controller and any external client that writes
+				// the Bucket CR with a full Update.
+				return c.kubeClient.Patch(ctx, bucket,
+					client.MergeFromWithOptions(bucketCopy, client.MergeFromWithOptimisticLock{}))
 			default:
 				return nil
 			}

@@ -33,13 +33,14 @@ func CreateBucket(ctx context.Context, s3Backend backendstore.S3Client, bucket *
 	defer span.End()
 
 	resp, err := s3Backend.CreateBucket(ctx, bucket, o...)
-	if resource.IgnoreAny(err, IsAlreadyOwnedByYou, IsAlreadyExists) != nil {
+	if resource.Ignore(IsAlreadyOwnedByYou, err) != nil {
 		traces.SetAndRecordError(span, err)
 
 		return resp, errors.Wrap(err, errCreateBucket)
 	}
 
-	return resp, err
+	// We already own the bucket, so the desired state is met.
+	return resp, nil
 }
 
 func BucketExists(ctx context.Context, s3Backend backendstore.S3Client, bucketName string, o ...func(*awss3.Options)) (bool, error) {

@@ -154,9 +154,7 @@ const (
 
 // BucketObservation are the observable fields of a Bucket.
 type BucketObservation struct {
-	Backends          Backends `json:"backends,omitempty"`
-	ConfigurableField string   `json:"configurableField"`
-	ObservableField   string   `json:"observableField,omitempty"`
+	Backends Backends `json:"backends,omitempty"`
 }
 
 // A BucketSpec defines the desired state of a Bucket.

@@ -64,6 +64,12 @@ spec:
                   If `crossplane.io/paused` label is missing or empty, triggers auto pause function.
                   Any other value disables auto pause function on bucket.
                 type: boolean
+              corsConfigurationDisabled:
+                description: |-
+                  CORSConfigurationDisabled causes provider-ceph to attempt deletion
+                  and/or avoid create/updates of the CORS config for the bucket on
+                  all of the bucket's backends. The Bucket CR's status is updated accordingly.
+                type: boolean
               deletionPolicy:
                 default: Delete
                 description: |-
@@ -179,6 +185,66 @@ spec:
                       - value
                       type: object
                     type: array
+                  corsConfiguration:
+                    description: CORSConfiguration describes the cross-origin access
+                      configuration for the bucket.
+                    properties:
+                      rules:
+                        description: |-
+                          A set of origins and methods (cross-origin access that you want to allow).
+                          You can add up to 100 rules to the configuration.
+                        items:
+                          description: CORSRule specifies a cross-origin access rule
+                            for a bucket.
+                          properties:
+                            allowedHeaders:
+                              description: |-
+                                Headers that are specified in the Access-Control-Request-Headers header.
+                                These headers are allowed in a preflight OPTIONS request. In response to
+                                any preflight OPTIONS request, Amazon S3 returns any requested headers that
+                                are allowed.
+                              items:
+                                type: string
+                              type: array
+                            allowedMethods:
+                              description: |-
+                                An HTTP method that you allow the origin to execute. Valid values are GET,
+                                PUT, HEAD, POST, and DELETE.
+                              items:
+                                type: string
+                              type: array
+                            allowedOrigins:
+                              description: One or more origins you want customers
+                                to be able to access the bucket from.
+                              items:
+                                type: string
+                              type: array
+                            exposeHeaders:
+                              description: |-
+                                One or more headers in the response that you want customers to be able to
+                                access from their applications (for example, from a JavaScript XMLHttpRequest
+                                object).
+                              items:
+                                type: string
+                              type: array
+                            id:
+                              description: Unique identifier for the rule. The value
+                                cannot be longer than 255 characters.
+                              type: string
+                            maxAgeSeconds:
+                              description: |-
+                                The time in seconds that your browser is to cache the preflight response
+                                for the specified resource.
+                              format: int32
+                              type: integer
+                          required:
+                          - allowedMethods
+                          - allowedOrigins
+                          type: object
+                        type: array
+                    required:
+                    - rules
+                    type: object
                   grantFullControl:
                     description: |-
                       Allows grantee the read, write, read ACP, and write ACP permissions on the
@@ -737,6 +803,49 @@ spec:
                         bucketCondition:
                           description: BucketCondition is the condition of the Bucket
                             on the S3 backend.
+                          properties:
+                            lastTransitionTime:
+                              description: |-
+                                LastTransitionTime is the last time this condition transitioned from one
+                                status to another.
+                              format: date-time
+                              type: string
+                            message:
+                              description: |-
+                                A Message containing details about this condition's last transition from
+                                one status to another, if any.
+                              type: string
+                            observedGeneration:
+                              description: |-
+                                ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                                For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                                with respect to the current state of the instance.
+                              format: int64
+                              type: integer
+                            reason:
+                              description: A Reason for this condition's last transition
+                                from one status to another.
+                              type: string
+                            status:
+                              description: Status of this condition; is it currently
+                                True, False, or Unknown?
+                              type: string
+                            type:
+                              description: |-
+                                Type of this condition. At most one of each condition type may apply to
+                                a resource at any point in time.
+                              type: string
+                          required:
+                          - lastTransitionTime
+                          - reason
+                          - status
+                          - type
+                          type: object
+                        corsConfigurationCondition:
+                          description: |-
+                            CORSConfigurationCondition is the condition of the CORS configuration
+                            on the S3 backend. Use a pointer to allow nil value when there is
+                            no CORS configuration.
                           properties:
                             lastTransitionTime:
                               description: |-

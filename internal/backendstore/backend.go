@@ -49,6 +49,9 @@ type S3Client interface {
 	PutBucketEncryption(context.Context, *s3.PutBucketEncryptionInput, ...func(*s3.Options)) (*s3.PutBucketEncryptionOutput, error)
 	GetBucketEncryption(context.Context, *s3.GetBucketEncryptionInput, ...func(*s3.Options)) (*s3.GetBucketEncryptionOutput, error)
 	DeleteBucketEncryption(context.Context, *s3.DeleteBucketEncryptionInput, ...func(*s3.Options)) (*s3.DeleteBucketEncryptionOutput, error)
+	PutBucketCors(context.Context, *s3.PutBucketCorsInput, ...func(*s3.Options)) (*s3.PutBucketCorsOutput, error)
+	GetBucketCors(context.Context, *s3.GetBucketCorsInput, ...func(*s3.Options)) (*s3.GetBucketCorsOutput, error)
+	DeleteBucketCors(context.Context, *s3.DeleteBucketCorsInput, ...func(*s3.Options)) (*s3.DeleteBucketCorsOutput, error)
 }
 
 //counterfeiter:generate . STSClient

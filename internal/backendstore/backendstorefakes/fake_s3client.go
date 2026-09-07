@@ -40,6 +40,21 @@ type FakeS3Client struct {
 		result1 *s3.DeleteBucketOutput
 		result2 error
 	}
+	DeleteBucketCorsStub        func(context.Context, *s3.DeleteBucketCorsInput, ...func(*s3.Options)) (*s3.DeleteBucketCorsOutput, error)
+	deleteBucketCorsMutex       sync.RWMutex
+	deleteBucketCorsArgsForCall []struct {
+		arg1 context.Context
+		arg2 *s3.DeleteBucketCorsInput
+		arg3 []func(*s3.Options)
+	}
+	deleteBucketCorsReturns struct {
+		result1 *s3.DeleteBucketCorsOutput
+		result2 error
+	}
+	deleteBucketCorsReturnsOnCall map[int]struct {
+		result1 *s3.DeleteBucketCorsOutput
+		result2 error
+	}
 	DeleteBucketEncryptionStub        func(context.Context, *s3.DeleteBucketEncryptionInput, ...func(*s3.Options)) (*s3.DeleteBucketEncryptionOutput, error)
 	deleteBucketEncryptionMutex       sync.RWMutex
 	deleteBucketEncryptionArgsForCall []struct {
@@ -113,6 +128,21 @@ type FakeS3Client struct {
 	}
 	getBucketAclReturnsOnCall map[int]struct {
 		result1 *s3.GetBucketAclOutput
+		result2 error
+	}
+	GetBucketCorsStub        func(context.Context, *s3.GetBucketCorsInput, ...func(*s3.Options)) (*s3.GetBucketCorsOutput, error)
+	getBucketCorsMutex       sync.RWMutex
+	getBucketCorsArgsForCall []struct {
+		arg1 context.Context
+		arg2 *s3.GetBucketCorsInput
+		arg3 []func(*s3.Options)
+	}
+	getBucketCorsReturns struct {
+		result1 *s3.GetBucketCorsOutput
+		result2 error
+	}
+	getBucketCorsReturnsOnCall map[int]struct {
+		result1 *s3.GetBucketCorsOutput
 		result2 error
 	}
 	GetBucketEncryptionStub        func(context.Context, *s3.GetBucketEncryptionInput, ...func(*s3.Options)) (*s3.GetBucketEncryptionOutput, error)
@@ -263,6 +293,21 @@ type FakeS3Client struct {
 	}
 	putBucketAclReturnsOnCall map[int]struct {
 		result1 *s3.PutBucketAclOutput
+		result2 error
+	}
+	PutBucketCorsStub        func(context.Context, *s3.PutBucketCorsInput, ...func(*s3.Options)) (*s3.PutBucketCorsOutput, error)
+	putBucketCorsMutex       sync.RWMutex
+	putBucketCorsArgsForCall []struct {
+		arg1 context.Context
+		arg2 *s3.PutBucketCorsInput
+		arg3 []func(*s3.Options)
+	}
+	putBucketCorsReturns struct {
+		result1 *s3.PutBucketCorsOutput
+		result2 error
+	}
+	putBucketCorsReturnsOnCall map[int]struct {
+		result1 *s3.PutBucketCorsOutput
 		result2 error
 	}
 	PutBucketEncryptionStub        func(context.Context, *s3.PutBucketEncryptionInput, ...func(*s3.Options)) (*s3.PutBucketEncryptionOutput, error)
@@ -487,6 +532,72 @@ func (fake *FakeS3Client) DeleteBucketReturnsOnCall(i int, result1 *s3.DeleteBuc
 	}
 	fake.deleteBucketReturnsOnCall[i] = struct {
 		result1 *s3.DeleteBucketOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) DeleteBucketCors(arg1 context.Context, arg2 *s3.DeleteBucketCorsInput, arg3 ...func(*s3.Options)) (*s3.DeleteBucketCorsOutput, error) {
+	fake.deleteBucketCorsMutex.Lock()
+	ret, specificReturn := fake.deleteBucketCorsReturnsOnCall[len(fake.deleteBucketCorsArgsForCall)]
+	fake.deleteBucketCorsArgsForCall = append(fake.deleteBucketCorsArgsForCall, struct {
+		arg1 context.Context
+		arg2 *s3.DeleteBucketCorsInput
+		arg3 []func(*s3.Options)
+	}{arg1, arg2, arg3})
+	stub := fake.DeleteBucketCorsStub
+	fakeReturns := fake.deleteBucketCorsReturns
+	fake.recordInvocation("DeleteBucketCors", []interface{}{arg1, arg2, arg3})
+	fake.deleteBucketCorsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeS3Client) DeleteBucketCorsCallCount() int {
+	fake.deleteBucketCorsMutex.RLock()
+	defer fake.deleteBucketCorsMutex.RUnlock()
+	return len(fake.deleteBucketCorsArgsForCall)
+}
+
+func (fake *FakeS3Client) DeleteBucketCorsCalls(stub func(context.Context, *s3.DeleteBucketCorsInput, ...func(*s3.Options)) (*s3.DeleteBucketCorsOutput, error)) {
+	fake.deleteBucketCorsMutex.Lock()
+	defer fake.deleteBucketCorsMutex.Unlock()
+	fake.DeleteBucketCorsStub = stub
+}
+
+func (fake *FakeS3Client) DeleteBucketCorsArgsForCall(i int) (context.Context, *s3.DeleteBucketCorsInput, []func(*s3.Options)) {
+	fake.deleteBucketCorsMutex.RLock()
+	defer fake.deleteBucketCorsMutex.RUnlock()
+	argsForCall := fake.deleteBucketCorsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeS3Client) DeleteBucketCorsReturns(result1 *s3.DeleteBucketCorsOutput, result2 error) {
+	fake.deleteBucketCorsMutex.Lock()
+	defer fake.deleteBucketCorsMutex.Unlock()
+	fake.DeleteBucketCorsStub = nil
+	fake.deleteBucketCorsReturns = struct {
+		result1 *s3.DeleteBucketCorsOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) DeleteBucketCorsReturnsOnCall(i int, result1 *s3.DeleteBucketCorsOutput, result2 error) {
+	fake.deleteBucketCorsMutex.Lock()
+	defer fake.deleteBucketCorsMutex.Unlock()
+	fake.DeleteBucketCorsStub = nil
+	if fake.deleteBucketCorsReturnsOnCall == nil {
+		fake.deleteBucketCorsReturnsOnCall = make(map[int]struct {
+			result1 *s3.DeleteBucketCorsOutput
+			result2 error
+		})
+	}
+	fake.deleteBucketCorsReturnsOnCall[i] = struct {
+		result1 *s3.DeleteBucketCorsOutput
 		result2 error
 	}{result1, result2}
 }
@@ -817,6 +928,72 @@ func (fake *FakeS3Client) GetBucketAclReturnsOnCall(i int, result1 *s3.GetBucket
 	}
 	fake.getBucketAclReturnsOnCall[i] = struct {
 		result1 *s3.GetBucketAclOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) GetBucketCors(arg1 context.Context, arg2 *s3.GetBucketCorsInput, arg3 ...func(*s3.Options)) (*s3.GetBucketCorsOutput, error) {
+	fake.getBucketCorsMutex.Lock()
+	ret, specificReturn := fake.getBucketCorsReturnsOnCall[len(fake.getBucketCorsArgsForCall)]
+	fake.getBucketCorsArgsForCall = append(fake.getBucketCorsArgsForCall, struct {
+		arg1 context.Context
+		arg2 *s3.GetBucketCorsInput
+		arg3 []func(*s3.Options)
+	}{arg1, arg2, arg3})
+	stub := fake.GetBucketCorsStub
+	fakeReturns := fake.getBucketCorsReturns
+	fake.recordInvocation("GetBucketCors", []interface{}{arg1, arg2, arg3})
+	fake.getBucketCorsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeS3Client) GetBucketCorsCallCount() int {
+	fake.getBucketCorsMutex.RLock()
+	defer fake.getBucketCorsMutex.RUnlock()
+	return len(fake.getBucketCorsArgsForCall)
+}
+
+func (fake *FakeS3Client) GetBucketCorsCalls(stub func(context.Context, *s3.GetBucketCorsInput, ...func(*s3.Options)) (*s3.GetBucketCorsOutput, error)) {
+	fake.getBucketCorsMutex.Lock()
+	defer fake.getBucketCorsMutex.Unlock()
+	fake.GetBucketCorsStub = stub
+}
+
+func (fake *FakeS3Client) GetBucketCorsArgsForCall(i int) (context.Context, *s3.GetBucketCorsInput, []func(*s3.Options)) {
+	fake.getBucketCorsMutex.RLock()
+	defer fake.getBucketCorsMutex.RUnlock()
+	argsForCall := fake.getBucketCorsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeS3Client) GetBucketCorsReturns(result1 *s3.GetBucketCorsOutput, result2 error) {
+	fake.getBucketCorsMutex.Lock()
+	defer fake.getBucketCorsMutex.Unlock()
+	fake.GetBucketCorsStub = nil
+	fake.getBucketCorsReturns = struct {
+		result1 *s3.GetBucketCorsOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) GetBucketCorsReturnsOnCall(i int, result1 *s3.GetBucketCorsOutput, result2 error) {
+	fake.getBucketCorsMutex.Lock()
+	defer fake.getBucketCorsMutex.Unlock()
+	fake.GetBucketCorsStub = nil
+	if fake.getBucketCorsReturnsOnCall == nil {
+		fake.getBucketCorsReturnsOnCall = make(map[int]struct {
+			result1 *s3.GetBucketCorsOutput
+			result2 error
+		})
+	}
+	fake.getBucketCorsReturnsOnCall[i] = struct {
+		result1 *s3.GetBucketCorsOutput
 		result2 error
 	}{result1, result2}
 }
@@ -1477,6 +1654,72 @@ func (fake *FakeS3Client) PutBucketAclReturnsOnCall(i int, result1 *s3.PutBucket
 	}
 	fake.putBucketAclReturnsOnCall[i] = struct {
 		result1 *s3.PutBucketAclOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) PutBucketCors(arg1 context.Context, arg2 *s3.PutBucketCorsInput, arg3 ...func(*s3.Options)) (*s3.PutBucketCorsOutput, error) {
+	fake.putBucketCorsMutex.Lock()
+	ret, specificReturn := fake.putBucketCorsReturnsOnCall[len(fake.putBucketCorsArgsForCall)]
+	fake.putBucketCorsArgsForCall = append(fake.putBucketCorsArgsForCall, struct {
+		arg1 context.Context
+		arg2 *s3.PutBucketCorsInput
+		arg3 []func(*s3.Options)
+	}{arg1, arg2, arg3})
+	stub := fake.PutBucketCorsStub
+	fakeReturns := fake.putBucketCorsReturns
+	fake.recordInvocation("PutBucketCors", []interface{}{arg1, arg2, arg3})
+	fake.putBucketCorsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeS3Client) PutBucketCorsCallCount() int {
+	fake.putBucketCorsMutex.RLock()
+	defer fake.putBucketCorsMutex.RUnlock()
+	return len(fake.putBucketCorsArgsForCall)
+}
+
+func (fake *FakeS3Client) PutBucketCorsCalls(stub func(context.Context, *s3.PutBucketCorsInput, ...func(*s3.Options)) (*s3.PutBucketCorsOutput, error)) {
+	fake.putBucketCorsMutex.Lock()
+	defer fake.putBucketCorsMutex.Unlock()
+	fake.PutBucketCorsStub = stub
+}
+
+func (fake *FakeS3Client) PutBucketCorsArgsForCall(i int) (context.Context, *s3.PutBucketCorsInput, []func(*s3.Options)) {
+	fake.putBucketCorsMutex.RLock()
+	defer fake.putBucketCorsMutex.RUnlock()
+	argsForCall := fake.putBucketCorsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeS3Client) PutBucketCorsReturns(result1 *s3.PutBucketCorsOutput, result2 error) {
+	fake.putBucketCorsMutex.Lock()
+	defer fake.putBucketCorsMutex.Unlock()
+	fake.PutBucketCorsStub = nil
+	fake.putBucketCorsReturns = struct {
+		result1 *s3.PutBucketCorsOutput
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeS3Client) PutBucketCorsReturnsOnCall(i int, result1 *s3.PutBucketCorsOutput, result2 error) {
+	fake.putBucketCorsMutex.Lock()
+	defer fake.putBucketCorsMutex.Unlock()
+	fake.PutBucketCorsStub = nil
+	if fake.putBucketCorsReturnsOnCall == nil {
+		fake.putBucketCorsReturnsOnCall = make(map[int]struct {
+			result1 *s3.PutBucketCorsOutput
+			result2 error
+		})
+	}
+	fake.putBucketCorsReturnsOnCall[i] = struct {
+		result1 *s3.PutBucketCorsOutput
 		result2 error
 	}{result1, result2}
 }

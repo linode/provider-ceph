@@ -35,6 +35,10 @@ const (
 	errObserveSSEConfig = "failed to observe bucket server side encryption configuration"
 	errHandleSSEConfig  = "failed to handle bucket server side encryption configuration"
 
+	// CORS configuration error messages.
+	errObserveCORSConfig = "failed to observe bucket CORS configuration"
+	errHandleCORSConfig  = "failed to handle bucket CORS configuration"
+
 	// ACL error messages.
 	errObserveAcl = "failed to observe bucket acl"
 	errHandleAcl  = "failed to handle bucket acl"

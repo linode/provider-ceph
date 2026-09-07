@@ -357,7 +357,7 @@ func main() {
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
-	log := zap.New(zapOpts...).WithName("provider-ceph")
+	log := zap.New(zapOpts...).WithName("provider-ceph-test")
 	ctrl.SetLogger(log)
 	klog.SetLogger(log)
 

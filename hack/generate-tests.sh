@@ -53,9 +53,7 @@ file=./.github/workflows/chainsaw-e2e-test-${major}.yaml
 ${HEADER}
 name: chainsaw e2e test ${major}
 on:
-  push:
-    branches:
-      - main
+  push: {}
   pull_request: {}
 concurrency:
   group: chainsaw-${major}-\${{ github.ref }}-1

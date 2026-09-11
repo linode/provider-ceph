@@ -405,16 +405,21 @@ type FakeS3Client struct {
 }
 
 func (fake *FakeS3Client) CreateBucket(arg1 context.Context, arg2 *s3.CreateBucketInput, arg3 ...func(*s3.Options)) (*s3.CreateBucketOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.createBucketMutex.Lock()
 	ret, specificReturn := fake.createBucketReturnsOnCall[len(fake.createBucketArgsForCall)]
 	fake.createBucketArgsForCall = append(fake.createBucketArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.CreateBucketInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.CreateBucketStub
 	fakeReturns := fake.createBucketReturns
-	fake.recordInvocation("CreateBucket", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("CreateBucket", []interface{}{arg1, arg2, arg3Copy})
 	fake.createBucketMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -471,16 +476,21 @@ func (fake *FakeS3Client) CreateBucketReturnsOnCall(i int, result1 *s3.CreateBuc
 }
 
 func (fake *FakeS3Client) DeleteBucket(arg1 context.Context, arg2 *s3.DeleteBucketInput, arg3 ...func(*s3.Options)) (*s3.DeleteBucketOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.deleteBucketMutex.Lock()
 	ret, specificReturn := fake.deleteBucketReturnsOnCall[len(fake.deleteBucketArgsForCall)]
 	fake.deleteBucketArgsForCall = append(fake.deleteBucketArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.DeleteBucketInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.DeleteBucketStub
 	fakeReturns := fake.deleteBucketReturns
-	fake.recordInvocation("DeleteBucket", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("DeleteBucket", []interface{}{arg1, arg2, arg3Copy})
 	fake.deleteBucketMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -537,16 +547,21 @@ func (fake *FakeS3Client) DeleteBucketReturnsOnCall(i int, result1 *s3.DeleteBuc
 }
 
 func (fake *FakeS3Client) DeleteBucketCors(arg1 context.Context, arg2 *s3.DeleteBucketCorsInput, arg3 ...func(*s3.Options)) (*s3.DeleteBucketCorsOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.deleteBucketCorsMutex.Lock()
 	ret, specificReturn := fake.deleteBucketCorsReturnsOnCall[len(fake.deleteBucketCorsArgsForCall)]
 	fake.deleteBucketCorsArgsForCall = append(fake.deleteBucketCorsArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.DeleteBucketCorsInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.DeleteBucketCorsStub
 	fakeReturns := fake.deleteBucketCorsReturns
-	fake.recordInvocation("DeleteBucketCors", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("DeleteBucketCors", []interface{}{arg1, arg2, arg3Copy})
 	fake.deleteBucketCorsMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -603,16 +618,21 @@ func (fake *FakeS3Client) DeleteBucketCorsReturnsOnCall(i int, result1 *s3.Delet
 }
 
 func (fake *FakeS3Client) DeleteBucketEncryption(arg1 context.Context, arg2 *s3.DeleteBucketEncryptionInput, arg3 ...func(*s3.Options)) (*s3.DeleteBucketEncryptionOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.deleteBucketEncryptionMutex.Lock()
 	ret, specificReturn := fake.deleteBucketEncryptionReturnsOnCall[len(fake.deleteBucketEncryptionArgsForCall)]
 	fake.deleteBucketEncryptionArgsForCall = append(fake.deleteBucketEncryptionArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.DeleteBucketEncryptionInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.DeleteBucketEncryptionStub
 	fakeReturns := fake.deleteBucketEncryptionReturns
-	fake.recordInvocation("DeleteBucketEncryption", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("DeleteBucketEncryption", []interface{}{arg1, arg2, arg3Copy})
 	fake.deleteBucketEncryptionMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -669,16 +689,21 @@ func (fake *FakeS3Client) DeleteBucketEncryptionReturnsOnCall(i int, result1 *s3
 }
 
 func (fake *FakeS3Client) DeleteBucketLifecycle(arg1 context.Context, arg2 *s3.DeleteBucketLifecycleInput, arg3 ...func(*s3.Options)) (*s3.DeleteBucketLifecycleOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.deleteBucketLifecycleMutex.Lock()
 	ret, specificReturn := fake.deleteBucketLifecycleReturnsOnCall[len(fake.deleteBucketLifecycleArgsForCall)]
 	fake.deleteBucketLifecycleArgsForCall = append(fake.deleteBucketLifecycleArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.DeleteBucketLifecycleInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.DeleteBucketLifecycleStub
 	fakeReturns := fake.deleteBucketLifecycleReturns
-	fake.recordInvocation("DeleteBucketLifecycle", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("DeleteBucketLifecycle", []interface{}{arg1, arg2, arg3Copy})
 	fake.deleteBucketLifecycleMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -735,16 +760,21 @@ func (fake *FakeS3Client) DeleteBucketLifecycleReturnsOnCall(i int, result1 *s3.
 }
 
 func (fake *FakeS3Client) DeleteBucketPolicy(arg1 context.Context, arg2 *s3.DeleteBucketPolicyInput, arg3 ...func(*s3.Options)) (*s3.DeleteBucketPolicyOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.deleteBucketPolicyMutex.Lock()
 	ret, specificReturn := fake.deleteBucketPolicyReturnsOnCall[len(fake.deleteBucketPolicyArgsForCall)]
 	fake.deleteBucketPolicyArgsForCall = append(fake.deleteBucketPolicyArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.DeleteBucketPolicyInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.DeleteBucketPolicyStub
 	fakeReturns := fake.deleteBucketPolicyReturns
-	fake.recordInvocation("DeleteBucketPolicy", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("DeleteBucketPolicy", []interface{}{arg1, arg2, arg3Copy})
 	fake.deleteBucketPolicyMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -801,16 +831,21 @@ func (fake *FakeS3Client) DeleteBucketPolicyReturnsOnCall(i int, result1 *s3.Del
 }
 
 func (fake *FakeS3Client) DeleteObject(arg1 context.Context, arg2 *s3.DeleteObjectInput, arg3 ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.deleteObjectMutex.Lock()
 	ret, specificReturn := fake.deleteObjectReturnsOnCall[len(fake.deleteObjectArgsForCall)]
 	fake.deleteObjectArgsForCall = append(fake.deleteObjectArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.DeleteObjectInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.DeleteObjectStub
 	fakeReturns := fake.deleteObjectReturns
-	fake.recordInvocation("DeleteObject", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("DeleteObject", []interface{}{arg1, arg2, arg3Copy})
 	fake.deleteObjectMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -867,16 +902,21 @@ func (fake *FakeS3Client) DeleteObjectReturnsOnCall(i int, result1 *s3.DeleteObj
 }
 
 func (fake *FakeS3Client) GetBucketAcl(arg1 context.Context, arg2 *s3.GetBucketAclInput, arg3 ...func(*s3.Options)) (*s3.GetBucketAclOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.getBucketAclMutex.Lock()
 	ret, specificReturn := fake.getBucketAclReturnsOnCall[len(fake.getBucketAclArgsForCall)]
 	fake.getBucketAclArgsForCall = append(fake.getBucketAclArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.GetBucketAclInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.GetBucketAclStub
 	fakeReturns := fake.getBucketAclReturns
-	fake.recordInvocation("GetBucketAcl", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("GetBucketAcl", []interface{}{arg1, arg2, arg3Copy})
 	fake.getBucketAclMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -933,16 +973,21 @@ func (fake *FakeS3Client) GetBucketAclReturnsOnCall(i int, result1 *s3.GetBucket
 }
 
 func (fake *FakeS3Client) GetBucketCors(arg1 context.Context, arg2 *s3.GetBucketCorsInput, arg3 ...func(*s3.Options)) (*s3.GetBucketCorsOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.getBucketCorsMutex.Lock()
 	ret, specificReturn := fake.getBucketCorsReturnsOnCall[len(fake.getBucketCorsArgsForCall)]
 	fake.getBucketCorsArgsForCall = append(fake.getBucketCorsArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.GetBucketCorsInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.GetBucketCorsStub
 	fakeReturns := fake.getBucketCorsReturns
-	fake.recordInvocation("GetBucketCors", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("GetBucketCors", []interface{}{arg1, arg2, arg3Copy})
 	fake.getBucketCorsMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -999,16 +1044,21 @@ func (fake *FakeS3Client) GetBucketCorsReturnsOnCall(i int, result1 *s3.GetBucke
 }
 
 func (fake *FakeS3Client) GetBucketEncryption(arg1 context.Context, arg2 *s3.GetBucketEncryptionInput, arg3 ...func(*s3.Options)) (*s3.GetBucketEncryptionOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.getBucketEncryptionMutex.Lock()
 	ret, specificReturn := fake.getBucketEncryptionReturnsOnCall[len(fake.getBucketEncryptionArgsForCall)]
 	fake.getBucketEncryptionArgsForCall = append(fake.getBucketEncryptionArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.GetBucketEncryptionInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.GetBucketEncryptionStub
 	fakeReturns := fake.getBucketEncryptionReturns
-	fake.recordInvocation("GetBucketEncryption", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("GetBucketEncryption", []interface{}{arg1, arg2, arg3Copy})
 	fake.getBucketEncryptionMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1065,16 +1115,21 @@ func (fake *FakeS3Client) GetBucketEncryptionReturnsOnCall(i int, result1 *s3.Ge
 }
 
 func (fake *FakeS3Client) GetBucketLifecycleConfiguration(arg1 context.Context, arg2 *s3.GetBucketLifecycleConfigurationInput, arg3 ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.getBucketLifecycleConfigurationMutex.Lock()
 	ret, specificReturn := fake.getBucketLifecycleConfigurationReturnsOnCall[len(fake.getBucketLifecycleConfigurationArgsForCall)]
 	fake.getBucketLifecycleConfigurationArgsForCall = append(fake.getBucketLifecycleConfigurationArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.GetBucketLifecycleConfigurationInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.GetBucketLifecycleConfigurationStub
 	fakeReturns := fake.getBucketLifecycleConfigurationReturns
-	fake.recordInvocation("GetBucketLifecycleConfiguration", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("GetBucketLifecycleConfiguration", []interface{}{arg1, arg2, arg3Copy})
 	fake.getBucketLifecycleConfigurationMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1131,16 +1186,21 @@ func (fake *FakeS3Client) GetBucketLifecycleConfigurationReturnsOnCall(i int, re
 }
 
 func (fake *FakeS3Client) GetBucketPolicy(arg1 context.Context, arg2 *s3.GetBucketPolicyInput, arg3 ...func(*s3.Options)) (*s3.GetBucketPolicyOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.getBucketPolicyMutex.Lock()
 	ret, specificReturn := fake.getBucketPolicyReturnsOnCall[len(fake.getBucketPolicyArgsForCall)]
 	fake.getBucketPolicyArgsForCall = append(fake.getBucketPolicyArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.GetBucketPolicyInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.GetBucketPolicyStub
 	fakeReturns := fake.getBucketPolicyReturns
-	fake.recordInvocation("GetBucketPolicy", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("GetBucketPolicy", []interface{}{arg1, arg2, arg3Copy})
 	fake.getBucketPolicyMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1197,16 +1257,21 @@ func (fake *FakeS3Client) GetBucketPolicyReturnsOnCall(i int, result1 *s3.GetBuc
 }
 
 func (fake *FakeS3Client) GetBucketVersioning(arg1 context.Context, arg2 *s3.GetBucketVersioningInput, arg3 ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.getBucketVersioningMutex.Lock()
 	ret, specificReturn := fake.getBucketVersioningReturnsOnCall[len(fake.getBucketVersioningArgsForCall)]
 	fake.getBucketVersioningArgsForCall = append(fake.getBucketVersioningArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.GetBucketVersioningInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.GetBucketVersioningStub
 	fakeReturns := fake.getBucketVersioningReturns
-	fake.recordInvocation("GetBucketVersioning", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("GetBucketVersioning", []interface{}{arg1, arg2, arg3Copy})
 	fake.getBucketVersioningMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1263,16 +1328,21 @@ func (fake *FakeS3Client) GetBucketVersioningReturnsOnCall(i int, result1 *s3.Ge
 }
 
 func (fake *FakeS3Client) GetObject(arg1 context.Context, arg2 *s3.GetObjectInput, arg3 ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.getObjectMutex.Lock()
 	ret, specificReturn := fake.getObjectReturnsOnCall[len(fake.getObjectArgsForCall)]
 	fake.getObjectArgsForCall = append(fake.getObjectArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.GetObjectInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.GetObjectStub
 	fakeReturns := fake.getObjectReturns
-	fake.recordInvocation("GetObject", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("GetObject", []interface{}{arg1, arg2, arg3Copy})
 	fake.getObjectMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1329,16 +1399,21 @@ func (fake *FakeS3Client) GetObjectReturnsOnCall(i int, result1 *s3.GetObjectOut
 }
 
 func (fake *FakeS3Client) GetObjectLockConfiguration(arg1 context.Context, arg2 *s3.GetObjectLockConfigurationInput, arg3 ...func(*s3.Options)) (*s3.GetObjectLockConfigurationOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.getObjectLockConfigurationMutex.Lock()
 	ret, specificReturn := fake.getObjectLockConfigurationReturnsOnCall[len(fake.getObjectLockConfigurationArgsForCall)]
 	fake.getObjectLockConfigurationArgsForCall = append(fake.getObjectLockConfigurationArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.GetObjectLockConfigurationInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.GetObjectLockConfigurationStub
 	fakeReturns := fake.getObjectLockConfigurationReturns
-	fake.recordInvocation("GetObjectLockConfiguration", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("GetObjectLockConfiguration", []interface{}{arg1, arg2, arg3Copy})
 	fake.getObjectLockConfigurationMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1395,16 +1470,21 @@ func (fake *FakeS3Client) GetObjectLockConfigurationReturnsOnCall(i int, result1
 }
 
 func (fake *FakeS3Client) HeadBucket(arg1 context.Context, arg2 *s3.HeadBucketInput, arg3 ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.headBucketMutex.Lock()
 	ret, specificReturn := fake.headBucketReturnsOnCall[len(fake.headBucketArgsForCall)]
 	fake.headBucketArgsForCall = append(fake.headBucketArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.HeadBucketInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.HeadBucketStub
 	fakeReturns := fake.headBucketReturns
-	fake.recordInvocation("HeadBucket", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("HeadBucket", []interface{}{arg1, arg2, arg3Copy})
 	fake.headBucketMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1461,16 +1541,21 @@ func (fake *FakeS3Client) HeadBucketReturnsOnCall(i int, result1 *s3.HeadBucketO
 }
 
 func (fake *FakeS3Client) ListObjectVersions(arg1 context.Context, arg2 *s3.ListObjectVersionsInput, arg3 ...func(*s3.Options)) (*s3.ListObjectVersionsOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.listObjectVersionsMutex.Lock()
 	ret, specificReturn := fake.listObjectVersionsReturnsOnCall[len(fake.listObjectVersionsArgsForCall)]
 	fake.listObjectVersionsArgsForCall = append(fake.listObjectVersionsArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.ListObjectVersionsInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.ListObjectVersionsStub
 	fakeReturns := fake.listObjectVersionsReturns
-	fake.recordInvocation("ListObjectVersions", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("ListObjectVersions", []interface{}{arg1, arg2, arg3Copy})
 	fake.listObjectVersionsMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1527,16 +1612,21 @@ func (fake *FakeS3Client) ListObjectVersionsReturnsOnCall(i int, result1 *s3.Lis
 }
 
 func (fake *FakeS3Client) ListObjectsV2(arg1 context.Context, arg2 *s3.ListObjectsV2Input, arg3 ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.listObjectsV2Mutex.Lock()
 	ret, specificReturn := fake.listObjectsV2ReturnsOnCall[len(fake.listObjectsV2ArgsForCall)]
 	fake.listObjectsV2ArgsForCall = append(fake.listObjectsV2ArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.ListObjectsV2Input
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.ListObjectsV2Stub
 	fakeReturns := fake.listObjectsV2Returns
-	fake.recordInvocation("ListObjectsV2", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("ListObjectsV2", []interface{}{arg1, arg2, arg3Copy})
 	fake.listObjectsV2Mutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1593,16 +1683,21 @@ func (fake *FakeS3Client) ListObjectsV2ReturnsOnCall(i int, result1 *s3.ListObje
 }
 
 func (fake *FakeS3Client) PutBucketAcl(arg1 context.Context, arg2 *s3.PutBucketAclInput, arg3 ...func(*s3.Options)) (*s3.PutBucketAclOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.putBucketAclMutex.Lock()
 	ret, specificReturn := fake.putBucketAclReturnsOnCall[len(fake.putBucketAclArgsForCall)]
 	fake.putBucketAclArgsForCall = append(fake.putBucketAclArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.PutBucketAclInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.PutBucketAclStub
 	fakeReturns := fake.putBucketAclReturns
-	fake.recordInvocation("PutBucketAcl", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("PutBucketAcl", []interface{}{arg1, arg2, arg3Copy})
 	fake.putBucketAclMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1659,16 +1754,21 @@ func (fake *FakeS3Client) PutBucketAclReturnsOnCall(i int, result1 *s3.PutBucket
 }
 
 func (fake *FakeS3Client) PutBucketCors(arg1 context.Context, arg2 *s3.PutBucketCorsInput, arg3 ...func(*s3.Options)) (*s3.PutBucketCorsOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.putBucketCorsMutex.Lock()
 	ret, specificReturn := fake.putBucketCorsReturnsOnCall[len(fake.putBucketCorsArgsForCall)]
 	fake.putBucketCorsArgsForCall = append(fake.putBucketCorsArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.PutBucketCorsInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.PutBucketCorsStub
 	fakeReturns := fake.putBucketCorsReturns
-	fake.recordInvocation("PutBucketCors", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("PutBucketCors", []interface{}{arg1, arg2, arg3Copy})
 	fake.putBucketCorsMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1725,16 +1825,21 @@ func (fake *FakeS3Client) PutBucketCorsReturnsOnCall(i int, result1 *s3.PutBucke
 }
 
 func (fake *FakeS3Client) PutBucketEncryption(arg1 context.Context, arg2 *s3.PutBucketEncryptionInput, arg3 ...func(*s3.Options)) (*s3.PutBucketEncryptionOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.putBucketEncryptionMutex.Lock()
 	ret, specificReturn := fake.putBucketEncryptionReturnsOnCall[len(fake.putBucketEncryptionArgsForCall)]
 	fake.putBucketEncryptionArgsForCall = append(fake.putBucketEncryptionArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.PutBucketEncryptionInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.PutBucketEncryptionStub
 	fakeReturns := fake.putBucketEncryptionReturns
-	fake.recordInvocation("PutBucketEncryption", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("PutBucketEncryption", []interface{}{arg1, arg2, arg3Copy})
 	fake.putBucketEncryptionMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1791,16 +1896,21 @@ func (fake *FakeS3Client) PutBucketEncryptionReturnsOnCall(i int, result1 *s3.Pu
 }
 
 func (fake *FakeS3Client) PutBucketLifecycleConfiguration(arg1 context.Context, arg2 *s3.PutBucketLifecycleConfigurationInput, arg3 ...func(*s3.Options)) (*s3.PutBucketLifecycleConfigurationOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.putBucketLifecycleConfigurationMutex.Lock()
 	ret, specificReturn := fake.putBucketLifecycleConfigurationReturnsOnCall[len(fake.putBucketLifecycleConfigurationArgsForCall)]
 	fake.putBucketLifecycleConfigurationArgsForCall = append(fake.putBucketLifecycleConfigurationArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.PutBucketLifecycleConfigurationInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.PutBucketLifecycleConfigurationStub
 	fakeReturns := fake.putBucketLifecycleConfigurationReturns
-	fake.recordInvocation("PutBucketLifecycleConfiguration", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("PutBucketLifecycleConfiguration", []interface{}{arg1, arg2, arg3Copy})
 	fake.putBucketLifecycleConfigurationMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1857,16 +1967,21 @@ func (fake *FakeS3Client) PutBucketLifecycleConfigurationReturnsOnCall(i int, re
 }
 
 func (fake *FakeS3Client) PutBucketPolicy(arg1 context.Context, arg2 *s3.PutBucketPolicyInput, arg3 ...func(*s3.Options)) (*s3.PutBucketPolicyOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.putBucketPolicyMutex.Lock()
 	ret, specificReturn := fake.putBucketPolicyReturnsOnCall[len(fake.putBucketPolicyArgsForCall)]
 	fake.putBucketPolicyArgsForCall = append(fake.putBucketPolicyArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.PutBucketPolicyInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.PutBucketPolicyStub
 	fakeReturns := fake.putBucketPolicyReturns
-	fake.recordInvocation("PutBucketPolicy", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("PutBucketPolicy", []interface{}{arg1, arg2, arg3Copy})
 	fake.putBucketPolicyMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1923,16 +2038,21 @@ func (fake *FakeS3Client) PutBucketPolicyReturnsOnCall(i int, result1 *s3.PutBuc
 }
 
 func (fake *FakeS3Client) PutBucketVersioning(arg1 context.Context, arg2 *s3.PutBucketVersioningInput, arg3 ...func(*s3.Options)) (*s3.PutBucketVersioningOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.putBucketVersioningMutex.Lock()
 	ret, specificReturn := fake.putBucketVersioningReturnsOnCall[len(fake.putBucketVersioningArgsForCall)]
 	fake.putBucketVersioningArgsForCall = append(fake.putBucketVersioningArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.PutBucketVersioningInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.PutBucketVersioningStub
 	fakeReturns := fake.putBucketVersioningReturns
-	fake.recordInvocation("PutBucketVersioning", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("PutBucketVersioning", []interface{}{arg1, arg2, arg3Copy})
 	fake.putBucketVersioningMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -1989,16 +2109,21 @@ func (fake *FakeS3Client) PutBucketVersioningReturnsOnCall(i int, result1 *s3.Pu
 }
 
 func (fake *FakeS3Client) PutObject(arg1 context.Context, arg2 *s3.PutObjectInput, arg3 ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.putObjectMutex.Lock()
 	ret, specificReturn := fake.putObjectReturnsOnCall[len(fake.putObjectArgsForCall)]
 	fake.putObjectArgsForCall = append(fake.putObjectArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.PutObjectInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.PutObjectStub
 	fakeReturns := fake.putObjectReturns
-	fake.recordInvocation("PutObject", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("PutObject", []interface{}{arg1, arg2, arg3Copy})
 	fake.putObjectMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)
@@ -2055,16 +2180,21 @@ func (fake *FakeS3Client) PutObjectReturnsOnCall(i int, result1 *s3.PutObjectOut
 }
 
 func (fake *FakeS3Client) PutObjectLockConfiguration(arg1 context.Context, arg2 *s3.PutObjectLockConfigurationInput, arg3 ...func(*s3.Options)) (*s3.PutObjectLockConfigurationOutput, error) {
+	var arg3Copy []func(*s3.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*s3.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.putObjectLockConfigurationMutex.Lock()
 	ret, specificReturn := fake.putObjectLockConfigurationReturnsOnCall[len(fake.putObjectLockConfigurationArgsForCall)]
 	fake.putObjectLockConfigurationArgsForCall = append(fake.putObjectLockConfigurationArgsForCall, struct {
 		arg1 context.Context
 		arg2 *s3.PutObjectLockConfigurationInput
 		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.PutObjectLockConfigurationStub
 	fakeReturns := fake.putObjectLockConfigurationReturns
-	fake.recordInvocation("PutObjectLockConfiguration", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("PutObjectLockConfiguration", []interface{}{arg1, arg2, arg3Copy})
 	fake.putObjectLockConfigurationMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)

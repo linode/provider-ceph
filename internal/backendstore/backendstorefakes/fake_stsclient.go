@@ -30,16 +30,21 @@ type FakeSTSClient struct {
 }
 
 func (fake *FakeSTSClient) AssumeRole(arg1 context.Context, arg2 *sts.AssumeRoleInput, arg3 ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
+	var arg3Copy []func(*sts.Options)
+	if arg3 != nil {
+		arg3Copy = make([]func(*sts.Options), len(arg3))
+		copy(arg3Copy, arg3)
+	}
 	fake.assumeRoleMutex.Lock()
 	ret, specificReturn := fake.assumeRoleReturnsOnCall[len(fake.assumeRoleArgsForCall)]
 	fake.assumeRoleArgsForCall = append(fake.assumeRoleArgsForCall, struct {
 		arg1 context.Context
 		arg2 *sts.AssumeRoleInput
 		arg3 []func(*sts.Options)
-	}{arg1, arg2, arg3})
+	}{arg1, arg2, arg3Copy})
 	stub := fake.AssumeRoleStub
 	fakeReturns := fake.assumeRoleReturns
-	fake.recordInvocation("AssumeRole", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("AssumeRole", []interface{}{arg1, arg2, arg3Copy})
 	fake.assumeRoleMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3...)

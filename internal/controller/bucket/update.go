@@ -88,7 +88,14 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		// Whether buckets are updated successfully or not on backends, we need to update the
 		// Bucket CR Status in all cases to represent the conditions of each individual bucket.
 		func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
+			preUpdateStatus := bucketLatest.Status.DeepCopy()
+
 			setBucketStatus(bucketLatest, bucketBackends, backendsToUpdateOnNames, c.minReplicas)
+
+			// If the Status has not changed, then no update is required.
+			if bucketStatusConditionsEqual(*preUpdateStatus, bucketLatest.Status) {
+				return NoUpdateRequired
+			}
 
 			return NeedsStatusUpdate
 		},
@@ -97,6 +104,7 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			if bucketLatest.Labels == nil {
 				bucketLatest.Labels = map[string]string{}
 			}
+			preUpdateMeta := bucketLatest.ObjectMeta.DeepCopy()
 
 			// Auto pause the Bucket CR if required - ie if auto-pause has been enabled and the
 			// criteria is met before pausing a Bucket CR.
@@ -116,6 +124,11 @@ func (c *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 			// Apply the backend label to the Bucket CR for each backend that the bucket was
 			// intended to be updated on.
 			setAllBackendLabels(bucketLatest, backendsToUpdateOnNames)
+
+			// If the labels have not changed, then no update is required.
+			if labelsEqual(preUpdateMeta.GetLabels(), bucketLatest.GetLabels()) {
+				return NoUpdateRequired
+			}
 
 			return NeedsObjectUpdate
 		})

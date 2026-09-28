@@ -12,12 +12,8 @@ import (
 type FakeSTSClient struct {
 	AssumeRoleStub        func(context.Context, *sts.AssumeRoleInput, ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
 	assumeRoleMutex       sync.RWMutex
-	assumeRoleArgsForCall []struct {
-		arg1 context.Context
-		arg2 *sts.AssumeRoleInput
-		arg3 []func(*sts.Options)
-	}
-	assumeRoleReturns struct {
+	assumeRoleArgsForCall []FakeSTSClientAssumeRoleArgs
+	assumeRoleReturns     struct {
 		result1 *sts.AssumeRoleOutput
 		result2 error
 	}
@@ -26,7 +22,15 @@ type FakeSTSClient struct {
 		result2 error
 	}
 	invocations      map[string][][]interface{}
+	callOrder        []string
 	invocationsMutex sync.RWMutex
+}
+
+// FakeSTSClientAssumeRoleArgs holds the arguments of one call to AssumeRole.
+type FakeSTSClientAssumeRoleArgs struct {
+	Arg1 context.Context
+	Arg2 *sts.AssumeRoleInput
+	Arg3 []func(*sts.Options)
 }
 
 func (fake *FakeSTSClient) AssumeRole(arg1 context.Context, arg2 *sts.AssumeRoleInput, arg3 ...func(*sts.Options)) (*sts.AssumeRoleOutput, error) {
@@ -37,11 +41,7 @@ func (fake *FakeSTSClient) AssumeRole(arg1 context.Context, arg2 *sts.AssumeRole
 	}
 	fake.assumeRoleMutex.Lock()
 	ret, specificReturn := fake.assumeRoleReturnsOnCall[len(fake.assumeRoleArgsForCall)]
-	fake.assumeRoleArgsForCall = append(fake.assumeRoleArgsForCall, struct {
-		arg1 context.Context
-		arg2 *sts.AssumeRoleInput
-		arg3 []func(*sts.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.assumeRoleArgsForCall = append(fake.assumeRoleArgsForCall, FakeSTSClientAssumeRoleArgs{arg1, arg2, arg3Copy})
 	stub := fake.AssumeRoleStub
 	fakeReturns := fake.assumeRoleReturns
 	fake.recordInvocation("AssumeRole", []interface{}{arg1, arg2, arg3Copy})
@@ -71,7 +71,15 @@ func (fake *FakeSTSClient) AssumeRoleArgsForCall(i int) (context.Context, *sts.A
 	fake.assumeRoleMutex.RLock()
 	defer fake.assumeRoleMutex.RUnlock()
 	argsForCall := fake.assumeRoleArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeSTSClient) AssumeRoleArgs() []FakeSTSClientAssumeRoleArgs {
+	fake.assumeRoleMutex.RLock()
+	defer fake.assumeRoleMutex.RUnlock()
+	args := make([]FakeSTSClientAssumeRoleArgs, len(fake.assumeRoleArgsForCall))
+	copy(args, fake.assumeRoleArgsForCall)
+	return args
 }
 
 func (fake *FakeSTSClient) AssumeRoleReturns(result1 *sts.AssumeRoleOutput, result2 error) {
@@ -110,9 +118,18 @@ func (fake *FakeSTSClient) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
+func (fake *FakeSTSClient) CallOrder() []string {
+	fake.invocationsMutex.RLock()
+	defer fake.invocationsMutex.RUnlock()
+	order := make([]string, len(fake.callOrder))
+	copy(order, fake.callOrder)
+	return order
+}
+
 func (fake *FakeSTSClient) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
+	fake.callOrder = append(fake.callOrder, key)
 	if fake.invocations == nil {
 		fake.invocations = map[string][][]interface{}{}
 	}

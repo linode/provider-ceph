@@ -12,12 +12,8 @@ import (
 type FakeS3Client struct {
 	CreateBucketStub        func(context.Context, *s3.CreateBucketInput, ...func(*s3.Options)) (*s3.CreateBucketOutput, error)
 	createBucketMutex       sync.RWMutex
-	createBucketArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.CreateBucketInput
-		arg3 []func(*s3.Options)
-	}
-	createBucketReturns struct {
+	createBucketArgsForCall []FakeS3ClientCreateBucketArgs
+	createBucketReturns     struct {
 		result1 *s3.CreateBucketOutput
 		result2 error
 	}
@@ -27,12 +23,8 @@ type FakeS3Client struct {
 	}
 	DeleteBucketStub        func(context.Context, *s3.DeleteBucketInput, ...func(*s3.Options)) (*s3.DeleteBucketOutput, error)
 	deleteBucketMutex       sync.RWMutex
-	deleteBucketArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.DeleteBucketInput
-		arg3 []func(*s3.Options)
-	}
-	deleteBucketReturns struct {
+	deleteBucketArgsForCall []FakeS3ClientDeleteBucketArgs
+	deleteBucketReturns     struct {
 		result1 *s3.DeleteBucketOutput
 		result2 error
 	}
@@ -42,12 +34,8 @@ type FakeS3Client struct {
 	}
 	DeleteBucketCorsStub        func(context.Context, *s3.DeleteBucketCorsInput, ...func(*s3.Options)) (*s3.DeleteBucketCorsOutput, error)
 	deleteBucketCorsMutex       sync.RWMutex
-	deleteBucketCorsArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.DeleteBucketCorsInput
-		arg3 []func(*s3.Options)
-	}
-	deleteBucketCorsReturns struct {
+	deleteBucketCorsArgsForCall []FakeS3ClientDeleteBucketCorsArgs
+	deleteBucketCorsReturns     struct {
 		result1 *s3.DeleteBucketCorsOutput
 		result2 error
 	}
@@ -57,12 +45,8 @@ type FakeS3Client struct {
 	}
 	DeleteBucketEncryptionStub        func(context.Context, *s3.DeleteBucketEncryptionInput, ...func(*s3.Options)) (*s3.DeleteBucketEncryptionOutput, error)
 	deleteBucketEncryptionMutex       sync.RWMutex
-	deleteBucketEncryptionArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.DeleteBucketEncryptionInput
-		arg3 []func(*s3.Options)
-	}
-	deleteBucketEncryptionReturns struct {
+	deleteBucketEncryptionArgsForCall []FakeS3ClientDeleteBucketEncryptionArgs
+	deleteBucketEncryptionReturns     struct {
 		result1 *s3.DeleteBucketEncryptionOutput
 		result2 error
 	}
@@ -72,12 +56,8 @@ type FakeS3Client struct {
 	}
 	DeleteBucketLifecycleStub        func(context.Context, *s3.DeleteBucketLifecycleInput, ...func(*s3.Options)) (*s3.DeleteBucketLifecycleOutput, error)
 	deleteBucketLifecycleMutex       sync.RWMutex
-	deleteBucketLifecycleArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.DeleteBucketLifecycleInput
-		arg3 []func(*s3.Options)
-	}
-	deleteBucketLifecycleReturns struct {
+	deleteBucketLifecycleArgsForCall []FakeS3ClientDeleteBucketLifecycleArgs
+	deleteBucketLifecycleReturns     struct {
 		result1 *s3.DeleteBucketLifecycleOutput
 		result2 error
 	}
@@ -87,12 +67,8 @@ type FakeS3Client struct {
 	}
 	DeleteBucketPolicyStub        func(context.Context, *s3.DeleteBucketPolicyInput, ...func(*s3.Options)) (*s3.DeleteBucketPolicyOutput, error)
 	deleteBucketPolicyMutex       sync.RWMutex
-	deleteBucketPolicyArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.DeleteBucketPolicyInput
-		arg3 []func(*s3.Options)
-	}
-	deleteBucketPolicyReturns struct {
+	deleteBucketPolicyArgsForCall []FakeS3ClientDeleteBucketPolicyArgs
+	deleteBucketPolicyReturns     struct {
 		result1 *s3.DeleteBucketPolicyOutput
 		result2 error
 	}
@@ -102,12 +78,8 @@ type FakeS3Client struct {
 	}
 	DeleteObjectStub        func(context.Context, *s3.DeleteObjectInput, ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
 	deleteObjectMutex       sync.RWMutex
-	deleteObjectArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.DeleteObjectInput
-		arg3 []func(*s3.Options)
-	}
-	deleteObjectReturns struct {
+	deleteObjectArgsForCall []FakeS3ClientDeleteObjectArgs
+	deleteObjectReturns     struct {
 		result1 *s3.DeleteObjectOutput
 		result2 error
 	}
@@ -117,12 +89,8 @@ type FakeS3Client struct {
 	}
 	GetBucketAclStub        func(context.Context, *s3.GetBucketAclInput, ...func(*s3.Options)) (*s3.GetBucketAclOutput, error)
 	getBucketAclMutex       sync.RWMutex
-	getBucketAclArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.GetBucketAclInput
-		arg3 []func(*s3.Options)
-	}
-	getBucketAclReturns struct {
+	getBucketAclArgsForCall []FakeS3ClientGetBucketAclArgs
+	getBucketAclReturns     struct {
 		result1 *s3.GetBucketAclOutput
 		result2 error
 	}
@@ -132,12 +100,8 @@ type FakeS3Client struct {
 	}
 	GetBucketCorsStub        func(context.Context, *s3.GetBucketCorsInput, ...func(*s3.Options)) (*s3.GetBucketCorsOutput, error)
 	getBucketCorsMutex       sync.RWMutex
-	getBucketCorsArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.GetBucketCorsInput
-		arg3 []func(*s3.Options)
-	}
-	getBucketCorsReturns struct {
+	getBucketCorsArgsForCall []FakeS3ClientGetBucketCorsArgs
+	getBucketCorsReturns     struct {
 		result1 *s3.GetBucketCorsOutput
 		result2 error
 	}
@@ -147,12 +111,8 @@ type FakeS3Client struct {
 	}
 	GetBucketEncryptionStub        func(context.Context, *s3.GetBucketEncryptionInput, ...func(*s3.Options)) (*s3.GetBucketEncryptionOutput, error)
 	getBucketEncryptionMutex       sync.RWMutex
-	getBucketEncryptionArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.GetBucketEncryptionInput
-		arg3 []func(*s3.Options)
-	}
-	getBucketEncryptionReturns struct {
+	getBucketEncryptionArgsForCall []FakeS3ClientGetBucketEncryptionArgs
+	getBucketEncryptionReturns     struct {
 		result1 *s3.GetBucketEncryptionOutput
 		result2 error
 	}
@@ -162,12 +122,8 @@ type FakeS3Client struct {
 	}
 	GetBucketLifecycleConfigurationStub        func(context.Context, *s3.GetBucketLifecycleConfigurationInput, ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error)
 	getBucketLifecycleConfigurationMutex       sync.RWMutex
-	getBucketLifecycleConfigurationArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.GetBucketLifecycleConfigurationInput
-		arg3 []func(*s3.Options)
-	}
-	getBucketLifecycleConfigurationReturns struct {
+	getBucketLifecycleConfigurationArgsForCall []FakeS3ClientGetBucketLifecycleConfigurationArgs
+	getBucketLifecycleConfigurationReturns     struct {
 		result1 *s3.GetBucketLifecycleConfigurationOutput
 		result2 error
 	}
@@ -177,12 +133,8 @@ type FakeS3Client struct {
 	}
 	GetBucketPolicyStub        func(context.Context, *s3.GetBucketPolicyInput, ...func(*s3.Options)) (*s3.GetBucketPolicyOutput, error)
 	getBucketPolicyMutex       sync.RWMutex
-	getBucketPolicyArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.GetBucketPolicyInput
-		arg3 []func(*s3.Options)
-	}
-	getBucketPolicyReturns struct {
+	getBucketPolicyArgsForCall []FakeS3ClientGetBucketPolicyArgs
+	getBucketPolicyReturns     struct {
 		result1 *s3.GetBucketPolicyOutput
 		result2 error
 	}
@@ -192,12 +144,8 @@ type FakeS3Client struct {
 	}
 	GetBucketVersioningStub        func(context.Context, *s3.GetBucketVersioningInput, ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error)
 	getBucketVersioningMutex       sync.RWMutex
-	getBucketVersioningArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.GetBucketVersioningInput
-		arg3 []func(*s3.Options)
-	}
-	getBucketVersioningReturns struct {
+	getBucketVersioningArgsForCall []FakeS3ClientGetBucketVersioningArgs
+	getBucketVersioningReturns     struct {
 		result1 *s3.GetBucketVersioningOutput
 		result2 error
 	}
@@ -207,12 +155,8 @@ type FakeS3Client struct {
 	}
 	GetObjectStub        func(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	getObjectMutex       sync.RWMutex
-	getObjectArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.GetObjectInput
-		arg3 []func(*s3.Options)
-	}
-	getObjectReturns struct {
+	getObjectArgsForCall []FakeS3ClientGetObjectArgs
+	getObjectReturns     struct {
 		result1 *s3.GetObjectOutput
 		result2 error
 	}
@@ -222,12 +166,8 @@ type FakeS3Client struct {
 	}
 	GetObjectLockConfigurationStub        func(context.Context, *s3.GetObjectLockConfigurationInput, ...func(*s3.Options)) (*s3.GetObjectLockConfigurationOutput, error)
 	getObjectLockConfigurationMutex       sync.RWMutex
-	getObjectLockConfigurationArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.GetObjectLockConfigurationInput
-		arg3 []func(*s3.Options)
-	}
-	getObjectLockConfigurationReturns struct {
+	getObjectLockConfigurationArgsForCall []FakeS3ClientGetObjectLockConfigurationArgs
+	getObjectLockConfigurationReturns     struct {
 		result1 *s3.GetObjectLockConfigurationOutput
 		result2 error
 	}
@@ -237,12 +177,8 @@ type FakeS3Client struct {
 	}
 	HeadBucketStub        func(context.Context, *s3.HeadBucketInput, ...func(*s3.Options)) (*s3.HeadBucketOutput, error)
 	headBucketMutex       sync.RWMutex
-	headBucketArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.HeadBucketInput
-		arg3 []func(*s3.Options)
-	}
-	headBucketReturns struct {
+	headBucketArgsForCall []FakeS3ClientHeadBucketArgs
+	headBucketReturns     struct {
 		result1 *s3.HeadBucketOutput
 		result2 error
 	}
@@ -252,12 +188,8 @@ type FakeS3Client struct {
 	}
 	ListObjectVersionsStub        func(context.Context, *s3.ListObjectVersionsInput, ...func(*s3.Options)) (*s3.ListObjectVersionsOutput, error)
 	listObjectVersionsMutex       sync.RWMutex
-	listObjectVersionsArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.ListObjectVersionsInput
-		arg3 []func(*s3.Options)
-	}
-	listObjectVersionsReturns struct {
+	listObjectVersionsArgsForCall []FakeS3ClientListObjectVersionsArgs
+	listObjectVersionsReturns     struct {
 		result1 *s3.ListObjectVersionsOutput
 		result2 error
 	}
@@ -267,12 +199,8 @@ type FakeS3Client struct {
 	}
 	ListObjectsV2Stub        func(context.Context, *s3.ListObjectsV2Input, ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
 	listObjectsV2Mutex       sync.RWMutex
-	listObjectsV2ArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.ListObjectsV2Input
-		arg3 []func(*s3.Options)
-	}
-	listObjectsV2Returns struct {
+	listObjectsV2ArgsForCall []FakeS3ClientListObjectsV2Args
+	listObjectsV2Returns     struct {
 		result1 *s3.ListObjectsV2Output
 		result2 error
 	}
@@ -282,12 +210,8 @@ type FakeS3Client struct {
 	}
 	PutBucketAclStub        func(context.Context, *s3.PutBucketAclInput, ...func(*s3.Options)) (*s3.PutBucketAclOutput, error)
 	putBucketAclMutex       sync.RWMutex
-	putBucketAclArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.PutBucketAclInput
-		arg3 []func(*s3.Options)
-	}
-	putBucketAclReturns struct {
+	putBucketAclArgsForCall []FakeS3ClientPutBucketAclArgs
+	putBucketAclReturns     struct {
 		result1 *s3.PutBucketAclOutput
 		result2 error
 	}
@@ -297,12 +221,8 @@ type FakeS3Client struct {
 	}
 	PutBucketCorsStub        func(context.Context, *s3.PutBucketCorsInput, ...func(*s3.Options)) (*s3.PutBucketCorsOutput, error)
 	putBucketCorsMutex       sync.RWMutex
-	putBucketCorsArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.PutBucketCorsInput
-		arg3 []func(*s3.Options)
-	}
-	putBucketCorsReturns struct {
+	putBucketCorsArgsForCall []FakeS3ClientPutBucketCorsArgs
+	putBucketCorsReturns     struct {
 		result1 *s3.PutBucketCorsOutput
 		result2 error
 	}
@@ -312,12 +232,8 @@ type FakeS3Client struct {
 	}
 	PutBucketEncryptionStub        func(context.Context, *s3.PutBucketEncryptionInput, ...func(*s3.Options)) (*s3.PutBucketEncryptionOutput, error)
 	putBucketEncryptionMutex       sync.RWMutex
-	putBucketEncryptionArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.PutBucketEncryptionInput
-		arg3 []func(*s3.Options)
-	}
-	putBucketEncryptionReturns struct {
+	putBucketEncryptionArgsForCall []FakeS3ClientPutBucketEncryptionArgs
+	putBucketEncryptionReturns     struct {
 		result1 *s3.PutBucketEncryptionOutput
 		result2 error
 	}
@@ -327,12 +243,8 @@ type FakeS3Client struct {
 	}
 	PutBucketLifecycleConfigurationStub        func(context.Context, *s3.PutBucketLifecycleConfigurationInput, ...func(*s3.Options)) (*s3.PutBucketLifecycleConfigurationOutput, error)
 	putBucketLifecycleConfigurationMutex       sync.RWMutex
-	putBucketLifecycleConfigurationArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.PutBucketLifecycleConfigurationInput
-		arg3 []func(*s3.Options)
-	}
-	putBucketLifecycleConfigurationReturns struct {
+	putBucketLifecycleConfigurationArgsForCall []FakeS3ClientPutBucketLifecycleConfigurationArgs
+	putBucketLifecycleConfigurationReturns     struct {
 		result1 *s3.PutBucketLifecycleConfigurationOutput
 		result2 error
 	}
@@ -342,12 +254,8 @@ type FakeS3Client struct {
 	}
 	PutBucketPolicyStub        func(context.Context, *s3.PutBucketPolicyInput, ...func(*s3.Options)) (*s3.PutBucketPolicyOutput, error)
 	putBucketPolicyMutex       sync.RWMutex
-	putBucketPolicyArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.PutBucketPolicyInput
-		arg3 []func(*s3.Options)
-	}
-	putBucketPolicyReturns struct {
+	putBucketPolicyArgsForCall []FakeS3ClientPutBucketPolicyArgs
+	putBucketPolicyReturns     struct {
 		result1 *s3.PutBucketPolicyOutput
 		result2 error
 	}
@@ -357,12 +265,8 @@ type FakeS3Client struct {
 	}
 	PutBucketVersioningStub        func(context.Context, *s3.PutBucketVersioningInput, ...func(*s3.Options)) (*s3.PutBucketVersioningOutput, error)
 	putBucketVersioningMutex       sync.RWMutex
-	putBucketVersioningArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.PutBucketVersioningInput
-		arg3 []func(*s3.Options)
-	}
-	putBucketVersioningReturns struct {
+	putBucketVersioningArgsForCall []FakeS3ClientPutBucketVersioningArgs
+	putBucketVersioningReturns     struct {
 		result1 *s3.PutBucketVersioningOutput
 		result2 error
 	}
@@ -372,12 +276,8 @@ type FakeS3Client struct {
 	}
 	PutObjectStub        func(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 	putObjectMutex       sync.RWMutex
-	putObjectArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.PutObjectInput
-		arg3 []func(*s3.Options)
-	}
-	putObjectReturns struct {
+	putObjectArgsForCall []FakeS3ClientPutObjectArgs
+	putObjectReturns     struct {
 		result1 *s3.PutObjectOutput
 		result2 error
 	}
@@ -387,12 +287,8 @@ type FakeS3Client struct {
 	}
 	PutObjectLockConfigurationStub        func(context.Context, *s3.PutObjectLockConfigurationInput, ...func(*s3.Options)) (*s3.PutObjectLockConfigurationOutput, error)
 	putObjectLockConfigurationMutex       sync.RWMutex
-	putObjectLockConfigurationArgsForCall []struct {
-		arg1 context.Context
-		arg2 *s3.PutObjectLockConfigurationInput
-		arg3 []func(*s3.Options)
-	}
-	putObjectLockConfigurationReturns struct {
+	putObjectLockConfigurationArgsForCall []FakeS3ClientPutObjectLockConfigurationArgs
+	putObjectLockConfigurationReturns     struct {
 		result1 *s3.PutObjectLockConfigurationOutput
 		result2 error
 	}
@@ -401,7 +297,190 @@ type FakeS3Client struct {
 		result2 error
 	}
 	invocations      map[string][][]interface{}
+	callOrder        []string
 	invocationsMutex sync.RWMutex
+}
+
+// FakeS3ClientCreateBucketArgs holds the arguments of one call to CreateBucket.
+type FakeS3ClientCreateBucketArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.CreateBucketInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientDeleteBucketArgs holds the arguments of one call to DeleteBucket.
+type FakeS3ClientDeleteBucketArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.DeleteBucketInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientDeleteBucketCorsArgs holds the arguments of one call to DeleteBucketCors.
+type FakeS3ClientDeleteBucketCorsArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.DeleteBucketCorsInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientDeleteBucketEncryptionArgs holds the arguments of one call to DeleteBucketEncryption.
+type FakeS3ClientDeleteBucketEncryptionArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.DeleteBucketEncryptionInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientDeleteBucketLifecycleArgs holds the arguments of one call to DeleteBucketLifecycle.
+type FakeS3ClientDeleteBucketLifecycleArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.DeleteBucketLifecycleInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientDeleteBucketPolicyArgs holds the arguments of one call to DeleteBucketPolicy.
+type FakeS3ClientDeleteBucketPolicyArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.DeleteBucketPolicyInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientDeleteObjectArgs holds the arguments of one call to DeleteObject.
+type FakeS3ClientDeleteObjectArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.DeleteObjectInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientGetBucketAclArgs holds the arguments of one call to GetBucketAcl.
+type FakeS3ClientGetBucketAclArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.GetBucketAclInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientGetBucketCorsArgs holds the arguments of one call to GetBucketCors.
+type FakeS3ClientGetBucketCorsArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.GetBucketCorsInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientGetBucketEncryptionArgs holds the arguments of one call to GetBucketEncryption.
+type FakeS3ClientGetBucketEncryptionArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.GetBucketEncryptionInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientGetBucketLifecycleConfigurationArgs holds the arguments of one call to GetBucketLifecycleConfiguration.
+type FakeS3ClientGetBucketLifecycleConfigurationArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.GetBucketLifecycleConfigurationInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientGetBucketPolicyArgs holds the arguments of one call to GetBucketPolicy.
+type FakeS3ClientGetBucketPolicyArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.GetBucketPolicyInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientGetBucketVersioningArgs holds the arguments of one call to GetBucketVersioning.
+type FakeS3ClientGetBucketVersioningArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.GetBucketVersioningInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientGetObjectArgs holds the arguments of one call to GetObject.
+type FakeS3ClientGetObjectArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.GetObjectInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientGetObjectLockConfigurationArgs holds the arguments of one call to GetObjectLockConfiguration.
+type FakeS3ClientGetObjectLockConfigurationArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.GetObjectLockConfigurationInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientHeadBucketArgs holds the arguments of one call to HeadBucket.
+type FakeS3ClientHeadBucketArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.HeadBucketInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientListObjectVersionsArgs holds the arguments of one call to ListObjectVersions.
+type FakeS3ClientListObjectVersionsArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.ListObjectVersionsInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientListObjectsV2Args holds the arguments of one call to ListObjectsV2.
+type FakeS3ClientListObjectsV2Args struct {
+	Arg1 context.Context
+	Arg2 *s3.ListObjectsV2Input
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientPutBucketAclArgs holds the arguments of one call to PutBucketAcl.
+type FakeS3ClientPutBucketAclArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.PutBucketAclInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientPutBucketCorsArgs holds the arguments of one call to PutBucketCors.
+type FakeS3ClientPutBucketCorsArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.PutBucketCorsInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientPutBucketEncryptionArgs holds the arguments of one call to PutBucketEncryption.
+type FakeS3ClientPutBucketEncryptionArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.PutBucketEncryptionInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientPutBucketLifecycleConfigurationArgs holds the arguments of one call to PutBucketLifecycleConfiguration.
+type FakeS3ClientPutBucketLifecycleConfigurationArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.PutBucketLifecycleConfigurationInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientPutBucketPolicyArgs holds the arguments of one call to PutBucketPolicy.
+type FakeS3ClientPutBucketPolicyArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.PutBucketPolicyInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientPutBucketVersioningArgs holds the arguments of one call to PutBucketVersioning.
+type FakeS3ClientPutBucketVersioningArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.PutBucketVersioningInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientPutObjectArgs holds the arguments of one call to PutObject.
+type FakeS3ClientPutObjectArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.PutObjectInput
+	Arg3 []func(*s3.Options)
+}
+
+// FakeS3ClientPutObjectLockConfigurationArgs holds the arguments of one call to PutObjectLockConfiguration.
+type FakeS3ClientPutObjectLockConfigurationArgs struct {
+	Arg1 context.Context
+	Arg2 *s3.PutObjectLockConfigurationInput
+	Arg3 []func(*s3.Options)
 }
 
 func (fake *FakeS3Client) CreateBucket(arg1 context.Context, arg2 *s3.CreateBucketInput, arg3 ...func(*s3.Options)) (*s3.CreateBucketOutput, error) {
@@ -412,11 +491,7 @@ func (fake *FakeS3Client) CreateBucket(arg1 context.Context, arg2 *s3.CreateBuck
 	}
 	fake.createBucketMutex.Lock()
 	ret, specificReturn := fake.createBucketReturnsOnCall[len(fake.createBucketArgsForCall)]
-	fake.createBucketArgsForCall = append(fake.createBucketArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.CreateBucketInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.createBucketArgsForCall = append(fake.createBucketArgsForCall, FakeS3ClientCreateBucketArgs{arg1, arg2, arg3Copy})
 	stub := fake.CreateBucketStub
 	fakeReturns := fake.createBucketReturns
 	fake.recordInvocation("CreateBucket", []interface{}{arg1, arg2, arg3Copy})
@@ -446,7 +521,15 @@ func (fake *FakeS3Client) CreateBucketArgsForCall(i int) (context.Context, *s3.C
 	fake.createBucketMutex.RLock()
 	defer fake.createBucketMutex.RUnlock()
 	argsForCall := fake.createBucketArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) CreateBucketArgs() []FakeS3ClientCreateBucketArgs {
+	fake.createBucketMutex.RLock()
+	defer fake.createBucketMutex.RUnlock()
+	args := make([]FakeS3ClientCreateBucketArgs, len(fake.createBucketArgsForCall))
+	copy(args, fake.createBucketArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) CreateBucketReturns(result1 *s3.CreateBucketOutput, result2 error) {
@@ -483,11 +566,7 @@ func (fake *FakeS3Client) DeleteBucket(arg1 context.Context, arg2 *s3.DeleteBuck
 	}
 	fake.deleteBucketMutex.Lock()
 	ret, specificReturn := fake.deleteBucketReturnsOnCall[len(fake.deleteBucketArgsForCall)]
-	fake.deleteBucketArgsForCall = append(fake.deleteBucketArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.DeleteBucketInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.deleteBucketArgsForCall = append(fake.deleteBucketArgsForCall, FakeS3ClientDeleteBucketArgs{arg1, arg2, arg3Copy})
 	stub := fake.DeleteBucketStub
 	fakeReturns := fake.deleteBucketReturns
 	fake.recordInvocation("DeleteBucket", []interface{}{arg1, arg2, arg3Copy})
@@ -517,7 +596,15 @@ func (fake *FakeS3Client) DeleteBucketArgsForCall(i int) (context.Context, *s3.D
 	fake.deleteBucketMutex.RLock()
 	defer fake.deleteBucketMutex.RUnlock()
 	argsForCall := fake.deleteBucketArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) DeleteBucketArgs() []FakeS3ClientDeleteBucketArgs {
+	fake.deleteBucketMutex.RLock()
+	defer fake.deleteBucketMutex.RUnlock()
+	args := make([]FakeS3ClientDeleteBucketArgs, len(fake.deleteBucketArgsForCall))
+	copy(args, fake.deleteBucketArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) DeleteBucketReturns(result1 *s3.DeleteBucketOutput, result2 error) {
@@ -554,11 +641,7 @@ func (fake *FakeS3Client) DeleteBucketCors(arg1 context.Context, arg2 *s3.Delete
 	}
 	fake.deleteBucketCorsMutex.Lock()
 	ret, specificReturn := fake.deleteBucketCorsReturnsOnCall[len(fake.deleteBucketCorsArgsForCall)]
-	fake.deleteBucketCorsArgsForCall = append(fake.deleteBucketCorsArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.DeleteBucketCorsInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.deleteBucketCorsArgsForCall = append(fake.deleteBucketCorsArgsForCall, FakeS3ClientDeleteBucketCorsArgs{arg1, arg2, arg3Copy})
 	stub := fake.DeleteBucketCorsStub
 	fakeReturns := fake.deleteBucketCorsReturns
 	fake.recordInvocation("DeleteBucketCors", []interface{}{arg1, arg2, arg3Copy})
@@ -588,7 +671,15 @@ func (fake *FakeS3Client) DeleteBucketCorsArgsForCall(i int) (context.Context, *
 	fake.deleteBucketCorsMutex.RLock()
 	defer fake.deleteBucketCorsMutex.RUnlock()
 	argsForCall := fake.deleteBucketCorsArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) DeleteBucketCorsArgs() []FakeS3ClientDeleteBucketCorsArgs {
+	fake.deleteBucketCorsMutex.RLock()
+	defer fake.deleteBucketCorsMutex.RUnlock()
+	args := make([]FakeS3ClientDeleteBucketCorsArgs, len(fake.deleteBucketCorsArgsForCall))
+	copy(args, fake.deleteBucketCorsArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) DeleteBucketCorsReturns(result1 *s3.DeleteBucketCorsOutput, result2 error) {
@@ -625,11 +716,7 @@ func (fake *FakeS3Client) DeleteBucketEncryption(arg1 context.Context, arg2 *s3.
 	}
 	fake.deleteBucketEncryptionMutex.Lock()
 	ret, specificReturn := fake.deleteBucketEncryptionReturnsOnCall[len(fake.deleteBucketEncryptionArgsForCall)]
-	fake.deleteBucketEncryptionArgsForCall = append(fake.deleteBucketEncryptionArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.DeleteBucketEncryptionInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.deleteBucketEncryptionArgsForCall = append(fake.deleteBucketEncryptionArgsForCall, FakeS3ClientDeleteBucketEncryptionArgs{arg1, arg2, arg3Copy})
 	stub := fake.DeleteBucketEncryptionStub
 	fakeReturns := fake.deleteBucketEncryptionReturns
 	fake.recordInvocation("DeleteBucketEncryption", []interface{}{arg1, arg2, arg3Copy})
@@ -659,7 +746,15 @@ func (fake *FakeS3Client) DeleteBucketEncryptionArgsForCall(i int) (context.Cont
 	fake.deleteBucketEncryptionMutex.RLock()
 	defer fake.deleteBucketEncryptionMutex.RUnlock()
 	argsForCall := fake.deleteBucketEncryptionArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) DeleteBucketEncryptionArgs() []FakeS3ClientDeleteBucketEncryptionArgs {
+	fake.deleteBucketEncryptionMutex.RLock()
+	defer fake.deleteBucketEncryptionMutex.RUnlock()
+	args := make([]FakeS3ClientDeleteBucketEncryptionArgs, len(fake.deleteBucketEncryptionArgsForCall))
+	copy(args, fake.deleteBucketEncryptionArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) DeleteBucketEncryptionReturns(result1 *s3.DeleteBucketEncryptionOutput, result2 error) {
@@ -696,11 +791,7 @@ func (fake *FakeS3Client) DeleteBucketLifecycle(arg1 context.Context, arg2 *s3.D
 	}
 	fake.deleteBucketLifecycleMutex.Lock()
 	ret, specificReturn := fake.deleteBucketLifecycleReturnsOnCall[len(fake.deleteBucketLifecycleArgsForCall)]
-	fake.deleteBucketLifecycleArgsForCall = append(fake.deleteBucketLifecycleArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.DeleteBucketLifecycleInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.deleteBucketLifecycleArgsForCall = append(fake.deleteBucketLifecycleArgsForCall, FakeS3ClientDeleteBucketLifecycleArgs{arg1, arg2, arg3Copy})
 	stub := fake.DeleteBucketLifecycleStub
 	fakeReturns := fake.deleteBucketLifecycleReturns
 	fake.recordInvocation("DeleteBucketLifecycle", []interface{}{arg1, arg2, arg3Copy})
@@ -730,7 +821,15 @@ func (fake *FakeS3Client) DeleteBucketLifecycleArgsForCall(i int) (context.Conte
 	fake.deleteBucketLifecycleMutex.RLock()
 	defer fake.deleteBucketLifecycleMutex.RUnlock()
 	argsForCall := fake.deleteBucketLifecycleArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) DeleteBucketLifecycleArgs() []FakeS3ClientDeleteBucketLifecycleArgs {
+	fake.deleteBucketLifecycleMutex.RLock()
+	defer fake.deleteBucketLifecycleMutex.RUnlock()
+	args := make([]FakeS3ClientDeleteBucketLifecycleArgs, len(fake.deleteBucketLifecycleArgsForCall))
+	copy(args, fake.deleteBucketLifecycleArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) DeleteBucketLifecycleReturns(result1 *s3.DeleteBucketLifecycleOutput, result2 error) {
@@ -767,11 +866,7 @@ func (fake *FakeS3Client) DeleteBucketPolicy(arg1 context.Context, arg2 *s3.Dele
 	}
 	fake.deleteBucketPolicyMutex.Lock()
 	ret, specificReturn := fake.deleteBucketPolicyReturnsOnCall[len(fake.deleteBucketPolicyArgsForCall)]
-	fake.deleteBucketPolicyArgsForCall = append(fake.deleteBucketPolicyArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.DeleteBucketPolicyInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.deleteBucketPolicyArgsForCall = append(fake.deleteBucketPolicyArgsForCall, FakeS3ClientDeleteBucketPolicyArgs{arg1, arg2, arg3Copy})
 	stub := fake.DeleteBucketPolicyStub
 	fakeReturns := fake.deleteBucketPolicyReturns
 	fake.recordInvocation("DeleteBucketPolicy", []interface{}{arg1, arg2, arg3Copy})
@@ -801,7 +896,15 @@ func (fake *FakeS3Client) DeleteBucketPolicyArgsForCall(i int) (context.Context,
 	fake.deleteBucketPolicyMutex.RLock()
 	defer fake.deleteBucketPolicyMutex.RUnlock()
 	argsForCall := fake.deleteBucketPolicyArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) DeleteBucketPolicyArgs() []FakeS3ClientDeleteBucketPolicyArgs {
+	fake.deleteBucketPolicyMutex.RLock()
+	defer fake.deleteBucketPolicyMutex.RUnlock()
+	args := make([]FakeS3ClientDeleteBucketPolicyArgs, len(fake.deleteBucketPolicyArgsForCall))
+	copy(args, fake.deleteBucketPolicyArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) DeleteBucketPolicyReturns(result1 *s3.DeleteBucketPolicyOutput, result2 error) {
@@ -838,11 +941,7 @@ func (fake *FakeS3Client) DeleteObject(arg1 context.Context, arg2 *s3.DeleteObje
 	}
 	fake.deleteObjectMutex.Lock()
 	ret, specificReturn := fake.deleteObjectReturnsOnCall[len(fake.deleteObjectArgsForCall)]
-	fake.deleteObjectArgsForCall = append(fake.deleteObjectArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.DeleteObjectInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.deleteObjectArgsForCall = append(fake.deleteObjectArgsForCall, FakeS3ClientDeleteObjectArgs{arg1, arg2, arg3Copy})
 	stub := fake.DeleteObjectStub
 	fakeReturns := fake.deleteObjectReturns
 	fake.recordInvocation("DeleteObject", []interface{}{arg1, arg2, arg3Copy})
@@ -872,7 +971,15 @@ func (fake *FakeS3Client) DeleteObjectArgsForCall(i int) (context.Context, *s3.D
 	fake.deleteObjectMutex.RLock()
 	defer fake.deleteObjectMutex.RUnlock()
 	argsForCall := fake.deleteObjectArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) DeleteObjectArgs() []FakeS3ClientDeleteObjectArgs {
+	fake.deleteObjectMutex.RLock()
+	defer fake.deleteObjectMutex.RUnlock()
+	args := make([]FakeS3ClientDeleteObjectArgs, len(fake.deleteObjectArgsForCall))
+	copy(args, fake.deleteObjectArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) DeleteObjectReturns(result1 *s3.DeleteObjectOutput, result2 error) {
@@ -909,11 +1016,7 @@ func (fake *FakeS3Client) GetBucketAcl(arg1 context.Context, arg2 *s3.GetBucketA
 	}
 	fake.getBucketAclMutex.Lock()
 	ret, specificReturn := fake.getBucketAclReturnsOnCall[len(fake.getBucketAclArgsForCall)]
-	fake.getBucketAclArgsForCall = append(fake.getBucketAclArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.GetBucketAclInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.getBucketAclArgsForCall = append(fake.getBucketAclArgsForCall, FakeS3ClientGetBucketAclArgs{arg1, arg2, arg3Copy})
 	stub := fake.GetBucketAclStub
 	fakeReturns := fake.getBucketAclReturns
 	fake.recordInvocation("GetBucketAcl", []interface{}{arg1, arg2, arg3Copy})
@@ -943,7 +1046,15 @@ func (fake *FakeS3Client) GetBucketAclArgsForCall(i int) (context.Context, *s3.G
 	fake.getBucketAclMutex.RLock()
 	defer fake.getBucketAclMutex.RUnlock()
 	argsForCall := fake.getBucketAclArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) GetBucketAclArgs() []FakeS3ClientGetBucketAclArgs {
+	fake.getBucketAclMutex.RLock()
+	defer fake.getBucketAclMutex.RUnlock()
+	args := make([]FakeS3ClientGetBucketAclArgs, len(fake.getBucketAclArgsForCall))
+	copy(args, fake.getBucketAclArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) GetBucketAclReturns(result1 *s3.GetBucketAclOutput, result2 error) {
@@ -980,11 +1091,7 @@ func (fake *FakeS3Client) GetBucketCors(arg1 context.Context, arg2 *s3.GetBucket
 	}
 	fake.getBucketCorsMutex.Lock()
 	ret, specificReturn := fake.getBucketCorsReturnsOnCall[len(fake.getBucketCorsArgsForCall)]
-	fake.getBucketCorsArgsForCall = append(fake.getBucketCorsArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.GetBucketCorsInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.getBucketCorsArgsForCall = append(fake.getBucketCorsArgsForCall, FakeS3ClientGetBucketCorsArgs{arg1, arg2, arg3Copy})
 	stub := fake.GetBucketCorsStub
 	fakeReturns := fake.getBucketCorsReturns
 	fake.recordInvocation("GetBucketCors", []interface{}{arg1, arg2, arg3Copy})
@@ -1014,7 +1121,15 @@ func (fake *FakeS3Client) GetBucketCorsArgsForCall(i int) (context.Context, *s3.
 	fake.getBucketCorsMutex.RLock()
 	defer fake.getBucketCorsMutex.RUnlock()
 	argsForCall := fake.getBucketCorsArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) GetBucketCorsArgs() []FakeS3ClientGetBucketCorsArgs {
+	fake.getBucketCorsMutex.RLock()
+	defer fake.getBucketCorsMutex.RUnlock()
+	args := make([]FakeS3ClientGetBucketCorsArgs, len(fake.getBucketCorsArgsForCall))
+	copy(args, fake.getBucketCorsArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) GetBucketCorsReturns(result1 *s3.GetBucketCorsOutput, result2 error) {
@@ -1051,11 +1166,7 @@ func (fake *FakeS3Client) GetBucketEncryption(arg1 context.Context, arg2 *s3.Get
 	}
 	fake.getBucketEncryptionMutex.Lock()
 	ret, specificReturn := fake.getBucketEncryptionReturnsOnCall[len(fake.getBucketEncryptionArgsForCall)]
-	fake.getBucketEncryptionArgsForCall = append(fake.getBucketEncryptionArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.GetBucketEncryptionInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.getBucketEncryptionArgsForCall = append(fake.getBucketEncryptionArgsForCall, FakeS3ClientGetBucketEncryptionArgs{arg1, arg2, arg3Copy})
 	stub := fake.GetBucketEncryptionStub
 	fakeReturns := fake.getBucketEncryptionReturns
 	fake.recordInvocation("GetBucketEncryption", []interface{}{arg1, arg2, arg3Copy})
@@ -1085,7 +1196,15 @@ func (fake *FakeS3Client) GetBucketEncryptionArgsForCall(i int) (context.Context
 	fake.getBucketEncryptionMutex.RLock()
 	defer fake.getBucketEncryptionMutex.RUnlock()
 	argsForCall := fake.getBucketEncryptionArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) GetBucketEncryptionArgs() []FakeS3ClientGetBucketEncryptionArgs {
+	fake.getBucketEncryptionMutex.RLock()
+	defer fake.getBucketEncryptionMutex.RUnlock()
+	args := make([]FakeS3ClientGetBucketEncryptionArgs, len(fake.getBucketEncryptionArgsForCall))
+	copy(args, fake.getBucketEncryptionArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) GetBucketEncryptionReturns(result1 *s3.GetBucketEncryptionOutput, result2 error) {
@@ -1122,11 +1241,7 @@ func (fake *FakeS3Client) GetBucketLifecycleConfiguration(arg1 context.Context, 
 	}
 	fake.getBucketLifecycleConfigurationMutex.Lock()
 	ret, specificReturn := fake.getBucketLifecycleConfigurationReturnsOnCall[len(fake.getBucketLifecycleConfigurationArgsForCall)]
-	fake.getBucketLifecycleConfigurationArgsForCall = append(fake.getBucketLifecycleConfigurationArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.GetBucketLifecycleConfigurationInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.getBucketLifecycleConfigurationArgsForCall = append(fake.getBucketLifecycleConfigurationArgsForCall, FakeS3ClientGetBucketLifecycleConfigurationArgs{arg1, arg2, arg3Copy})
 	stub := fake.GetBucketLifecycleConfigurationStub
 	fakeReturns := fake.getBucketLifecycleConfigurationReturns
 	fake.recordInvocation("GetBucketLifecycleConfiguration", []interface{}{arg1, arg2, arg3Copy})
@@ -1156,7 +1271,15 @@ func (fake *FakeS3Client) GetBucketLifecycleConfigurationArgsForCall(i int) (con
 	fake.getBucketLifecycleConfigurationMutex.RLock()
 	defer fake.getBucketLifecycleConfigurationMutex.RUnlock()
 	argsForCall := fake.getBucketLifecycleConfigurationArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) GetBucketLifecycleConfigurationArgs() []FakeS3ClientGetBucketLifecycleConfigurationArgs {
+	fake.getBucketLifecycleConfigurationMutex.RLock()
+	defer fake.getBucketLifecycleConfigurationMutex.RUnlock()
+	args := make([]FakeS3ClientGetBucketLifecycleConfigurationArgs, len(fake.getBucketLifecycleConfigurationArgsForCall))
+	copy(args, fake.getBucketLifecycleConfigurationArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) GetBucketLifecycleConfigurationReturns(result1 *s3.GetBucketLifecycleConfigurationOutput, result2 error) {
@@ -1193,11 +1316,7 @@ func (fake *FakeS3Client) GetBucketPolicy(arg1 context.Context, arg2 *s3.GetBuck
 	}
 	fake.getBucketPolicyMutex.Lock()
 	ret, specificReturn := fake.getBucketPolicyReturnsOnCall[len(fake.getBucketPolicyArgsForCall)]
-	fake.getBucketPolicyArgsForCall = append(fake.getBucketPolicyArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.GetBucketPolicyInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.getBucketPolicyArgsForCall = append(fake.getBucketPolicyArgsForCall, FakeS3ClientGetBucketPolicyArgs{arg1, arg2, arg3Copy})
 	stub := fake.GetBucketPolicyStub
 	fakeReturns := fake.getBucketPolicyReturns
 	fake.recordInvocation("GetBucketPolicy", []interface{}{arg1, arg2, arg3Copy})
@@ -1227,7 +1346,15 @@ func (fake *FakeS3Client) GetBucketPolicyArgsForCall(i int) (context.Context, *s
 	fake.getBucketPolicyMutex.RLock()
 	defer fake.getBucketPolicyMutex.RUnlock()
 	argsForCall := fake.getBucketPolicyArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) GetBucketPolicyArgs() []FakeS3ClientGetBucketPolicyArgs {
+	fake.getBucketPolicyMutex.RLock()
+	defer fake.getBucketPolicyMutex.RUnlock()
+	args := make([]FakeS3ClientGetBucketPolicyArgs, len(fake.getBucketPolicyArgsForCall))
+	copy(args, fake.getBucketPolicyArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) GetBucketPolicyReturns(result1 *s3.GetBucketPolicyOutput, result2 error) {
@@ -1264,11 +1391,7 @@ func (fake *FakeS3Client) GetBucketVersioning(arg1 context.Context, arg2 *s3.Get
 	}
 	fake.getBucketVersioningMutex.Lock()
 	ret, specificReturn := fake.getBucketVersioningReturnsOnCall[len(fake.getBucketVersioningArgsForCall)]
-	fake.getBucketVersioningArgsForCall = append(fake.getBucketVersioningArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.GetBucketVersioningInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.getBucketVersioningArgsForCall = append(fake.getBucketVersioningArgsForCall, FakeS3ClientGetBucketVersioningArgs{arg1, arg2, arg3Copy})
 	stub := fake.GetBucketVersioningStub
 	fakeReturns := fake.getBucketVersioningReturns
 	fake.recordInvocation("GetBucketVersioning", []interface{}{arg1, arg2, arg3Copy})
@@ -1298,7 +1421,15 @@ func (fake *FakeS3Client) GetBucketVersioningArgsForCall(i int) (context.Context
 	fake.getBucketVersioningMutex.RLock()
 	defer fake.getBucketVersioningMutex.RUnlock()
 	argsForCall := fake.getBucketVersioningArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) GetBucketVersioningArgs() []FakeS3ClientGetBucketVersioningArgs {
+	fake.getBucketVersioningMutex.RLock()
+	defer fake.getBucketVersioningMutex.RUnlock()
+	args := make([]FakeS3ClientGetBucketVersioningArgs, len(fake.getBucketVersioningArgsForCall))
+	copy(args, fake.getBucketVersioningArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) GetBucketVersioningReturns(result1 *s3.GetBucketVersioningOutput, result2 error) {
@@ -1335,11 +1466,7 @@ func (fake *FakeS3Client) GetObject(arg1 context.Context, arg2 *s3.GetObjectInpu
 	}
 	fake.getObjectMutex.Lock()
 	ret, specificReturn := fake.getObjectReturnsOnCall[len(fake.getObjectArgsForCall)]
-	fake.getObjectArgsForCall = append(fake.getObjectArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.GetObjectInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.getObjectArgsForCall = append(fake.getObjectArgsForCall, FakeS3ClientGetObjectArgs{arg1, arg2, arg3Copy})
 	stub := fake.GetObjectStub
 	fakeReturns := fake.getObjectReturns
 	fake.recordInvocation("GetObject", []interface{}{arg1, arg2, arg3Copy})
@@ -1369,7 +1496,15 @@ func (fake *FakeS3Client) GetObjectArgsForCall(i int) (context.Context, *s3.GetO
 	fake.getObjectMutex.RLock()
 	defer fake.getObjectMutex.RUnlock()
 	argsForCall := fake.getObjectArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) GetObjectArgs() []FakeS3ClientGetObjectArgs {
+	fake.getObjectMutex.RLock()
+	defer fake.getObjectMutex.RUnlock()
+	args := make([]FakeS3ClientGetObjectArgs, len(fake.getObjectArgsForCall))
+	copy(args, fake.getObjectArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) GetObjectReturns(result1 *s3.GetObjectOutput, result2 error) {
@@ -1406,11 +1541,7 @@ func (fake *FakeS3Client) GetObjectLockConfiguration(arg1 context.Context, arg2 
 	}
 	fake.getObjectLockConfigurationMutex.Lock()
 	ret, specificReturn := fake.getObjectLockConfigurationReturnsOnCall[len(fake.getObjectLockConfigurationArgsForCall)]
-	fake.getObjectLockConfigurationArgsForCall = append(fake.getObjectLockConfigurationArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.GetObjectLockConfigurationInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.getObjectLockConfigurationArgsForCall = append(fake.getObjectLockConfigurationArgsForCall, FakeS3ClientGetObjectLockConfigurationArgs{arg1, arg2, arg3Copy})
 	stub := fake.GetObjectLockConfigurationStub
 	fakeReturns := fake.getObjectLockConfigurationReturns
 	fake.recordInvocation("GetObjectLockConfiguration", []interface{}{arg1, arg2, arg3Copy})
@@ -1440,7 +1571,15 @@ func (fake *FakeS3Client) GetObjectLockConfigurationArgsForCall(i int) (context.
 	fake.getObjectLockConfigurationMutex.RLock()
 	defer fake.getObjectLockConfigurationMutex.RUnlock()
 	argsForCall := fake.getObjectLockConfigurationArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) GetObjectLockConfigurationArgs() []FakeS3ClientGetObjectLockConfigurationArgs {
+	fake.getObjectLockConfigurationMutex.RLock()
+	defer fake.getObjectLockConfigurationMutex.RUnlock()
+	args := make([]FakeS3ClientGetObjectLockConfigurationArgs, len(fake.getObjectLockConfigurationArgsForCall))
+	copy(args, fake.getObjectLockConfigurationArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) GetObjectLockConfigurationReturns(result1 *s3.GetObjectLockConfigurationOutput, result2 error) {
@@ -1477,11 +1616,7 @@ func (fake *FakeS3Client) HeadBucket(arg1 context.Context, arg2 *s3.HeadBucketIn
 	}
 	fake.headBucketMutex.Lock()
 	ret, specificReturn := fake.headBucketReturnsOnCall[len(fake.headBucketArgsForCall)]
-	fake.headBucketArgsForCall = append(fake.headBucketArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.HeadBucketInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.headBucketArgsForCall = append(fake.headBucketArgsForCall, FakeS3ClientHeadBucketArgs{arg1, arg2, arg3Copy})
 	stub := fake.HeadBucketStub
 	fakeReturns := fake.headBucketReturns
 	fake.recordInvocation("HeadBucket", []interface{}{arg1, arg2, arg3Copy})
@@ -1511,7 +1646,15 @@ func (fake *FakeS3Client) HeadBucketArgsForCall(i int) (context.Context, *s3.Hea
 	fake.headBucketMutex.RLock()
 	defer fake.headBucketMutex.RUnlock()
 	argsForCall := fake.headBucketArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) HeadBucketArgs() []FakeS3ClientHeadBucketArgs {
+	fake.headBucketMutex.RLock()
+	defer fake.headBucketMutex.RUnlock()
+	args := make([]FakeS3ClientHeadBucketArgs, len(fake.headBucketArgsForCall))
+	copy(args, fake.headBucketArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) HeadBucketReturns(result1 *s3.HeadBucketOutput, result2 error) {
@@ -1548,11 +1691,7 @@ func (fake *FakeS3Client) ListObjectVersions(arg1 context.Context, arg2 *s3.List
 	}
 	fake.listObjectVersionsMutex.Lock()
 	ret, specificReturn := fake.listObjectVersionsReturnsOnCall[len(fake.listObjectVersionsArgsForCall)]
-	fake.listObjectVersionsArgsForCall = append(fake.listObjectVersionsArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.ListObjectVersionsInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.listObjectVersionsArgsForCall = append(fake.listObjectVersionsArgsForCall, FakeS3ClientListObjectVersionsArgs{arg1, arg2, arg3Copy})
 	stub := fake.ListObjectVersionsStub
 	fakeReturns := fake.listObjectVersionsReturns
 	fake.recordInvocation("ListObjectVersions", []interface{}{arg1, arg2, arg3Copy})
@@ -1582,7 +1721,15 @@ func (fake *FakeS3Client) ListObjectVersionsArgsForCall(i int) (context.Context,
 	fake.listObjectVersionsMutex.RLock()
 	defer fake.listObjectVersionsMutex.RUnlock()
 	argsForCall := fake.listObjectVersionsArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) ListObjectVersionsArgs() []FakeS3ClientListObjectVersionsArgs {
+	fake.listObjectVersionsMutex.RLock()
+	defer fake.listObjectVersionsMutex.RUnlock()
+	args := make([]FakeS3ClientListObjectVersionsArgs, len(fake.listObjectVersionsArgsForCall))
+	copy(args, fake.listObjectVersionsArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) ListObjectVersionsReturns(result1 *s3.ListObjectVersionsOutput, result2 error) {
@@ -1619,11 +1766,7 @@ func (fake *FakeS3Client) ListObjectsV2(arg1 context.Context, arg2 *s3.ListObjec
 	}
 	fake.listObjectsV2Mutex.Lock()
 	ret, specificReturn := fake.listObjectsV2ReturnsOnCall[len(fake.listObjectsV2ArgsForCall)]
-	fake.listObjectsV2ArgsForCall = append(fake.listObjectsV2ArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.ListObjectsV2Input
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.listObjectsV2ArgsForCall = append(fake.listObjectsV2ArgsForCall, FakeS3ClientListObjectsV2Args{arg1, arg2, arg3Copy})
 	stub := fake.ListObjectsV2Stub
 	fakeReturns := fake.listObjectsV2Returns
 	fake.recordInvocation("ListObjectsV2", []interface{}{arg1, arg2, arg3Copy})
@@ -1653,7 +1796,15 @@ func (fake *FakeS3Client) ListObjectsV2ArgsForCall(i int) (context.Context, *s3.
 	fake.listObjectsV2Mutex.RLock()
 	defer fake.listObjectsV2Mutex.RUnlock()
 	argsForCall := fake.listObjectsV2ArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) ListObjectsV2Args() []FakeS3ClientListObjectsV2Args {
+	fake.listObjectsV2Mutex.RLock()
+	defer fake.listObjectsV2Mutex.RUnlock()
+	args := make([]FakeS3ClientListObjectsV2Args, len(fake.listObjectsV2ArgsForCall))
+	copy(args, fake.listObjectsV2ArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) ListObjectsV2Returns(result1 *s3.ListObjectsV2Output, result2 error) {
@@ -1690,11 +1841,7 @@ func (fake *FakeS3Client) PutBucketAcl(arg1 context.Context, arg2 *s3.PutBucketA
 	}
 	fake.putBucketAclMutex.Lock()
 	ret, specificReturn := fake.putBucketAclReturnsOnCall[len(fake.putBucketAclArgsForCall)]
-	fake.putBucketAclArgsForCall = append(fake.putBucketAclArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.PutBucketAclInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.putBucketAclArgsForCall = append(fake.putBucketAclArgsForCall, FakeS3ClientPutBucketAclArgs{arg1, arg2, arg3Copy})
 	stub := fake.PutBucketAclStub
 	fakeReturns := fake.putBucketAclReturns
 	fake.recordInvocation("PutBucketAcl", []interface{}{arg1, arg2, arg3Copy})
@@ -1724,7 +1871,15 @@ func (fake *FakeS3Client) PutBucketAclArgsForCall(i int) (context.Context, *s3.P
 	fake.putBucketAclMutex.RLock()
 	defer fake.putBucketAclMutex.RUnlock()
 	argsForCall := fake.putBucketAclArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) PutBucketAclArgs() []FakeS3ClientPutBucketAclArgs {
+	fake.putBucketAclMutex.RLock()
+	defer fake.putBucketAclMutex.RUnlock()
+	args := make([]FakeS3ClientPutBucketAclArgs, len(fake.putBucketAclArgsForCall))
+	copy(args, fake.putBucketAclArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) PutBucketAclReturns(result1 *s3.PutBucketAclOutput, result2 error) {
@@ -1761,11 +1916,7 @@ func (fake *FakeS3Client) PutBucketCors(arg1 context.Context, arg2 *s3.PutBucket
 	}
 	fake.putBucketCorsMutex.Lock()
 	ret, specificReturn := fake.putBucketCorsReturnsOnCall[len(fake.putBucketCorsArgsForCall)]
-	fake.putBucketCorsArgsForCall = append(fake.putBucketCorsArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.PutBucketCorsInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.putBucketCorsArgsForCall = append(fake.putBucketCorsArgsForCall, FakeS3ClientPutBucketCorsArgs{arg1, arg2, arg3Copy})
 	stub := fake.PutBucketCorsStub
 	fakeReturns := fake.putBucketCorsReturns
 	fake.recordInvocation("PutBucketCors", []interface{}{arg1, arg2, arg3Copy})
@@ -1795,7 +1946,15 @@ func (fake *FakeS3Client) PutBucketCorsArgsForCall(i int) (context.Context, *s3.
 	fake.putBucketCorsMutex.RLock()
 	defer fake.putBucketCorsMutex.RUnlock()
 	argsForCall := fake.putBucketCorsArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) PutBucketCorsArgs() []FakeS3ClientPutBucketCorsArgs {
+	fake.putBucketCorsMutex.RLock()
+	defer fake.putBucketCorsMutex.RUnlock()
+	args := make([]FakeS3ClientPutBucketCorsArgs, len(fake.putBucketCorsArgsForCall))
+	copy(args, fake.putBucketCorsArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) PutBucketCorsReturns(result1 *s3.PutBucketCorsOutput, result2 error) {
@@ -1832,11 +1991,7 @@ func (fake *FakeS3Client) PutBucketEncryption(arg1 context.Context, arg2 *s3.Put
 	}
 	fake.putBucketEncryptionMutex.Lock()
 	ret, specificReturn := fake.putBucketEncryptionReturnsOnCall[len(fake.putBucketEncryptionArgsForCall)]
-	fake.putBucketEncryptionArgsForCall = append(fake.putBucketEncryptionArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.PutBucketEncryptionInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.putBucketEncryptionArgsForCall = append(fake.putBucketEncryptionArgsForCall, FakeS3ClientPutBucketEncryptionArgs{arg1, arg2, arg3Copy})
 	stub := fake.PutBucketEncryptionStub
 	fakeReturns := fake.putBucketEncryptionReturns
 	fake.recordInvocation("PutBucketEncryption", []interface{}{arg1, arg2, arg3Copy})
@@ -1866,7 +2021,15 @@ func (fake *FakeS3Client) PutBucketEncryptionArgsForCall(i int) (context.Context
 	fake.putBucketEncryptionMutex.RLock()
 	defer fake.putBucketEncryptionMutex.RUnlock()
 	argsForCall := fake.putBucketEncryptionArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) PutBucketEncryptionArgs() []FakeS3ClientPutBucketEncryptionArgs {
+	fake.putBucketEncryptionMutex.RLock()
+	defer fake.putBucketEncryptionMutex.RUnlock()
+	args := make([]FakeS3ClientPutBucketEncryptionArgs, len(fake.putBucketEncryptionArgsForCall))
+	copy(args, fake.putBucketEncryptionArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) PutBucketEncryptionReturns(result1 *s3.PutBucketEncryptionOutput, result2 error) {
@@ -1903,11 +2066,7 @@ func (fake *FakeS3Client) PutBucketLifecycleConfiguration(arg1 context.Context, 
 	}
 	fake.putBucketLifecycleConfigurationMutex.Lock()
 	ret, specificReturn := fake.putBucketLifecycleConfigurationReturnsOnCall[len(fake.putBucketLifecycleConfigurationArgsForCall)]
-	fake.putBucketLifecycleConfigurationArgsForCall = append(fake.putBucketLifecycleConfigurationArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.PutBucketLifecycleConfigurationInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.putBucketLifecycleConfigurationArgsForCall = append(fake.putBucketLifecycleConfigurationArgsForCall, FakeS3ClientPutBucketLifecycleConfigurationArgs{arg1, arg2, arg3Copy})
 	stub := fake.PutBucketLifecycleConfigurationStub
 	fakeReturns := fake.putBucketLifecycleConfigurationReturns
 	fake.recordInvocation("PutBucketLifecycleConfiguration", []interface{}{arg1, arg2, arg3Copy})
@@ -1937,7 +2096,15 @@ func (fake *FakeS3Client) PutBucketLifecycleConfigurationArgsForCall(i int) (con
 	fake.putBucketLifecycleConfigurationMutex.RLock()
 	defer fake.putBucketLifecycleConfigurationMutex.RUnlock()
 	argsForCall := fake.putBucketLifecycleConfigurationArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) PutBucketLifecycleConfigurationArgs() []FakeS3ClientPutBucketLifecycleConfigurationArgs {
+	fake.putBucketLifecycleConfigurationMutex.RLock()
+	defer fake.putBucketLifecycleConfigurationMutex.RUnlock()
+	args := make([]FakeS3ClientPutBucketLifecycleConfigurationArgs, len(fake.putBucketLifecycleConfigurationArgsForCall))
+	copy(args, fake.putBucketLifecycleConfigurationArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) PutBucketLifecycleConfigurationReturns(result1 *s3.PutBucketLifecycleConfigurationOutput, result2 error) {
@@ -1974,11 +2141,7 @@ func (fake *FakeS3Client) PutBucketPolicy(arg1 context.Context, arg2 *s3.PutBuck
 	}
 	fake.putBucketPolicyMutex.Lock()
 	ret, specificReturn := fake.putBucketPolicyReturnsOnCall[len(fake.putBucketPolicyArgsForCall)]
-	fake.putBucketPolicyArgsForCall = append(fake.putBucketPolicyArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.PutBucketPolicyInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.putBucketPolicyArgsForCall = append(fake.putBucketPolicyArgsForCall, FakeS3ClientPutBucketPolicyArgs{arg1, arg2, arg3Copy})
 	stub := fake.PutBucketPolicyStub
 	fakeReturns := fake.putBucketPolicyReturns
 	fake.recordInvocation("PutBucketPolicy", []interface{}{arg1, arg2, arg3Copy})
@@ -2008,7 +2171,15 @@ func (fake *FakeS3Client) PutBucketPolicyArgsForCall(i int) (context.Context, *s
 	fake.putBucketPolicyMutex.RLock()
 	defer fake.putBucketPolicyMutex.RUnlock()
 	argsForCall := fake.putBucketPolicyArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) PutBucketPolicyArgs() []FakeS3ClientPutBucketPolicyArgs {
+	fake.putBucketPolicyMutex.RLock()
+	defer fake.putBucketPolicyMutex.RUnlock()
+	args := make([]FakeS3ClientPutBucketPolicyArgs, len(fake.putBucketPolicyArgsForCall))
+	copy(args, fake.putBucketPolicyArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) PutBucketPolicyReturns(result1 *s3.PutBucketPolicyOutput, result2 error) {
@@ -2045,11 +2216,7 @@ func (fake *FakeS3Client) PutBucketVersioning(arg1 context.Context, arg2 *s3.Put
 	}
 	fake.putBucketVersioningMutex.Lock()
 	ret, specificReturn := fake.putBucketVersioningReturnsOnCall[len(fake.putBucketVersioningArgsForCall)]
-	fake.putBucketVersioningArgsForCall = append(fake.putBucketVersioningArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.PutBucketVersioningInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.putBucketVersioningArgsForCall = append(fake.putBucketVersioningArgsForCall, FakeS3ClientPutBucketVersioningArgs{arg1, arg2, arg3Copy})
 	stub := fake.PutBucketVersioningStub
 	fakeReturns := fake.putBucketVersioningReturns
 	fake.recordInvocation("PutBucketVersioning", []interface{}{arg1, arg2, arg3Copy})
@@ -2079,7 +2246,15 @@ func (fake *FakeS3Client) PutBucketVersioningArgsForCall(i int) (context.Context
 	fake.putBucketVersioningMutex.RLock()
 	defer fake.putBucketVersioningMutex.RUnlock()
 	argsForCall := fake.putBucketVersioningArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) PutBucketVersioningArgs() []FakeS3ClientPutBucketVersioningArgs {
+	fake.putBucketVersioningMutex.RLock()
+	defer fake.putBucketVersioningMutex.RUnlock()
+	args := make([]FakeS3ClientPutBucketVersioningArgs, len(fake.putBucketVersioningArgsForCall))
+	copy(args, fake.putBucketVersioningArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) PutBucketVersioningReturns(result1 *s3.PutBucketVersioningOutput, result2 error) {
@@ -2116,11 +2291,7 @@ func (fake *FakeS3Client) PutObject(arg1 context.Context, arg2 *s3.PutObjectInpu
 	}
 	fake.putObjectMutex.Lock()
 	ret, specificReturn := fake.putObjectReturnsOnCall[len(fake.putObjectArgsForCall)]
-	fake.putObjectArgsForCall = append(fake.putObjectArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.PutObjectInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.putObjectArgsForCall = append(fake.putObjectArgsForCall, FakeS3ClientPutObjectArgs{arg1, arg2, arg3Copy})
 	stub := fake.PutObjectStub
 	fakeReturns := fake.putObjectReturns
 	fake.recordInvocation("PutObject", []interface{}{arg1, arg2, arg3Copy})
@@ -2150,7 +2321,15 @@ func (fake *FakeS3Client) PutObjectArgsForCall(i int) (context.Context, *s3.PutO
 	fake.putObjectMutex.RLock()
 	defer fake.putObjectMutex.RUnlock()
 	argsForCall := fake.putObjectArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) PutObjectArgs() []FakeS3ClientPutObjectArgs {
+	fake.putObjectMutex.RLock()
+	defer fake.putObjectMutex.RUnlock()
+	args := make([]FakeS3ClientPutObjectArgs, len(fake.putObjectArgsForCall))
+	copy(args, fake.putObjectArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) PutObjectReturns(result1 *s3.PutObjectOutput, result2 error) {
@@ -2187,11 +2366,7 @@ func (fake *FakeS3Client) PutObjectLockConfiguration(arg1 context.Context, arg2 
 	}
 	fake.putObjectLockConfigurationMutex.Lock()
 	ret, specificReturn := fake.putObjectLockConfigurationReturnsOnCall[len(fake.putObjectLockConfigurationArgsForCall)]
-	fake.putObjectLockConfigurationArgsForCall = append(fake.putObjectLockConfigurationArgsForCall, struct {
-		arg1 context.Context
-		arg2 *s3.PutObjectLockConfigurationInput
-		arg3 []func(*s3.Options)
-	}{arg1, arg2, arg3Copy})
+	fake.putObjectLockConfigurationArgsForCall = append(fake.putObjectLockConfigurationArgsForCall, FakeS3ClientPutObjectLockConfigurationArgs{arg1, arg2, arg3Copy})
 	stub := fake.PutObjectLockConfigurationStub
 	fakeReturns := fake.putObjectLockConfigurationReturns
 	fake.recordInvocation("PutObjectLockConfiguration", []interface{}{arg1, arg2, arg3Copy})
@@ -2221,7 +2396,15 @@ func (fake *FakeS3Client) PutObjectLockConfigurationArgsForCall(i int) (context.
 	fake.putObjectLockConfigurationMutex.RLock()
 	defer fake.putObjectLockConfigurationMutex.RUnlock()
 	argsForCall := fake.putObjectLockConfigurationArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeS3Client) PutObjectLockConfigurationArgs() []FakeS3ClientPutObjectLockConfigurationArgs {
+	fake.putObjectLockConfigurationMutex.RLock()
+	defer fake.putObjectLockConfigurationMutex.RUnlock()
+	args := make([]FakeS3ClientPutObjectLockConfigurationArgs, len(fake.putObjectLockConfigurationArgsForCall))
+	copy(args, fake.putObjectLockConfigurationArgsForCall)
+	return args
 }
 
 func (fake *FakeS3Client) PutObjectLockConfigurationReturns(result1 *s3.PutObjectLockConfigurationOutput, result2 error) {
@@ -2260,9 +2443,18 @@ func (fake *FakeS3Client) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
+func (fake *FakeS3Client) CallOrder() []string {
+	fake.invocationsMutex.RLock()
+	defer fake.invocationsMutex.RUnlock()
+	order := make([]string, len(fake.callOrder))
+	copy(order, fake.callOrder)
+	return order
+}
+
 func (fake *FakeS3Client) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
+	fake.callOrder = append(fake.callOrder, key)
 	if fake.invocations == nil {
 		fake.invocations = map[string][][]interface{}{}
 	}

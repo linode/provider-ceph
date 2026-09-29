@@ -2,8 +2,6 @@ package bucket
 
 import (
 	"context"
-	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -228,34 +226,20 @@ func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends, pr
 	backends := bucketBackends.getBackends(bucket.Name, providerNames)
 	bucket.Status.AtProvider.Backends = backends
 
-	var ok uint = 0
-	unavailableBackends := make([]string, 0)
-	for backendName, backend := range backends {
+	var availableBackends uint = 0
+	for _, backend := range backends {
 		if backend.BucketCondition.Equal(xpv1.Available()) {
-			ok++
+			availableBackends++
 
 			continue
 		}
-		unavailableBackends = append(unavailableBackends, backendName)
 	}
+
 	// The Bucket CR is considered Available if the bucket is available on "minReplicas"
 	// number of backends (default = 1).
-	if ok >= minReplicas {
+	if availableBackends >= minReplicas {
 		bucket.Status.SetConditions(xpv1.Available())
 	}
-	// The Bucket CR is considered Synced (ReconcileSuccess) once the bucket is available
-	// on all backends. We also ensure that the overall Bucket CR is available (in a Ready
-	// state) - this should already be the case.
-	if ok >= uint(len(providerNames)) &&
-		bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) {
-		bucket.Status.SetConditions(xpv1.ReconcileSuccess())
-
-		return
-	}
-	// The Bucket CR cannot be considered Synced.
-	slices.Sort(unavailableBackends)
-	err := errors.New(fmt.Sprintf(errUnavailableBackends, strings.Join(unavailableBackends, ", ")))
-	bucket.Status.SetConditions(xpv1.ReconcileError(err))
 }
 
 // bucketStatusConditionsEqual compares the statuses of two Bucket CRs and returns true if the conditions

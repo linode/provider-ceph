@@ -76,27 +76,6 @@ func TestIsPauseRequired(t *testing.T) {
 				pauseIsRequired: false,
 			},
 		},
-		"Bucket Status has Ready condition but no Synced condition - no pause": {
-			args: args{
-				bucket: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: consts.TestBucket,
-					},
-					Status: v1alpha1.BucketStatus{
-						ResourceStatus: xpv1.ResourceStatus{
-							ConditionedStatus: xpv1.ConditionedStatus{
-								Conditions: []xpv1.Condition{
-									xpv1.Available(),
-								},
-							},
-						},
-					},
-				},
-			},
-			want: want{
-				pauseIsRequired: false,
-			},
-		},
 		"Bucket Status has Synced condition but no Ready condition - no pause": {
 			args: args{
 				bucket: &v1alpha1.Bucket{
@@ -118,7 +97,7 @@ func TestIsPauseRequired(t *testing.T) {
 				pauseIsRequired: false,
 			},
 		},
-		"Bucket Status has not Ready and not Synced conditions - no pause": {
+		"Bucket Status has not Ready condition - no pause": {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
@@ -129,7 +108,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Unavailable(),
-									xpv1.ReconcileError(someErr),
 								},
 							},
 						},
@@ -140,51 +118,7 @@ func TestIsPauseRequired(t *testing.T) {
 				pauseIsRequired: false,
 			},
 		},
-		"Bucket Status has Ready but not Synced conditions - no pause": {
-			args: args{
-				bucket: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: consts.TestBucket,
-					},
-					Status: v1alpha1.BucketStatus{
-						ResourceStatus: xpv1.ResourceStatus{
-							ConditionedStatus: xpv1.ConditionedStatus{
-								Conditions: []xpv1.Condition{
-									xpv1.Available(),
-									xpv1.ReconcileError(someErr),
-								},
-							},
-						},
-					},
-				},
-			},
-			want: want{
-				pauseIsRequired: false,
-			},
-		},
-		"Bucket Status has Synced but not Ready conditions - no pause": {
-			args: args{
-				bucket: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: consts.TestBucket,
-					},
-					Status: v1alpha1.BucketStatus{
-						ResourceStatus: xpv1.ResourceStatus{
-							ConditionedStatus: xpv1.ConditionedStatus{
-								Conditions: []xpv1.Condition{
-									xpv1.Unavailable(),
-									xpv1.ReconcileSuccess(),
-								},
-							},
-						},
-					},
-				},
-			},
-			want: want{
-				pauseIsRequired: false,
-			},
-		},
-		// All Buckets from this point are Ready and Synced.
+		// All Buckets from this point are Ready.
 		"One backend unavailable in bucket backends - no pause": {
 			args: args{
 				bucket: &v1alpha1.Bucket{
@@ -196,7 +130,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -239,7 +172,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -279,7 +211,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -325,7 +256,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -375,7 +305,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -421,7 +350,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -471,7 +399,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -520,7 +447,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -570,7 +496,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -616,7 +541,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -666,7 +590,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -724,7 +647,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -785,7 +707,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -845,7 +766,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -907,7 +827,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -968,7 +887,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1022,7 +940,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1079,7 +996,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1135,7 +1051,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1188,7 +1103,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1241,7 +1155,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1293,7 +1206,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1350,7 +1262,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1407,7 +1318,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1463,7 +1373,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1530,7 +1439,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1602,7 +1510,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},

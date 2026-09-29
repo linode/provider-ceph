@@ -270,6 +270,7 @@ func setupProviderConfigControllers(
 	s3Timeout time.Duration,
 	backendMonitorInterval time.Duration,
 	autoPauseBucket *bool,
+	disableHealthCheckRecovery *bool,
 ) {
 	kingpin.FatalIfError(providerconfig.Setup(mgr, o,
 		backendmonitor.NewController(
@@ -280,6 +281,7 @@ func setupProviderConfigControllers(
 			backendmonitor.WithLogger(log)),
 		healthcheck.NewController(
 			healthcheck.WithAutoPause(autoPauseBucket),
+			healthcheck.WithDisableRecovery(disableHealthCheckRecovery),
 			healthcheck.WithBackendStore(backendStore),
 			healthcheck.WithKubeClientUncached(kubeClientUncached),
 			healthcheck.WithKubeClientCached(mgr.GetClient()),
@@ -336,12 +338,14 @@ func main() {
 
 		assumeRoleArn = app.Flag("assume-role-arn", "Assume role ARN to be used for STS authentication").Default("").Envar("ASSUME_ROLE_ARN").String()
 
-		webhookHost          = app.Flag("webhook-host", "The host of the webhook server.").Default("0.0.0.0").Envar("WEBHOOK_HOST").String()
-		webhookTLSCertDir    = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
-		_                    = app.Flag("enable-validation-webhooks", "Enable support for Webhooks. [Deprecated, has no effect]").Default("false").Bool()
-		disableBucketWebhook = app.Flag("disable-bucket-validation-webhook", "Disable validation webhook for Bucket managed resources").Default("false").Envar("DISABLE_BUCKET_VALIDATION_WEBHOOK").Bool()
-		enableChangeLogs     = app.Flag("enable-changelogs", "Enable support for capturing change logs during reconciliation.").Default("false").Envar("ENABLE_CHANGE_LOGS").Bool()
-		changelogsSocketPath = app.Flag("changelogs-socket-path", "Path for changelogs socket (if enabled)").Default("/var/run/changelogs/changelogs.sock").Envar("CHANGELOGS_SOCKET_PATH").String()
+		webhookHost                = app.Flag("webhook-host", "The host of the webhook server.").Default("0.0.0.0").Envar("WEBHOOK_HOST").String()
+		webhookTLSCertDir          = app.Flag("webhook-tls-cert-dir", "The directory of TLS certificate that will be used by the webhook server. There should be tls.crt and tls.key files.").Default("/").Envar("WEBHOOK_TLS_CERT_DIR").String()
+		_                          = app.Flag("enable-validation-webhooks", "Enable support for Webhooks. [Deprecated, has no effect]").Default("false").Bool()
+		disableBucketWebhook       = app.Flag("disable-bucket-validation-webhook", "Disable validation webhook for Bucket managed resources").Default("false").Envar("DISABLE_BUCKET_VALIDATION_WEBHOOK").Bool()
+		enableChangeLogs           = app.Flag("enable-changelogs", "Enable support for capturing change logs during reconciliation.").Default("false").Envar("ENABLE_CHANGE_LOGS").Bool()
+		changelogsSocketPath       = app.Flag("changelogs-socket-path", "Path for changelogs socket (if enabled)").Default("/var/run/changelogs/changelogs.sock").Envar("CHANGELOGS_SOCKET_PATH").String()
+		disableHealthCheckRecovery = app.Flag("disable-health-check-recovery", "Disable the health check controller's recovery mechanism which unpauses all buckets on a newly healthy ProviderConfig").Default("false").Envar("DISABLE_HEALTH_CHECK_RECOVERY").Bool()
+
 		// Subresource Client Flags.
 		disableACLReconcile              = app.Flag("disable-acl-reconcile", "Disable reconciliation of Bucket ACLs.").Default("false").Envar("DISABLE_ACL_RECONCILE").Bool()
 		disablePolicyReconcile           = app.Flag("disable-policy-reconcile", "Disable reconciliation of Bucket Policies.").Default("false").Envar("DISABLE_POLICY_RECONCILE").Bool()
@@ -494,6 +498,7 @@ func main() {
 		*s3Timeout,
 		*backendMonitorInterval,
 		autoPauseBucket,
+		disableHealthCheckRecovery,
 	)
 	s3ClientHandler := createS3ClientHandler(
 		assumeRoleArn,

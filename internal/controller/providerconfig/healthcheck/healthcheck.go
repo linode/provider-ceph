@@ -21,6 +21,7 @@ type Controller struct {
 	httpClient         *http.Client
 	log                logr.Logger
 	autoPauseBucket    bool
+	disableRecovery    bool
 }
 
 func NewController(options ...func(*Controller)) *Controller {
@@ -65,6 +66,12 @@ func WithAutoPause(autoPause *bool) func(*Controller) {
 func WithHttpClient(httpClient *http.Client) func(*Controller) {
 	return func(r *Controller) {
 		r.httpClient = httpClient
+	}
+}
+
+func WithDisableRecovery(disableRecovery *bool) func(*Controller) {
+	return func(r *Controller) {
+		r.disableRecovery = *disableRecovery
 	}
 }
 

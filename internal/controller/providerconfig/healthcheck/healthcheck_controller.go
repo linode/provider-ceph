@@ -123,16 +123,17 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	// Check if the backend is healthy, where prior to the check it was unhealthy.
-	// In which case, we need to unpause all Bucket CRs that have buckets stored
-	// on this backend. We do this to allow these Bucket CRs be reconciled again.
-	conditionAfterCheck := providerConfig.Status.GetCondition(v1.TypeReady)
+	if !c.disableRecovery {
+		// Check if the backend is healthy, where prior to the check it was unhealthy.
+		// In which case, we need to unpause all Bucket CRs that have buckets stored
+		// on this backend. We do this to allow these Bucket CRs be reconciled again.
+		conditionAfterCheck := providerConfig.Status.GetCondition(v1.TypeReady)
 
-	if conditionAfterCheck.Equal(v1alpha1.HealthCheckSuccess()) && !conditionBeforeCheck.Equal(conditionAfterCheck) {
-		log.Info("Backend is healthy where previously it was unhealthy - unpausing all Buckets on backend to allow Observation", consts.KeyBackendName, providerConfig.Name)
-		go c.unpauseBuckets(ctx, providerConfig.Name)
+		if conditionAfterCheck.Equal(v1alpha1.HealthCheckSuccess()) && !conditionBeforeCheck.Equal(conditionAfterCheck) {
+			log.Info("Backend is healthy where previously it was unhealthy - unpausing all Buckets on backend to allow Observation", consts.KeyBackendName, providerConfig.Name)
+			go c.unpauseBuckets(ctx, providerConfig.Name)
+		}
 	}
-
 	// Health check interval is 30s by default.
 	// It is safe to requeue after the same object multiple times,
 	// because controller runtime reconcilies only once.

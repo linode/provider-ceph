@@ -22,8 +22,6 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
-const errUnavailableBackends = "Bucket is unavailable on the following backends: %s"
-
 const errNoResourceVersion = "cannot patch Bucket CR with an optimistic lock: the read returned no resourceVersion"
 
 const (
@@ -70,12 +68,12 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[stri
 		return false
 	}
 
-	// Avoid pausing if the Bucket CR is not Ready or not Synced.
-	if !bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) ||
-		!bucket.Status.GetCondition(xpv1.TypeSynced).Equal(xpv1.ReconcileSuccess()) {
+	// Avoid pausing if the Bucket CR is not Ready.
+	if !bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) {
 		return false
 	}
-	// Avoid pausing if the number of backends on which the bucket is available is less than the number of providerNames.
+	// Avoid pausing if the number of backends on which the bucket is available is less than the number
+	// of providerNames. If this criteria is met, the Bucket CR will be set as Synced by crossplane-runtime.
 	if float64(bb.countBucketsAvailableOnBackends(bucket.Name, providerNames, c)) < float64(len(providerNames)) {
 		return false
 	}

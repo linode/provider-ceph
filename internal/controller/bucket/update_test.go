@@ -2,9 +2,7 @@ package bucket
 
 import (
 	"context"
-	"fmt"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -215,10 +213,6 @@ func TestUpdate(t *testing.T) {
 						"unexpected bucket ready condition")
 
 					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
-						"unexpected bucket synced condition")
-
-					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Available()),
 						"bucket condition on s3-backend-1 is not available")
 
@@ -278,11 +272,6 @@ func TestUpdate(t *testing.T) {
 					unavailableBackends := []string{consts.S3Backend1, consts.S3Backend2}
 					slices.Sort(unavailableBackends)
 					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileError(errors.New(
-							fmt.Sprintf(errUnavailableBackends, strings.Join(unavailableBackends, ", "))))),
-						"unexpected bucket synced condition")
-
-					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Unavailable().
 							WithMessage(errors.Wrap(errors.Wrap(someError, "failed to assume role"), "Failed to create s3 client via assume role").Error())), "unexpected bucket condition for s3-backend-1")
 
@@ -340,11 +329,6 @@ func TestUpdate(t *testing.T) {
 
 					unavailableBackends := []string{consts.S3Backend1, consts.S3Backend2}
 					slices.Sort(unavailableBackends)
-					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileError(errors.New(
-							fmt.Sprintf(errUnavailableBackends, strings.Join(unavailableBackends, ", "))))),
-						"unexpected bucket synced condition")
-
 					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Unavailable().WithMessage(errors.Wrap(someError, "failed to perform head bucket").Error())),
 						"unexpected bucket condition for s3-backend-1")
@@ -408,11 +392,6 @@ func TestUpdate(t *testing.T) {
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Available()),
 						"unexpected bucket ready condition")
-
-					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileError(errors.New(
-							fmt.Sprintf(errUnavailableBackends, strings.Join([]string{consts.S3Backend2}, ", "))))),
-						"unexpected bucket synced condition")
 
 					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Available()),
@@ -489,10 +468,6 @@ func TestUpdate(t *testing.T) {
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Available()),
 						"unexpected bucket ready condition")
-
-					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
-						"unexpected bucket synced condition")
 
 					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Available()),
@@ -899,10 +874,6 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 						"unexpected bucket ready condition")
 
 					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
-						"unexpected bucket synced condition")
-
-					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].LifecycleConfigurationCondition.Equal(v1.Available()),
 						"lifecycle configuration condition on s3-backend-1 is not available")
 
@@ -1226,10 +1197,6 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Available()),
 						"unexpected bucket ready condition")
-
-					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
-						"unexpected bucket synced condition")
 
 					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].VersioningConfigurationCondition.Equal(v1.Available()),
@@ -1560,10 +1527,6 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Available()),
 						"unexpected bucket ready condition")
-
-					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
-						"unexpected bucket synced condition")
 
 					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].ObjectLockConfigurationCondition.Equal(v1.Available()),

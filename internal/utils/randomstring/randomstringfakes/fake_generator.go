@@ -10,12 +10,8 @@ import (
 type FakeGenerator struct {
 	GenerateStub        func(string, int, *randomstring.Charset) (string, error)
 	generateMutex       sync.RWMutex
-	generateArgsForCall []struct {
-		arg1 string
-		arg2 int
-		arg3 *randomstring.Charset
-	}
-	generateReturns struct {
+	generateArgsForCall []FakeGeneratorGenerateArgs
+	generateReturns     struct {
 		result1 string
 		result2 error
 	}
@@ -24,17 +20,21 @@ type FakeGenerator struct {
 		result2 error
 	}
 	invocations      map[string][][]interface{}
+	callOrder        []string
 	invocationsMutex sync.RWMutex
+}
+
+// FakeGeneratorGenerateArgs holds the arguments of one call to Generate.
+type FakeGeneratorGenerateArgs struct {
+	Arg1 string
+	Arg2 int
+	Arg3 *randomstring.Charset
 }
 
 func (fake *FakeGenerator) Generate(arg1 string, arg2 int, arg3 *randomstring.Charset) (string, error) {
 	fake.generateMutex.Lock()
 	ret, specificReturn := fake.generateReturnsOnCall[len(fake.generateArgsForCall)]
-	fake.generateArgsForCall = append(fake.generateArgsForCall, struct {
-		arg1 string
-		arg2 int
-		arg3 *randomstring.Charset
-	}{arg1, arg2, arg3})
+	fake.generateArgsForCall = append(fake.generateArgsForCall, FakeGeneratorGenerateArgs{arg1, arg2, arg3})
 	stub := fake.GenerateStub
 	fakeReturns := fake.generateReturns
 	fake.recordInvocation("Generate", []interface{}{arg1, arg2, arg3})
@@ -64,7 +64,15 @@ func (fake *FakeGenerator) GenerateArgsForCall(i int) (string, int, *randomstrin
 	fake.generateMutex.RLock()
 	defer fake.generateMutex.RUnlock()
 	argsForCall := fake.generateArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
+}
+
+func (fake *FakeGenerator) GenerateArgs() []FakeGeneratorGenerateArgs {
+	fake.generateMutex.RLock()
+	defer fake.generateMutex.RUnlock()
+	args := make([]FakeGeneratorGenerateArgs, len(fake.generateArgsForCall))
+	copy(args, fake.generateArgsForCall)
+	return args
 }
 
 func (fake *FakeGenerator) GenerateReturns(result1 string, result2 error) {
@@ -103,9 +111,18 @@ func (fake *FakeGenerator) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
+func (fake *FakeGenerator) CallOrder() []string {
+	fake.invocationsMutex.RLock()
+	defer fake.invocationsMutex.RUnlock()
+	order := make([]string, len(fake.callOrder))
+	copy(order, fake.callOrder)
+	return order
+}
+
 func (fake *FakeGenerator) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
+	fake.callOrder = append(fake.callOrder, key)
 	if fake.invocations == nil {
 		fake.invocations = map[string][][]interface{}{}
 	}

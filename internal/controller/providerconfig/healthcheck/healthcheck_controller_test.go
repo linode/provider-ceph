@@ -367,6 +367,7 @@ func TestReconcile(t *testing.T) {
 						},
 					},
 				},
+				autopause:       true,
 				disableRecovery: true,
 				bucketList: &v1alpha1.BucketList{
 					Items: []v1alpha1.Bucket{

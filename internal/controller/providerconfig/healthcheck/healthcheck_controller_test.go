@@ -59,16 +59,17 @@ func NewTestClient(fn RoundTripFunc) *http.Client {
 //nolint:maintidx // Function requires numerous checks.
 func TestReconcile(t *testing.T) {
 	t.Parallel()
-	backendName := "test-backend"
+	backendName, bucket1, bucket2, bucket3, bucket4 := "test-backend", "bucket1", "bucket2", "bucket3", "bucket4"
 	someErr := errors.New("some error")
 	urlErr := url.Error{Op: "Get", URL: "http:", Err: someErr}
 
 	type fields struct {
-		fakeS3Client   func(*backendstorefakes.FakeS3Client)
-		testHttpClient *http.Client
-		providerConfig *apisv1alpha1.ProviderConfig
-		bucketList     *v1alpha1.BucketList
-		autopause      bool
+		fakeS3Client    func(*backendstorefakes.FakeS3Client)
+		testHttpClient  *http.Client
+		providerConfig  *apisv1alpha1.ProviderConfig
+		bucketList      *v1alpha1.BucketList
+		autopause       bool
+		disableRecovery bool
 	}
 
 	type args struct {
@@ -240,7 +241,7 @@ func TestReconcile(t *testing.T) {
 					Items: []v1alpha1.Bucket{
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-1",
+								Name: bucket1,
 								Labels: map[string]string{
 									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
@@ -249,7 +250,7 @@ func TestReconcile(t *testing.T) {
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-2",
+								Name: bucket2,
 								Labels: map[string]string{
 									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
@@ -258,7 +259,7 @@ func TestReconcile(t *testing.T) {
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-3",
+								Name: bucket3,
 								Labels: map[string]string{
 									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
@@ -267,7 +268,7 @@ func TestReconcile(t *testing.T) {
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-4",
+								Name: bucket4,
 								Labels: map[string]string{
 									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 								},
@@ -307,7 +308,7 @@ func TestReconcile(t *testing.T) {
 					Items: []v1alpha1.Bucket{
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-1",
+								Name: bucket1,
 								Labels: map[string]string{
 									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
@@ -316,7 +317,7 @@ func TestReconcile(t *testing.T) {
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-2",
+								Name: bucket2,
 								Labels: map[string]string{
 									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
@@ -325,7 +326,7 @@ func TestReconcile(t *testing.T) {
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-3",
+								Name: bucket3,
 								Labels: map[string]string{
 									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
@@ -334,7 +335,7 @@ func TestReconcile(t *testing.T) {
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-4",
+								Name: bucket4,
 								Labels: map[string]string{
 									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 								},
@@ -344,6 +345,139 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 		},
+		"ProviderConfig goes from unhealthy to healthy but recovery is disabled so its buckets should not be unpaused": {
+			fields: fields{
+				testHttpClient: NewTestClient(func(req *http.Request) (*http.Response, error) {
+					return &http.Response{}, nil
+				}),
+				providerConfig: &apisv1alpha1.ProviderConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: backendName,
+					},
+					Spec: apisv1alpha1.ProviderConfigSpec{
+						DisableHealthCheck: false,
+					},
+					Status: apisv1alpha1.ProviderConfigStatus{
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckFail(),
+								},
+							},
+						},
+					},
+				},
+				autopause:       true,
+				disableRecovery: true,
+				bucketList: &v1alpha1.BucketList{
+					Items: []v1alpha1.Bucket{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: bucket1,
+								Labels: map[string]string{
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: bucket2,
+								Labels: map[string]string{
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: bucket3,
+								Labels: map[string]string{
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
+									meta.AnnotationKeyReconciliationPaused: "",
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: bucket4,
+								Labels: map[string]string{
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
+								},
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				req: ctrl.Request{
+					NamespacedName: types.NamespacedName{
+						Name: backendName,
+					},
+				},
+			},
+			want: want{
+				res: ctrl.Result{},
+				err: nil,
+				pc: &apisv1alpha1.ProviderConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: backendName,
+					},
+					Spec: apisv1alpha1.ProviderConfigSpec{
+						DisableHealthCheck: false,
+					},
+					Status: apisv1alpha1.ProviderConfigStatus{
+						ProviderConfigStatus: xpv1.ProviderConfigStatus{
+							ConditionedStatus: xpv1.ConditionedStatus{
+								Conditions: []xpv1.Condition{
+									v1alpha1.HealthCheckSuccess(),
+								},
+							},
+						},
+					},
+				},
+				bucketList: &v1alpha1.BucketList{
+					Items: []v1alpha1.Bucket{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: bucket1,
+								Labels: map[string]string{
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: bucket2,
+								Labels: map[string]string{
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: bucket3,
+								Labels: map[string]string{
+									utils.GetBackendLabel(backendName):     consts.TrueStr,
+									meta.AnnotationKeyReconciliationPaused: "",
+								},
+							},
+						},
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: bucket4,
+								Labels: map[string]string{
+									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+
 		"ProviderConfig goes from health check disabled to healthy so its buckets should be unpaused": {
 			fields: fields{
 				testHttpClient: NewTestClient(func(req *http.Request) (*http.Response, error) {
@@ -371,7 +505,7 @@ func TestReconcile(t *testing.T) {
 					Items: []v1alpha1.Bucket{
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-1",
+								Name: bucket1,
 								Labels: map[string]string{
 									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
@@ -380,7 +514,7 @@ func TestReconcile(t *testing.T) {
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-2",
+								Name: bucket2,
 								Labels: map[string]string{
 									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
@@ -389,7 +523,7 @@ func TestReconcile(t *testing.T) {
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-3",
+								Name: bucket3,
 								Labels: map[string]string{
 									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
@@ -398,7 +532,7 @@ func TestReconcile(t *testing.T) {
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-4",
+								Name: bucket4,
 								Labels: map[string]string{
 									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 								},
@@ -438,7 +572,7 @@ func TestReconcile(t *testing.T) {
 					Items: []v1alpha1.Bucket{
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-1",
+								Name: bucket1,
 								Labels: map[string]string{
 									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
@@ -447,7 +581,7 @@ func TestReconcile(t *testing.T) {
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-2",
+								Name: bucket2,
 								Labels: map[string]string{
 									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
@@ -456,7 +590,7 @@ func TestReconcile(t *testing.T) {
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-3",
+								Name: bucket3,
 								Labels: map[string]string{
 									utils.GetBackendLabel(backendName):     consts.TrueStr,
 									meta.AnnotationKeyReconciliationPaused: "",
@@ -465,7 +599,7 @@ func TestReconcile(t *testing.T) {
 						},
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "bucket-4",
+								Name: bucket4,
 								Labels: map[string]string{
 									meta.AnnotationKeyReconciliationPaused: consts.TrueStr,
 								},
@@ -508,6 +642,7 @@ func TestReconcile(t *testing.T) {
 
 			r := NewController(
 				WithAutoPause(&tc.fields.autopause),
+				WithDisableRecovery(&tc.fields.disableRecovery),
 				WithBackendStore(bs),
 				WithKubeClientUncached(c),
 				WithKubeClientCached(c),

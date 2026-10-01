@@ -2,9 +2,7 @@ package bucket
 
 import (
 	"context"
-	"fmt"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -28,6 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 var vEnabled = v1alpha1.VersioningStatusEnabled
@@ -214,10 +213,6 @@ func TestUpdate(t *testing.T) {
 						"unexpected bucket ready condition")
 
 					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
-						"unexpected bucket synced condition")
-
-					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Available()),
 						"bucket condition on s3-backend-1 is not available")
 
@@ -277,11 +272,6 @@ func TestUpdate(t *testing.T) {
 					unavailableBackends := []string{consts.S3Backend1, consts.S3Backend2}
 					slices.Sort(unavailableBackends)
 					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileError(errors.New(
-							fmt.Sprintf(errUnavailableBackends, strings.Join(unavailableBackends, ", "))))),
-						"unexpected bucket synced condition")
-
-					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Unavailable().
 							WithMessage(errors.Wrap(errors.Wrap(someError, "failed to assume role"), "Failed to create s3 client via assume role").Error())), "unexpected bucket condition for s3-backend-1")
 
@@ -339,11 +329,6 @@ func TestUpdate(t *testing.T) {
 
 					unavailableBackends := []string{consts.S3Backend1, consts.S3Backend2}
 					slices.Sort(unavailableBackends)
-					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileError(errors.New(
-							fmt.Sprintf(errUnavailableBackends, strings.Join(unavailableBackends, ", "))))),
-						"unexpected bucket synced condition")
-
 					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Unavailable().WithMessage(errors.Wrap(someError, "failed to perform head bucket").Error())),
 						"unexpected bucket condition for s3-backend-1")
@@ -407,11 +392,6 @@ func TestUpdate(t *testing.T) {
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Available()),
 						"unexpected bucket ready condition")
-
-					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileError(errors.New(
-							fmt.Sprintf(errUnavailableBackends, strings.Join([]string{consts.S3Backend2}, ", "))))),
-						"unexpected bucket synced condition")
 
 					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Available()),
@@ -488,10 +468,6 @@ func TestUpdate(t *testing.T) {
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Available()),
 						"unexpected bucket ready condition")
-
-					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
-						"unexpected bucket synced condition")
 
 					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].BucketCondition.Equal(v1.Available()),
@@ -898,10 +874,6 @@ func TestUpdateLifecycleConfigSubResource(t *testing.T) {
 						"unexpected bucket ready condition")
 
 					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
-						"unexpected bucket synced condition")
-
-					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].LifecycleConfigurationCondition.Equal(v1.Available()),
 						"lifecycle configuration condition on s3-backend-1 is not available")
 
@@ -1225,10 +1197,6 @@ func TestUpdateVersioningConfigSubResource(t *testing.T) {
 					assert.True(t,
 						bucket.Status.Conditions[0].Equal(v1.Available()),
 						"unexpected bucket ready condition")
-
-					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
-						"unexpected bucket synced condition")
 
 					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].VersioningConfigurationCondition.Equal(v1.Available()),
@@ -1561,10 +1529,6 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 						"unexpected bucket ready condition")
 
 					assert.True(t,
-						bucket.Status.Conditions[1].Equal(v1.ReconcileSuccess()),
-						"unexpected bucket synced condition")
-
-					assert.True(t,
 						bucket.Status.AtProvider.Backends[consts.S3Backend1].ObjectLockConfigurationCondition.Equal(v1.Available()),
 						"object lock configuration condition on s3-backend-1 is not available")
 
@@ -1616,6 +1580,495 @@ func TestUpdateObjectLockConfigSubResource(t *testing.T) {
 			if tc.want.specificDiff != nil {
 				tc.want.specificDiff(t, tc.args.mg)
 			}
+		})
+	}
+}
+
+//nolint:maintidx // Function requires numerous checks.
+func TestUpdateVerifyPatchCalls(t *testing.T) {
+	t.Parallel()
+
+	type fields struct {
+		backendStore *backendstore.BackendStore
+		// initObjects will be a list of Buckets that will be created in the fake client before the test runs.
+		// When we update CRs we Get the latest version of the CR from the fake client, so we need to create the
+		// initial version of the CR in the fake client before we run the test.
+		initObjects []client.Object
+	}
+
+	type args struct {
+		// mg is the managed resource (Bucket) that we will pass to the Update function. It should be a copy of the
+		// initial version of the CR that we created in the fake client, but with any changes that we want to test.
+		mg resource.Managed
+	}
+
+	type want struct {
+		o                   managed.ExternalUpdate
+		err                 error
+		expectObjectPatches int
+		expectStatusPatches int
+	}
+
+	cases := map[string]struct {
+		reason string
+		fields fields
+		args   args
+		want   want
+	}{
+		"Labels unchanged - no object patch should be called": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return &s3.HeadBucketOutput{}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: consts.TestBucket,
+							Labels: map[string]string{
+								utils.GetBackendLabel(consts.S3Backend1): consts.TrueStr,
+							},
+						},
+						Spec: v1alpha1.BucketSpec{
+							Providers: []string{
+								consts.S3Backend1,
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: consts.TestBucket,
+						Labels: map[string]string{
+							utils.GetBackendLabel(consts.S3Backend1): consts.TrueStr,
+						},
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							consts.S3Backend1,
+						},
+					},
+				},
+			},
+			want: want{
+				o:                   managed.ExternalUpdate{},
+				err:                 nil,
+				expectObjectPatches: 0,
+				expectStatusPatches: 1,
+			},
+		},
+		"Labels changed - update will add backend label - object patch should be called": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return &s3.HeadBucketOutput{}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: consts.TestBucket,
+						},
+						Spec: v1alpha1.BucketSpec{
+							Providers: []string{
+								consts.S3Backend1,
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: consts.TestBucket,
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							consts.S3Backend1,
+						},
+					},
+				},
+			},
+			want: want{
+				o:                   managed.ExternalUpdate{},
+				err:                 nil,
+				expectObjectPatches: 1,
+				expectStatusPatches: 1,
+			},
+		},
+
+		"Labels changed - update will add pause label - object patch should be called": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return &s3.HeadBucketOutput{}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: consts.TestBucket,
+							Labels: map[string]string{
+								utils.GetBackendLabel(consts.S3Backend1): consts.TrueStr,
+							},
+						},
+						Spec: v1alpha1.BucketSpec{
+							Providers: []string{
+								consts.S3Backend1,
+							},
+							AutoPause: true,
+						},
+					},
+				},
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: consts.TestBucket,
+						Labels: map[string]string{
+							utils.GetBackendLabel(consts.S3Backend1): consts.TrueStr,
+						},
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							consts.S3Backend1,
+						},
+						AutoPause: true,
+					},
+				},
+			},
+			want: want{
+				o:                   managed.ExternalUpdate{},
+				err:                 nil,
+				expectObjectPatches: 1,
+				expectStatusPatches: 1,
+			},
+		},
+		"Status unchanged - already ready and synced - no status patch should be called": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return &s3.HeadBucketOutput{}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: consts.TestBucket,
+						},
+						Status: v1alpha1.BucketStatus{
+							ResourceStatus: v1.ResourceStatus{
+								ConditionedStatus: v1.ConditionedStatus{
+									Conditions: []v1.Condition{
+										v1.Available(),
+										v1.ReconcileSuccess(),
+									},
+								},
+							},
+							AtProvider: v1alpha1.BucketObservation{
+								Backends: v1alpha1.Backends{
+									consts.S3Backend1: &v1alpha1.BackendInfo{
+										BucketCondition: v1.Available(),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: consts.TestBucket,
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: v1.ResourceStatus{
+							ConditionedStatus: v1.ConditionedStatus{
+								Conditions: []v1.Condition{
+									v1.Available(),
+									v1.ReconcileSuccess(),
+								},
+							},
+						},
+						AtProvider: v1alpha1.BucketObservation{
+							Backends: v1alpha1.Backends{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
+									BucketCondition: v1.Available(),
+								},
+							},
+						},
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							consts.S3Backend1,
+						},
+					},
+				},
+			},
+			want: want{
+				o:                   managed.ExternalUpdate{},
+				err:                 nil,
+				expectObjectPatches: 1,
+				expectStatusPatches: 0,
+			},
+		},
+		"Status changed - update will make it ready and synced - status patch should be called": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return &s3.HeadBucketOutput{}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: consts.TestBucket,
+							Labels: map[string]string{
+								utils.GetBackendLabel(consts.S3Backend1): consts.TrueStr,
+							},
+						},
+						Spec: v1alpha1.BucketSpec{
+							Providers: []string{
+								consts.S3Backend1,
+							},
+						},
+						Status: v1alpha1.BucketStatus{
+							ResourceStatus: v1.ResourceStatus{
+								ConditionedStatus: v1.ConditionedStatus{
+									Conditions: []v1.Condition{
+										v1.Unavailable(),
+										v1.ReconcileError(errors.New("some error")),
+									},
+								},
+							},
+							AtProvider: v1alpha1.BucketObservation{
+								Backends: v1alpha1.Backends{
+									consts.S3Backend1: &v1alpha1.BackendInfo{
+										BucketCondition: v1.Unavailable(),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: consts.TestBucket,
+						Labels: map[string]string{
+							utils.GetBackendLabel(consts.S3Backend1): consts.TrueStr,
+						},
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							consts.S3Backend1,
+						},
+					},
+
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: v1.ResourceStatus{
+							ConditionedStatus: v1.ConditionedStatus{
+								Conditions: []v1.Condition{
+									v1.Unavailable(),
+									v1.ReconcileError(errors.New("some error")),
+								},
+							},
+						},
+						AtProvider: v1alpha1.BucketObservation{
+							Backends: v1alpha1.Backends{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
+									BucketCondition: v1.Unavailable(),
+								},
+							},
+						},
+					},
+				},
+			},
+			want: want{
+				o:                   managed.ExternalUpdate{},
+				err:                 nil,
+				expectObjectPatches: 0,
+				expectStatusPatches: 1,
+			},
+		},
+		"Labels and status unchanged - no status or object patch should be called": {
+			fields: fields{
+				backendStore: func() *backendstore.BackendStore {
+					fake := backendstorefakes.FakeS3Client{
+						HeadBucketStub: func(ctx context.Context, hbi *s3.HeadBucketInput, f ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+							return &s3.HeadBucketOutput{}, nil
+						},
+					}
+
+					bs := backendstore.NewBackendStore()
+					bs.AddOrUpdateBackend(consts.S3Backend1, &fake, nil, apisv1alpha1.HealthStatusHealthy)
+
+					return bs
+				}(),
+				initObjects: []client.Object{
+					&v1alpha1.Bucket{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: consts.TestBucket,
+							Labels: map[string]string{
+								utils.GetBackendLabel(consts.S3Backend1): consts.TrueStr,
+							},
+						},
+						Spec: v1alpha1.BucketSpec{
+							Providers: []string{
+								consts.S3Backend1,
+							},
+						},
+						Status: v1alpha1.BucketStatus{
+							ResourceStatus: v1.ResourceStatus{
+								ConditionedStatus: v1.ConditionedStatus{
+									Conditions: []v1.Condition{
+										v1.Available(),
+										v1.ReconcileSuccess(),
+									},
+								},
+							},
+							AtProvider: v1alpha1.BucketObservation{
+								Backends: v1alpha1.Backends{
+									consts.S3Backend1: &v1alpha1.BackendInfo{
+										BucketCondition: v1.Available(),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				mg: &v1alpha1.Bucket{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: consts.TestBucket,
+						Labels: map[string]string{
+							utils.GetBackendLabel(consts.S3Backend1): consts.TrueStr,
+						},
+					},
+					Status: v1alpha1.BucketStatus{
+						ResourceStatus: v1.ResourceStatus{
+							ConditionedStatus: v1.ConditionedStatus{
+								Conditions: []v1.Condition{
+									v1.Available(),
+									v1.ReconcileSuccess(),
+								},
+							},
+						},
+						AtProvider: v1alpha1.BucketObservation{
+							Backends: v1alpha1.Backends{
+								consts.S3Backend1: &v1alpha1.BackendInfo{
+									BucketCondition: v1.Available(),
+								},
+							},
+						},
+					},
+					Spec: v1alpha1.BucketSpec{
+						Providers: []string{
+							consts.S3Backend1,
+						},
+					},
+				},
+			},
+			want: want{
+				o:                   managed.ExternalUpdate{},
+				err:                 nil,
+				expectObjectPatches: 0,
+				expectStatusPatches: 0,
+			},
+		},
+	}
+
+	bk := &v1alpha1.Bucket{}
+	s := scheme.Scheme
+	s.AddKnownTypes(apisv1alpha1.SchemeGroupVersion, bk)
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			objectPatchCount := 0
+			statusPatchCount := 0
+
+			cl := fake.NewClientBuilder().
+				WithObjects(tc.fields.initObjects...).
+				WithStatusSubresource(tc.fields.initObjects...).
+				WithScheme(s).
+				WithInterceptorFuncs(interceptor.Funcs{
+					Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+						objectPatchCount++
+
+						return c.Patch(ctx, obj, patch, opts...)
+					},
+					SubResourcePatch: func(ctx context.Context, c client.Client, subResourceName string, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+						statusPatchCount++
+
+						return c.SubResource(subResourceName).Patch(ctx, obj, patch, opts...)
+					},
+				}).
+				Build()
+
+			s3ClientHandler := s3clienthandler.NewHandler(
+				s3clienthandler.WithBackendStore(tc.fields.backendStore),
+				s3clienthandler.WithKubeClient(cl))
+
+			e := external{
+				kubeClient:         cl,
+				kubeReader:         cl,
+				backendStore:       tc.fields.backendStore,
+				s3ClientHandler:    s3ClientHandler,
+				autoPauseBucket:    false,
+				minReplicas:        1,
+				log:                logr.Discard(),
+				subresourceClients: NewSubresourceClients(tc.fields.backendStore, s3ClientHandler, SubresourceClientConfig{}, logr.Discard()),
+			}
+
+			got, err := e.Update(context.Background(), tc.args.mg)
+			require.ErrorIs(t, err, tc.want.err, "unexpected err")
+			assert.Equal(t, got, tc.want.o, "unexpected result")
+			assert.Equal(t, tc.want.expectObjectPatches, objectPatchCount,
+				"unexpected number of object patches")
+			assert.Equal(t, tc.want.expectStatusPatches, statusPatchCount,
+				"unexpected number of status patches")
 		})
 	}
 }

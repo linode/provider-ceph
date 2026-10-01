@@ -18,6 +18,7 @@ package bucket
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -74,27 +76,6 @@ func TestIsPauseRequired(t *testing.T) {
 				pauseIsRequired: false,
 			},
 		},
-		"Bucket Status has Ready condition but no Synced condition - no pause": {
-			args: args{
-				bucket: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: consts.TestBucket,
-					},
-					Status: v1alpha1.BucketStatus{
-						ResourceStatus: xpv1.ResourceStatus{
-							ConditionedStatus: xpv1.ConditionedStatus{
-								Conditions: []xpv1.Condition{
-									xpv1.Available(),
-								},
-							},
-						},
-					},
-				},
-			},
-			want: want{
-				pauseIsRequired: false,
-			},
-		},
 		"Bucket Status has Synced condition but no Ready condition - no pause": {
 			args: args{
 				bucket: &v1alpha1.Bucket{
@@ -116,7 +97,7 @@ func TestIsPauseRequired(t *testing.T) {
 				pauseIsRequired: false,
 			},
 		},
-		"Bucket Status has not Ready and not Synced conditions - no pause": {
+		"Bucket Status has not Ready condition - no pause": {
 			args: args{
 				bucket: &v1alpha1.Bucket{
 					ObjectMeta: metav1.ObjectMeta{
@@ -127,7 +108,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Unavailable(),
-									xpv1.ReconcileError(someErr),
 								},
 							},
 						},
@@ -138,51 +118,7 @@ func TestIsPauseRequired(t *testing.T) {
 				pauseIsRequired: false,
 			},
 		},
-		"Bucket Status has Ready but not Synced conditions - no pause": {
-			args: args{
-				bucket: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: consts.TestBucket,
-					},
-					Status: v1alpha1.BucketStatus{
-						ResourceStatus: xpv1.ResourceStatus{
-							ConditionedStatus: xpv1.ConditionedStatus{
-								Conditions: []xpv1.Condition{
-									xpv1.Available(),
-									xpv1.ReconcileError(someErr),
-								},
-							},
-						},
-					},
-				},
-			},
-			want: want{
-				pauseIsRequired: false,
-			},
-		},
-		"Bucket Status has Synced but not Ready conditions - no pause": {
-			args: args{
-				bucket: &v1alpha1.Bucket{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: consts.TestBucket,
-					},
-					Status: v1alpha1.BucketStatus{
-						ResourceStatus: xpv1.ResourceStatus{
-							ConditionedStatus: xpv1.ConditionedStatus{
-								Conditions: []xpv1.Condition{
-									xpv1.Unavailable(),
-									xpv1.ReconcileSuccess(),
-								},
-							},
-						},
-					},
-				},
-			},
-			want: want{
-				pauseIsRequired: false,
-			},
-		},
-		// All Buckets from this point are Ready and Synced.
+		// All Buckets from this point are Ready.
 		"One backend unavailable in bucket backends - no pause": {
 			args: args{
 				bucket: &v1alpha1.Bucket{
@@ -194,7 +130,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -237,7 +172,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -277,7 +211,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -323,7 +256,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -373,7 +305,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -419,7 +350,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -469,7 +399,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -518,7 +447,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -568,7 +496,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -614,7 +541,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -664,7 +590,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -722,7 +647,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -783,7 +707,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -843,7 +766,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -905,7 +827,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -966,7 +887,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1020,7 +940,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1077,7 +996,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1133,7 +1051,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1186,7 +1103,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1239,7 +1155,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1291,7 +1206,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1348,7 +1262,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1405,7 +1318,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1461,7 +1373,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1528,7 +1439,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1600,7 +1510,6 @@ func TestIsPauseRequired(t *testing.T) {
 							ConditionedStatus: xpv1.ConditionedStatus{
 								Conditions: []xpv1.Condition{
 									xpv1.Available(),
-									xpv1.ReconcileSuccess(),
 								},
 							},
 						},
@@ -1654,6 +1563,470 @@ func TestIsPauseRequired(t *testing.T) {
 				tc.args.autoPauseEnabled,
 			)
 			assert.Equal(t, tc.want.pauseIsRequired, got, "unexpected response")
+		})
+	}
+}
+
+//nolint:maintidx // Function requires numerous checks.
+func TestBucketStatusConditionsEqual(t *testing.T) {
+	t.Parallel()
+
+	available := xpv1.Available()
+	unavailable := xpv1.Unavailable()
+
+	type args struct {
+		originalStatus v1alpha1.BucketStatus
+		latestStatus   v1alpha1.BucketStatus
+	}
+
+	cases := map[string]struct {
+		reason string
+		args   args
+		want   bool
+	}{
+		// Main condition changes
+		"No changes": {
+			reason: "Identical statuses should be considered equal",
+			args: args{
+				originalStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{
+							Conditions: []xpv1.Condition{xpv1.Available()},
+						},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{BucketCondition: xpv1.Available()},
+						},
+					},
+				},
+				latestStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{
+							Conditions: []xpv1.Condition{xpv1.Available()},
+						},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{BucketCondition: xpv1.Available()},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		"Condition count changed": {
+			reason: "Different condition counts should indicate not equal",
+			args: args{
+				originalStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{
+							Conditions: []xpv1.Condition{xpv1.Available()},
+						},
+					},
+					AtProvider: v1alpha1.BucketObservation{Backends: v1alpha1.Backends{}},
+				},
+				latestStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{
+							Conditions: []xpv1.Condition{xpv1.Available(), xpv1.Unavailable()},
+						},
+					},
+					AtProvider: v1alpha1.BucketObservation{Backends: v1alpha1.Backends{}},
+				},
+			},
+			want: false,
+		},
+		"Condition value changed": {
+			reason: "Changed condition values should indicate not equal",
+			args: args{
+				originalStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{
+							Conditions: []xpv1.Condition{xpv1.Available()},
+						},
+					},
+					AtProvider: v1alpha1.BucketObservation{Backends: v1alpha1.Backends{}},
+				},
+				latestStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{
+							Conditions: []xpv1.Condition{xpv1.Unavailable()},
+						},
+					},
+					AtProvider: v1alpha1.BucketObservation{Backends: v1alpha1.Backends{}},
+				},
+			},
+			want: false,
+		},
+
+		// Backend changes
+		"Backend count changed": {
+			reason: "Different backend counts should indicate not equal",
+			args: args{
+				originalStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{consts.S3Backend1: &v1alpha1.BackendInfo{BucketCondition: xpv1.Available()}},
+					},
+				},
+				latestStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{BucketCondition: xpv1.Available()},
+							consts.S3Backend2: &v1alpha1.BackendInfo{BucketCondition: xpv1.Available()},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		"Missing backend in latest": {
+			reason: "Backend removed should indicate not equal",
+			args: args{
+				originalStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{BucketCondition: xpv1.Available()},
+							consts.S3Backend2: &v1alpha1.BackendInfo{BucketCondition: xpv1.Available()},
+						},
+					},
+				},
+				latestStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{consts.S3Backend1: &v1alpha1.BackendInfo{BucketCondition: xpv1.Available()}},
+					},
+				},
+			},
+			want: false,
+		},
+
+		// Backend configuration condition changes
+		"Different backend in latest to original": {
+			reason: "Changed backend should indicate not equal",
+			args: args{
+				originalStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{
+								BucketCondition:                 xpv1.Available(),
+								LifecycleConfigurationCondition: &available,
+							},
+							consts.S3Backend2: &v1alpha1.BackendInfo{
+								BucketCondition:                 xpv1.Available(),
+								LifecycleConfigurationCondition: &available,
+							},
+						},
+					},
+				},
+				latestStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{
+								BucketCondition:                 xpv1.Available(),
+								LifecycleConfigurationCondition: &available,
+							},
+							consts.S3Backend3: &v1alpha1.BackendInfo{
+								BucketCondition:                 xpv1.Available(),
+								LifecycleConfigurationCondition: &available,
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		"Backend lifecycle condition changed": {
+			reason: "Changed backend configuration condition should indicate not equal",
+			args: args{
+				originalStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{
+								BucketCondition:                 xpv1.Available(),
+								LifecycleConfigurationCondition: &available,
+							},
+						},
+					},
+				},
+				latestStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{
+								BucketCondition:                 xpv1.Available(),
+								LifecycleConfigurationCondition: &unavailable,
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		"Nil pointer: condition added": {
+			reason: "Condition transitioning from nil to non-nil should indicate not equal",
+			args: args{
+				originalStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{
+								BucketCondition:                 xpv1.Available(),
+								LifecycleConfigurationCondition: nil,
+							},
+						},
+					},
+				},
+				latestStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{
+								BucketCondition:                 xpv1.Available(),
+								LifecycleConfigurationCondition: &available,
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		"Nil pointer: both conditions nil": {
+			reason: "Both conditions nil should indicate equal",
+			args: args{
+				originalStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{
+								BucketCondition:                 xpv1.Available(),
+								LifecycleConfigurationCondition: nil,
+							},
+						},
+					},
+				},
+				latestStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{
+								BucketCondition:                 xpv1.Available(),
+								LifecycleConfigurationCondition: nil,
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		"LastTransitionTime only changed": {
+			reason: "Only LastTransitionTime changed should indicate equal",
+			args: args{
+				originalStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{
+							Conditions: []xpv1.Condition{{
+								Type:               xpv1.TypeReady,
+								Status:             corev1.ConditionTrue,
+								LastTransitionTime: metav1.Now(),
+								Reason:             xpv1.ReasonAvailable,
+								Message:            "Available",
+							}},
+						},
+					},
+					AtProvider: v1alpha1.BucketObservation{Backends: v1alpha1.Backends{}},
+				},
+				latestStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{
+							Conditions: []xpv1.Condition{{
+								Type:               xpv1.TypeReady,
+								Status:             corev1.ConditionTrue,
+								LastTransitionTime: metav1.NewTime(metav1.Now().Add(time.Hour)),
+								Reason:             xpv1.ReasonAvailable,
+								Message:            "Available",
+							}},
+						},
+					},
+					AtProvider: v1alpha1.BucketObservation{Backends: v1alpha1.Backends{}},
+				},
+			},
+			want: true,
+		},
+		"Backend versioning condition changed": {
+			reason: "Changed backend versioning configuration condition should indicate not equal",
+			args: args{
+				originalStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{
+								BucketCondition:                  xpv1.Available(),
+								VersioningConfigurationCondition: &available,
+							},
+						},
+					},
+				},
+				latestStatus: v1alpha1.BucketStatus{
+					ResourceStatus: xpv1.ResourceStatus{
+						ConditionedStatus: xpv1.ConditionedStatus{Conditions: []xpv1.Condition{}},
+					},
+					AtProvider: v1alpha1.BucketObservation{
+						Backends: v1alpha1.Backends{
+							consts.S3Backend1: &v1alpha1.BackendInfo{
+								BucketCondition:                  xpv1.Available(),
+								VersioningConfigurationCondition: &unavailable,
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := bucketStatusConditionsEqual(tc.args.originalStatus, tc.args.latestStatus)
+			assert.Equal(t, tc.want, got, tc.reason)
+		})
+	}
+}
+
+func TestLabelsEqual(t *testing.T) {
+	t.Parallel()
+
+	key1, key2, value1, value2 := "key1", "key2", "value1", "value2"
+	type args struct {
+		original map[string]string
+		latest   map[string]string
+	}
+
+	cases := map[string]struct {
+		reason string
+		args   args
+		want   bool
+	}{
+		"Both empty - equal": {
+			reason: "Empty maps should be considered equal",
+			args: args{
+				original: map[string]string{},
+				latest:   map[string]string{},
+			},
+			want: true,
+		},
+		"Both nil - equal": {
+			reason: "Nil maps should be considered equal",
+			args: args{
+				original: nil,
+				latest:   nil,
+			},
+			want: true,
+		},
+		"Empty vs nil - equal": {
+			reason: "Empty map and nil should be considered equal",
+			args: args{
+				original: map[string]string{},
+				latest:   nil,
+			},
+			want: true,
+		},
+		"Labels added - not equal": {
+			reason: "Adding labels should be considered different",
+			args: args{
+				original: map[string]string{},
+				latest:   map[string]string{key1: value1},
+			},
+			want: false,
+		},
+		"Labels removed - not equal": {
+			reason: "Removing labels should be considered different",
+			args: args{
+				original: map[string]string{key1: value1},
+				latest:   map[string]string{},
+			},
+			want: false,
+		},
+		"Label value changed - not equal": {
+			reason: "Changing label value should be considered different",
+			args: args{
+				original: map[string]string{key1: value1},
+				latest:   map[string]string{key1: value2},
+			},
+			want: false,
+		},
+		"Same labels - equal": {
+			reason: "Same labels should be considered equal",
+			args: args{
+				original: map[string]string{key1: value1},
+				latest:   map[string]string{key1: value1},
+			},
+			want: true,
+		},
+		"Multiple labels unchanged - equal": {
+			reason: "Multiple identical labels should be considered equal",
+			args: args{
+				original: map[string]string{key1: value1, key2: value2},
+				latest:   map[string]string{key1: value1, key2: value2},
+			},
+			want: true,
+		},
+		"One label added to multiple - not equal": {
+			reason: "Adding a label to existing labels should be considered different",
+			args: args{
+				original: map[string]string{key1: value1},
+				latest:   map[string]string{key1: value1, key2: value2},
+			},
+			want: false,
+		},
+		"One label removed from multiple - not equal": {
+			reason: "Removing a label from multiple should be considered different",
+			args: args{
+				original: map[string]string{key1: value1, key2: value2},
+				latest:   map[string]string{key1: value1},
+			},
+			want: false,
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := labelsEqual(tc.args.original, tc.args.latest)
+			assert.Equal(t, tc.want, got, tc.reason)
 		})
 	}
 }

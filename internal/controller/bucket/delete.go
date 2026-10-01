@@ -103,7 +103,13 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	// CR spec. If the deletion is successful or unsuccessful, the bucket CR status must be
 	// updated.
 	if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
+		preUpdateStatus := bucketLatest.Status.DeepCopy()
+
 		setBucketStatus(bucketLatest, bucketBackends, providerNames, c.minReplicas)
+		// If the Status has not changed, then no update is required.
+		if bucketStatusConditionsEqual(*preUpdateStatus, bucketLatest.Status) {
+			return NoUpdateRequired
+		}
 
 		return NeedsStatusUpdate
 	}); err != nil {
@@ -128,8 +134,10 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 				return managed.ExternalDelete{}, nil
 			}
 			if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
+				if !bucketLatest.Spec.Disabled {
+					return NoUpdateRequired
+				}
 				log.Info("Bucket CRs with non-empty buckets should not be disabled - setting 'disabled' flag to false", consts.KeyBucketName, bucket.Name)
-
 				bucketLatest.Spec.Disabled = false
 
 				return NeedsObjectUpdate

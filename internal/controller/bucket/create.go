@@ -148,6 +148,8 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if backendCount == 0 {
 		log.Info("Failed to find any backend for bucket", consts.KeyBucketName, bucket.Name)
 		if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
+			preUpdateMeta := bucketLatest.ObjectMeta.DeepCopy()
+
 			// Although no backends were found for the bucket, we still apply the backend
 			// label to the Bucket CR for each backend that the bucket was intended to be
 			// created on. This is to ensure the bucket will eventually be created on these
@@ -161,6 +163,11 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			// the cache, so the loops that tear it down would never run again.
 			if pauseAllowed(bucketLatest) {
 				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = consts.TrueStr
+			}
+
+			// If the labels have not changed, then no update is required.
+			if labelsEqual(preUpdateMeta.GetLabels(), bucketLatest.GetLabels()) {
+				return NoUpdateRequired
 			}
 
 			return NeedsObjectUpdate
@@ -201,15 +208,27 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 			// 3. The Bucket CR Status Backends with a Ready condition for the backend the bucket
 			// was created on.
 			err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
+				preUpdateMeta := bucketLatest.ObjectMeta.DeepCopy()
+
 				setAllBackendLabels(bucketLatest, backendsToCreateOnNames)
+				// If the labels have not changed, then no update is required.
+				if labelsEqual(preUpdateMeta.GetLabels(), bucketLatest.GetLabels()) {
+					return NoUpdateRequired
+				}
 
 				return NeedsObjectUpdate
 			}, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
+				preUpdateStatus := bucketLatest.Status.DeepCopy()
+
 				bucketLatest.Status.SetConditions(xpv1.Available())
 				bucketLatest.Status.AtProvider.Backends = v1alpha1.Backends{
 					beName: &v1alpha1.BackendInfo{
 						BucketCondition: xpv1.Available(),
 					},
+				}
+				// If the Status has not changed, then no update is required.
+				if bucketStatusConditionsEqual(*preUpdateStatus, bucketLatest.Status) {
+					return NoUpdateRequired
 				}
 
 				return NeedsStatusUpdate
@@ -239,7 +258,13 @@ func (c *external) waitForCreationAndUpdateBucketCR(ctx context.Context, bucket 
 	// not be seen as Ready. If that update is successful, we return the createErr which will
 	// be the most recent error receieved from a backend's failed creation.
 	if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
+		preUpdateStatus := bucketLatest.Status.DeepCopy()
+
 		bucketLatest.Status.SetConditions(xpv1.Unavailable())
+		// If the Status has not changed, then no update is required.
+		if bucketStatusConditionsEqual(*preUpdateStatus, bucketLatest.Status) {
+			return NoUpdateRequired
+		}
 
 		return NeedsStatusUpdate
 	}); err != nil {

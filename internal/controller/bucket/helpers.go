@@ -2,8 +2,6 @@ package bucket
 
 import (
 	"context"
-	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -23,8 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
-
-const errUnavailableBackends = "Bucket is unavailable on the following backends: %s"
 
 const errNoResourceVersion = "cannot patch Bucket CR with an optimistic lock: the read returned no resourceVersion"
 
@@ -72,13 +68,12 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[stri
 		return false
 	}
 
-	// Avoid pausing if the Bucket CR is not Ready or not Synced.
-	if !bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) ||
-		!bucket.Status.GetCondition(xpv1.TypeSynced).Equal(xpv1.ReconcileSuccess()) {
+	// Avoid pausing if the Bucket CR is not Ready.
+	if !bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) {
 		return false
 	}
-
-	// Avoid pausing if the number of backends on which the bucket is available is less than the number of providerNames.
+	// Avoid pausing if the number of backends on which the bucket is available is less than the number
+	// of providerNames. If this criteria is met, the Bucket CR will be set as Synced by crossplane-runtime.
 	if float64(bb.countBucketsAvailableOnBackends(bucket.Name, providerNames, c)) < float64(len(providerNames)) {
 		return false
 	}
@@ -94,7 +89,6 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[stri
 	if bucket.Spec.LifecycleConfigurationDisabled && !bb.isLifecycleConfigRemovedFromBackends(bucket, providerNames, c) {
 		return false
 	}
-
 	// If SSE config is enabled and is specified in the spec, we should only pause once
 	// the SSE config is available on all backends.
 	if !bucket.Spec.ServerSideEncryptionConfigurationDisabled &&
@@ -102,13 +96,11 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[stri
 		!bb.isSSEConfigAvailableOnBackends(bucket, providerNames, c) {
 		return false
 	}
-
 	// If SSE config is disabled, we should only pause once the SSE config is
 	// removed from all backends.
 	if bucket.Spec.ServerSideEncryptionConfigurationDisabled && !bb.isSSEConfigRemovedFromBackends(bucket, providerNames, c) {
 		return false
 	}
-
 	// If CORS config is enabled and is specified in the spec, we should only pause once
 	// the CORS config is available on all backends.
 	if !bucket.Spec.CORSConfigurationDisabled &&
@@ -116,7 +108,6 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[stri
 		!bb.isCORSConfigAvailableOnBackends(bucket, providerNames, c) {
 		return false
 	}
-
 	// If CORS config is disabled, we should only pause once the CORS config is
 	// removed from all backends.
 	if bucket.Spec.CORSConfigurationDisabled && !bb.isCORSConfigRemovedFromBackends(bucket, providerNames, c) {
@@ -128,14 +119,12 @@ func isPauseRequired(bucket *v1alpha1.Bucket, providerNames []string, c map[stri
 	if bucket.Spec.ForProvider.VersioningConfiguration != nil && !bb.isVersioningConfigAvailableOnBackends(bucket.Name, providerNames, c) {
 		return false
 	}
-
 	// Avoid pausing when versioning configurations exist on backends, but not all
 	// versioning configs are available. This scenario can occur when the versioning
 	// config has been removed from the Spec (and is therefore suspended).
 	if !bb.isVersioningConfigRemovedFromBackends(bucket.Name, providerNames, c) && !bb.isVersioningConfigAvailableOnBackends(bucket.Name, providerNames, c) {
 		return false
 	}
-
 	// Avoid pausing when an object lock configuration is specified in the spec, but not all
 	// object lock configs are available.
 	if bucket.Spec.ForProvider.ObjectLockConfiguration != nil && !bb.isObjectLockConfigAvailableOnBackends(bucket.Name, providerNames, c) {
@@ -235,34 +224,127 @@ func setBucketStatus(bucket *v1alpha1.Bucket, bucketBackends *bucketBackends, pr
 	backends := bucketBackends.getBackends(bucket.Name, providerNames)
 	bucket.Status.AtProvider.Backends = backends
 
-	var ok uint = 0
-	unavailableBackends := make([]string, 0)
-	for backendName, backend := range backends {
+	var availableBackends uint = 0
+	for _, backend := range backends {
 		if backend.BucketCondition.Equal(xpv1.Available()) {
-			ok++
+			availableBackends++
 
 			continue
 		}
-		unavailableBackends = append(unavailableBackends, backendName)
 	}
+
 	// The Bucket CR is considered Available if the bucket is available on "minReplicas"
 	// number of backends (default = 1).
-	if ok >= minReplicas {
+	if availableBackends >= minReplicas {
 		bucket.Status.SetConditions(xpv1.Available())
 	}
-	// The Bucket CR is considered Synced (ReconcileSuccess) once the bucket is available
-	// on all backends. We also ensure that the overall Bucket CR is available (in a Ready
-	// state) - this should already be the case.
-	if ok >= uint(len(providerNames)) &&
-		bucket.Status.GetCondition(xpv1.TypeReady).Equal(xpv1.Available()) {
-		bucket.Status.SetConditions(xpv1.ReconcileSuccess())
+}
 
-		return
+// bucketStatusConditionsEqual compares the statuses of two Bucket CRs and returns true if the conditions
+// are equal, false otherwise. We use crossplane-runtime's Equal() to compare the conditions, which checks
+// if the Type, Status, Reason, and Message are equal. It ignores the LastTransitionTime.
+//
+//nolint:gocyclo,cyclop // Function requires numerous checks.
+func bucketStatusConditionsEqual(statusA, statusB v1alpha1.BucketStatus) bool {
+	if len(statusA.Conditions) != len(statusB.Conditions) {
+		return false
 	}
-	// The Bucket CR cannot be considered Synced.
-	slices.Sort(unavailableBackends)
-	err := errors.New(fmt.Sprintf(errUnavailableBackends, strings.Join(unavailableBackends, ", ")))
-	bucket.Status.SetConditions(xpv1.ReconcileError(err))
+
+	for i, statusACondition := range statusA.Conditions {
+		if !statusACondition.Equal(statusB.Conditions[i]) {
+			return false
+		}
+	}
+	if len(statusA.AtProvider.Backends) != len(statusB.AtProvider.Backends) {
+		return false
+	}
+
+	for statusABackendName, statusABackend := range statusA.AtProvider.Backends {
+		statusBBackend, ok := statusB.AtProvider.Backends[statusABackendName]
+		if !ok {
+			return false
+		}
+		// If both statusABackend and statusBBackend are nil, continue to the next backend.
+		if statusABackend == nil && statusBBackend == nil {
+			continue
+		}
+		// If one of statusABackend or statusBBackend is nil, return false.
+		if (statusABackend == nil) != (statusBBackend == nil) {
+			return false
+		}
+
+		// Check if the bucket condition is equal
+		if !statusABackend.BucketCondition.Equal(statusBBackend.BucketCondition) {
+			return false
+		}
+
+		// Check if the lifecycle configuration condition is equal
+		if !conditionsEqual(
+			statusABackend.LifecycleConfigurationCondition,
+			statusBBackend.LifecycleConfigurationCondition,
+		) {
+			return false
+		}
+		// Check if the versioning configuration condition is equal
+		if !conditionsEqual(
+			statusABackend.VersioningConfigurationCondition,
+			statusBBackend.VersioningConfigurationCondition,
+		) {
+			return false
+		}
+		// Check if the object lock configuration condition is equal
+		if !conditionsEqual(
+			statusABackend.ObjectLockConfigurationCondition,
+			statusBBackend.ObjectLockConfigurationCondition,
+		) {
+			return false
+		}
+
+		// Check if the server-side encryption configuration condition is equal
+		if !conditionsEqual(
+			statusABackend.ServerSideEncryptionConfigurationCondition,
+			statusBBackend.ServerSideEncryptionConfigurationCondition,
+		) {
+			return false
+		}
+
+		// Check if the CORS configuration condition is equal
+		if !conditionsEqual(
+			statusABackend.CORSConfigurationCondition,
+			statusBBackend.CORSConfigurationCondition,
+		) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func conditionsEqual(original, latest *xpv1.Condition) bool {
+	if (original == nil) != (latest == nil) {
+		return false
+	}
+	if original != nil && !original.Equal(*latest) {
+		return false
+	}
+
+	return true
+}
+
+// labelsEqual compares two label maps and returns true if they are equal.
+// Returns false if they differ in any way (additions, removals, or value changes).
+func labelsEqual(original, latest map[string]string) bool {
+	if len(original) != len(latest) {
+		return false
+	}
+
+	for key, value := range original {
+		if latestValue, ok := latest[key]; !ok || latestValue != value {
+			return false
+		}
+	}
+
+	return true
 }
 
 type UpdateRequired int
@@ -270,6 +352,7 @@ type UpdateRequired int
 const (
 	NeedsStatusUpdate UpdateRequired = iota
 	NeedsObjectUpdate
+	NoUpdateRequired
 )
 
 // updateBucketCR applies a series of callbacks to the latest version of the Bucket CR
@@ -361,6 +444,8 @@ func (c *external) updateBucketCR(ctx context.Context, bucket *v1alpha1.Bucket, 
 				// the Bucket CR with a full Update.
 				return c.kubeClient.Patch(ctx, bucket,
 					client.MergeFromWithOptions(bucketCopy, client.MergeFromWithOptimisticLock{}))
+			case NoUpdateRequired:
+				return nil
 			default:
 				return nil
 			}

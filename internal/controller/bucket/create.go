@@ -9,7 +9,6 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
@@ -143,10 +142,9 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	// We couldn't attempt to create a bucket on any backend. We update the bucket CR
-	// with the relevant labels and return no error as we do not wish to requeue this
-	// Bucket CR while there are no backends for us to create on.
+	// with the relevant labels and return an error to requeue the request.
 	if backendCount == 0 {
-		log.Info("Failed to find any backend for bucket", consts.KeyBucketName, bucket.Name)
+		log.Info("Failed to get client for all backends", consts.KeyBucketName, bucket.Name)
 		if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {
 			preUpdateMeta := bucketLatest.ObjectMeta.DeepCopy()
 
@@ -155,15 +153,6 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			// created on. This is to ensure the bucket will eventually be created on these
 			// backends.
 			setAllBackendLabels(bucketLatest, backendsToCreateOnNames)
-			// Pause the Bucket CR because there is no backend for it to be created on.
-			// If a backend for which it was intended becomes healthy, the health-check
-			// controller will un-pause the Bucket CR (identifying it by its backend label)
-			// and it will be re-reconciled.
-			// Unless the Bucket CR is disabled or deleting: pausing excludes it from
-			// the cache, so the loops that tear it down would never run again.
-			if pauseAllowed(bucketLatest) {
-				bucketLatest.Labels[meta.AnnotationKeyReconciliationPaused] = consts.TrueStr
-			}
 
 			// If the labels have not changed, then no update is required.
 			if labelsEqual(preUpdateMeta.GetLabels(), bucketLatest.GetLabels()) {
@@ -179,7 +168,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 			return managed.ExternalCreation{}, err
 		}
 
-		return managed.ExternalCreation{}, nil
+		return managed.ExternalCreation{}, errNoClientsForBackends
 	}
 
 	return c.waitForCreationAndUpdateBucketCR(ctx, bucket, backendsToCreateOnNames, readyChan, errChan, backendCount)

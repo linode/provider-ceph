@@ -256,6 +256,7 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			want: want{
+				err: errNoClientsForBackends,
 				statusDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)
@@ -297,6 +298,7 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			want: want{
+				err: errNoClientsForBackends,
 				statusDiff: func(t *testing.T, mg resource.Managed) {
 					t.Helper()
 					bucket, _ := mg.(*v1alpha1.Bucket)

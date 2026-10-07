@@ -142,8 +142,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	// We couldn't attempt to create a bucket on any backend. We update the bucket CR
-	// with the relevant labels and return no error as we do not wish to requeue this
-	// Bucket CR while there are no backends for us to create on.
+	// with the relevant labels and return an error to requeue the request.
 	if backendCount == 0 {
 		log.Info("Failed to get client for all backends", consts.KeyBucketName, bucket.Name)
 		if err := c.updateBucketCR(ctx, bucket, func(bucketLatest *v1alpha1.Bucket) UpdateRequired {

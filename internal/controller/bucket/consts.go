@@ -2,7 +2,10 @@ package bucket
 
 import "github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 
-var errUnhealthyBackend = errors.New("backend marked as unhealthy in backendstore")
+var (
+	errUnhealthyBackend     = errors.New("backend marked as unhealthy in backendstore")
+	errNoClientsForBackends = errors.New("failed to get client for all target backends")
+)
 
 const (
 	// k8s error messages.

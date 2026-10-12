@@ -12,7 +12,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
-	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
@@ -21,77 +20,44 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-
-	"go.opentelemetry.io/otel"
 )
 
 // LifecycleConfigurationClient is the client for API methods and reconciling the LifecycleConfiguration
 type LifecycleConfigurationClient struct {
-	backendStore    *backendstore.BackendStore
-	s3ClientHandler *s3clienthandler.Handler
-	log             logr.Logger
+	BaseSubresourceClient
 }
 
 func NewLifecycleConfigurationClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logr.Logger) *LifecycleConfigurationClient {
-	return &LifecycleConfigurationClient{backendStore: b, s3ClientHandler: h, log: l}
+	return &LifecycleConfigurationClient{BaseSubresourceClient: NewBaseSubresourceClient(b, h, l)}
 }
 
-//nolint:dupl // LifecycleConfiguration and Policy are different feature.
 func (l *LifecycleConfigurationClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
-	ctx, span := otel.Tracer("").Start(ctx, "bucket.LifecycleConfigurationClient.Observe")
-	defer span.End()
-	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
-
-	observationChan := make(chan ResourceStatus)
-	errChan := make(chan error)
-
-	for _, backendName := range backendNames {
-		beName := backendName
-		go func() {
-			if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-				// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
-				// The backend may be down for some time and we do not want to block Create/Update/Delete
-				// calls on other backends. By returning NoAction here, we would never pass the Observe
-				// phase until the backend becomes Healthy or Disabled.
-				observationChan <- NoAction
-
-				return
-			}
-
-			observation, err := l.observeBackend(ctx, bucket, beName)
-			if err != nil {
-				errChan <- err
-
-				return
-			}
-			observationChan <- observation
-		}()
-	}
-
-	for i := 0; i < len(backendNames); i++ {
-		select {
-		case <-ctx.Done():
-			log.Info("Context timeout during bucket lifecycle configuration observation", consts.KeyBucketName, bucket.Name)
-			err := errors.Wrap(ctx.Err(), errObserveLifecycleConfig)
-			traces.SetAndRecordError(span, err)
-
-			return NeedsUpdate, err
-		case observation := <-observationChan:
-			if observation == NeedsUpdate || observation == NeedsDeletion {
-				return observation, nil
-			}
-		case err := <-errChan:
-			err = errors.Wrap(err, errObserveLifecycleConfig)
-			traces.SetAndRecordError(span, err)
-
-			return NeedsUpdate, err
-		}
-	}
-
-	return Updated, nil
+	return l.BaseSubresourceClient.Observe(ctx, bucket, backendNames, l)
 }
 
-func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
+func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+	return l.BaseSubresourceClient.Handle(ctx, b, backendName, bb, l)
+}
+
+// Implement Subresource interface
+
+func (l *LifecycleConfigurationClient) GetLogger() logr.Logger {
+	return l.log
+}
+
+func (l *LifecycleConfigurationClient) GetBackendStore() *backendstore.BackendStore {
+	return l.backendStore
+}
+
+func (l *LifecycleConfigurationClient) GetS3ClientHandler() *s3clienthandler.Handler {
+	return l.s3ClientHandler
+}
+
+func (l *LifecycleConfigurationClient) GetObserveErrorMsg() string {
+	return errObserveLifecycleConfig
+}
+
+func (l *LifecycleConfigurationClient) ObserveBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
 	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
 
 	log.V(1).Info("Observing subresource lifecycle configuration on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
@@ -145,25 +111,18 @@ func (l *LifecycleConfigurationClient) observeBackend(ctx context.Context, bucke
 	return Updated, nil
 }
 
-//nolint:dupl // LifecycleConfiguration and ServerSideEncryptionConfiguration have similar Handle logic.
-func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
-	ctx, span := otel.Tracer("").Start(ctx, "bucket.LifecycleConfigurationClient.Handle")
-	defer span.End()
+// Implement Subresource interface
 
-	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-		traces.SetAndRecordError(span, errUnhealthyBackend)
+func (l *LifecycleConfigurationClient) GetHandleErrorMsg() string {
+	return errHandleLifecycleConfig
+}
 
-		return errUnhealthyBackend
-	}
+func (l *LifecycleConfigurationClient) GetSubresourceName() string {
+	return "LifecycleConfigurationClient"
+}
 
-	observation, err := l.observeBackend(ctx, b, backendName)
-	if err != nil {
-		err = errors.Wrap(err, errHandleLifecycleConfig)
-		traces.SetAndRecordError(span, err)
-
-		return err
-	}
-
+//nolint:dupl // Pattern is intentionally shared with other subresources (ServerSideEncryption)
+func (l *LifecycleConfigurationClient) HandleObservation(ctx context.Context, observation ResourceStatus, bucket *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
 	switch observation {
 	case NoAction:
 		return nil
@@ -171,32 +130,32 @@ func (l *LifecycleConfigurationClient) Handle(ctx context.Context, b *v1alpha1.B
 		// The lifecycle config is updated, so we can consider this
 		// sub resource Available.
 		available := xpv1.Available()
-		bb.setLifecycleConfigCondition(b.Name, backendName, &available)
+		bb.setLifecycleConfigCondition(bucket.Name, backendName, &available)
 
+		return nil
 	case NeedsDeletion:
-		if err := l.delete(ctx, b, backendName); err != nil {
+		if err := l.delete(ctx, bucket, backendName); err != nil {
 			err = errors.Wrap(err, errHandleLifecycleConfig)
 			deleting := xpv1.Deleting().WithMessage(err.Error())
-			bb.setLifecycleConfigCondition(b.Name, backendName, &deleting)
-
-			traces.SetAndRecordError(span, err)
+			bb.setLifecycleConfigCondition(bucket.Name, backendName, &deleting)
 
 			return err
 		}
-		bb.setLifecycleConfigCondition(b.Name, backendName, nil)
+		bb.setLifecycleConfigCondition(bucket.Name, backendName, nil)
 
+		return nil
 	case NeedsUpdate:
-		if err := l.createOrUpdate(ctx, b, backendName); err != nil {
+		if err := l.createOrUpdate(ctx, bucket, backendName); err != nil {
 			err = errors.Wrap(err, errHandleLifecycleConfig)
 			unavailable := xpv1.Unavailable().WithMessage(err.Error())
-			bb.setLifecycleConfigCondition(b.Name, backendName, &unavailable)
-
-			traces.SetAndRecordError(span, err)
+			bb.setLifecycleConfigCondition(bucket.Name, backendName, &unavailable)
 
 			return err
 		}
 		available := xpv1.Available()
-		bb.setLifecycleConfigCondition(b.Name, backendName, &available)
+		bb.setLifecycleConfigCondition(bucket.Name, backendName, &available)
+
+		return nil
 	}
 
 	return nil

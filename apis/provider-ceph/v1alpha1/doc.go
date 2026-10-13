@@ -13,5 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
+// The openapi-gen marker lets consumers (e.g. an aggregated API server that
+// serves Buckets) generate OpenAPI definitions from these types.
+// +k8s:openapi-gen=true
 package v1alpha1

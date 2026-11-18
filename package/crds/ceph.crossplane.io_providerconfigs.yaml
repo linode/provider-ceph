@@ -116,6 +116,13 @@ spec:
               hostBucket:
                 description: HostBucket url specified in s3cfg.
                 type: string
+              region:
+                description: |-
+                  Region used to sign requests to this backend. Defaults to us-east-1 when
+                  unset. S3 implementations that validate the SigV4 credential scope reject
+                  requests signed for a different region, so a backend serving some other
+                  region needs this set to match it.
+                type: string
               stsAddress:
                 description: |-
                   STSAddress is a separate url for an optional external authenticator service.

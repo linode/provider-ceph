@@ -27,7 +27,7 @@ const (
 )
 
 func NewS3Client(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec, s3Timeout time.Duration, sessionToken *string) (*s3.Client, error) {
-	sessionConfig, err := buildSessionConfig(ctx, data)
+	sessionConfig, err := buildSessionConfig(ctx, data, pcSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func NewSTSClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alp
 		stsAddress = &pcSpec.HostBase
 	}
 
-	sessionConfig, err := buildSessionConfig(ctx, data)
+	sessionConfig, err := buildSessionConfig(ctx, data, pcSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -74,11 +74,22 @@ func NewSTSClient(ctx context.Context, data map[string][]byte, pcSpec *apisv1alp
 	}), nil
 }
 
-func buildSessionConfig(ctx context.Context, data map[string][]byte) (aws.Config, error) {
+// resolveRegion returns the ProviderConfig's region, falling back to
+// defaultRegion. The AWS SDK refuses to resolve an S3 endpoint without a
+// region, so this must never return an empty string.
+func resolveRegion(pcSpec *apisv1alpha1.ProviderConfigSpec) string {
+	if pcSpec != nil && pcSpec.Region != nil && *pcSpec.Region != "" {
+		return *pcSpec.Region
+	}
+
+	return defaultRegion
+}
+
+func buildSessionConfig(ctx context.Context, data map[string][]byte, pcSpec *apisv1alpha1.ProviderConfigSpec) (aws.Config, error) {
 	return config.LoadDefaultConfig(ctx,
 		config.WithRetryMaxAttempts(retry.DefaultRetry.Steps),
 		config.WithRetryMode(aws.RetryModeStandard),
-		config.WithRegion(defaultRegion),
+		config.WithRegion(resolveRegion(pcSpec)),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
 			string(data[consts.KeyAccessKey]),
 			string(data[consts.KeySecretKey]),

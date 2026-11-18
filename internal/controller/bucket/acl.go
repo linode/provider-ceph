@@ -5,66 +5,54 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 	"github.com/go-logr/logr"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
-	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
 	"github.com/linode/provider-ceph/internal/backendstore"
 	"github.com/linode/provider-ceph/internal/consts"
 	"github.com/linode/provider-ceph/internal/controller/s3clienthandler"
 	"github.com/linode/provider-ceph/internal/otel/traces"
 	"github.com/linode/provider-ceph/internal/rgw"
-
-	"go.opentelemetry.io/otel"
 )
 
 // ACLClient is the client for API methods and reconciling the ACL
 type ACLClient struct {
-	backendStore    *backendstore.BackendStore
-	s3ClientHandler *s3clienthandler.Handler
-	log             logr.Logger
+	BaseSubresourceClient
 }
 
 // NewACLClient creates the client for ACL
 func NewACLClient(b *backendstore.BackendStore, h *s3clienthandler.Handler, l logr.Logger) *ACLClient {
-	return &ACLClient{backendStore: b, s3ClientHandler: h, log: l}
+	return &ACLClient{BaseSubresourceClient: NewBaseSubresourceClient(b, h, l)}
 }
 
-func (l *ACLClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
-	_, span := otel.Tracer("").Start(ctx, "bucket.ACLClient.Observe")
-	defer span.End()
-
-	observationChan := make(chan ResourceStatus)
-
-	for _, backendName := range backendNames {
-		beName := backendName
-		go func() {
-			if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-				// If a backend is marked as unhealthy, we can ignore it for now by returning NoAction.
-				// The backend may be down for some time and we do not want to block Create/Update/Delete
-				// calls on other backends. By returning NoAction here, we would never pass the Observe
-				// phase until the backend becomes Healthy or Disabled.
-				observationChan <- NoAction
-
-				return
-			}
-			observationChan <- l.observeBackend(ctx, bucket, beName)
-		}()
-	}
-
-	for i := 0; i < len(backendNames); i++ {
-		observation := <-observationChan
-		if observation == NeedsUpdate || observation == NeedsDeletion {
-			return observation, nil
-		}
-	}
-
-	return Updated, nil
+func (a *ACLClient) Observe(ctx context.Context, bucket *v1alpha1.Bucket, backendNames []string) (ResourceStatus, error) {
+	return a.BaseSubresourceClient.Observe(ctx, bucket, backendNames, a)
 }
 
-func (l *ACLClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) ResourceStatus {
-	_, log := traces.InjectTraceAndLogger(ctx, l.log)
+func (a *ACLClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+	return a.BaseSubresourceClient.Handle(ctx, b, backendName, bb, a)
+}
+
+// Implement Subresource interface
+
+func (a *ACLClient) GetLogger() logr.Logger {
+	return a.log
+}
+
+func (a *ACLClient) GetBackendStore() *backendstore.BackendStore {
+	return a.backendStore
+}
+
+func (a *ACLClient) GetS3ClientHandler() *s3clienthandler.Handler {
+	return a.s3ClientHandler
+}
+
+func (a *ACLClient) GetObserveErrorMsg() string {
+	return errObserveAcl
+}
+
+func (a *ACLClient) ObserveBackend(ctx context.Context, bucket *v1alpha1.Bucket, backendName string) (ResourceStatus, error) {
+	_, log := traces.InjectTraceAndLogger(ctx, a.log)
 
 	log.V(1).Info("Observing subresource acl on backend", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
@@ -73,7 +61,7 @@ func (l *ACLClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket,
 	if s3types.ObjectOwnership(aws.ToString(bucket.Spec.ForProvider.ObjectOwnership)) == s3types.ObjectOwnershipBucketOwnerEnforced {
 		log.V(1).Info("Access control limits are disabled - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
-		return Updated
+		return Updated, nil
 	}
 
 	if bucket.Spec.ForProvider.ACL == nil &&
@@ -85,42 +73,38 @@ func (l *ACLClient) observeBackend(ctx context.Context, bucket *v1alpha1.Bucket,
 		bucket.Spec.ForProvider.GrantReadACP == nil {
 		log.V(1).Info("No acl or access control policy or grants requested - no action required", consts.KeyBucketName, bucket.Name, consts.KeyBackendName, backendName)
 
-		return Updated
+		return Updated, nil
 	}
 
-	return NeedsUpdate
+	return NeedsUpdate, nil
 }
 
-func (l *ACLClient) Handle(ctx context.Context, b *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
-	ctx, span := otel.Tracer("").Start(ctx, "bucket.ACLClient.Handle")
-	defer span.End()
+// Implement Subresource interface
 
-	if l.backendStore.GetBackendHealthStatus(backendName) == apisv1alpha1.HealthStatusUnhealthy {
-		traces.SetAndRecordError(span, errUnhealthyBackend)
+func (a *ACLClient) GetHandleErrorMsg() string {
+	return errHandleAcl
+}
 
-		return errUnhealthyBackend
-	}
+func (a *ACLClient) GetSubresourceName() string {
+	return "ACLClient"
+}
 
-	switch l.observeBackend(ctx, b, backendName) {
+func (a *ACLClient) HandleObservation(ctx context.Context, observation ResourceStatus, bucket *v1alpha1.Bucket, backendName string, bb *bucketBackends) error {
+	switch observation {
 	case NoAction, Updated:
 		return nil
 	case NeedsUpdate, NeedsDeletion:
-		if err := l.createOrUpdate(ctx, b, backendName); err != nil {
-			err = errors.Wrap(err, errHandleAcl)
-			traces.SetAndRecordError(span, err)
-
-			return err
-		}
+		return a.createOrUpdate(ctx, bucket, backendName)
 	}
 
 	return nil
 }
 
-func (l *ACLClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
-	ctx, log := traces.InjectTraceAndLogger(ctx, l.log)
+func (a *ACLClient) createOrUpdate(ctx context.Context, b *v1alpha1.Bucket, backendName string) error {
+	ctx, log := traces.InjectTraceAndLogger(ctx, a.log)
 
 	log.Info("Updating acl", consts.KeyBucketName, b.Name, consts.KeyBackendName, backendName)
-	s3Client, err := l.s3ClientHandler.GetS3Client(ctx, b, backendName)
+	s3Client, err := a.s3ClientHandler.GetS3Client(ctx, b, backendName)
 	if err != nil {
 		return err
 	}

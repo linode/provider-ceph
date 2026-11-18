@@ -299,7 +299,7 @@ func TestPolicyObserveBackend(t *testing.T) {
 				logr.Discard(),
 			)
 
-			got, err := c.observeBackend(context.Background(), tc.args.bucket, tc.args.backendName)
+			got, err := c.ObserveBackend(context.Background(), tc.args.bucket, tc.args.backendName)
 			require.ErrorIs(t, err, tc.want.err, "unexpected error")
 			assert.Equal(t, tc.want.status, got, "unexpected status")
 		})

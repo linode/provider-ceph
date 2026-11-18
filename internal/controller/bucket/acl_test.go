@@ -24,6 +24,7 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/linode/provider-ceph/apis/provider-ceph/v1alpha1"
 	apisv1alpha1 "github.com/linode/provider-ceph/apis/v1alpha1"
@@ -240,7 +241,8 @@ func TestACLObserveBackend(t *testing.T) {
 					s3clienthandler.WithBackendStore(tc.fields.backendStore)),
 				logr.Discard())
 
-			got := c.observeBackend(context.Background(), tc.args.bucket, tc.args.backendName)
+			got, err := c.ObserveBackend(context.Background(), tc.args.bucket, tc.args.backendName)
+			require.NoError(t, err, "unexpected error")
 			assert.Equal(t, tc.want.status, got, "unexpected status")
 		})
 	}

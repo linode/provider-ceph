@@ -33,6 +33,13 @@ type ProviderConfigSpec struct {
 	// HostBase url specified in s3cfg.
 	HostBase string `json:"hostBase"`
 
+	// Region used to sign requests to this backend. Defaults to us-east-1 when
+	// unset. S3 implementations that validate the SigV4 credential scope reject
+	// requests signed for a different region, so a backend serving some other
+	// region needs this set to match it.
+	// +optional
+	Region *string `json:"region,omitempty"`
+
 	// STSAddress is a separate url for an optional external authenticator service.
 	// This service should be able to handle the AssumeRole S3 API call.
 	// If unset, STSAddress defaults to that of HostBase.

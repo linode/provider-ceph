@@ -87,6 +87,11 @@ func (in *ProviderConfigList) DeepCopyObject() runtime.Object {
 func (in *ProviderConfigSpec) DeepCopyInto(out *ProviderConfigSpec) {
 	*out = *in
 	in.Credentials.DeepCopyInto(&out.Credentials)
+	if in.Region != nil {
+		in, out := &in.Region, &out.Region
+		*out = new(string)
+		**out = **in
+	}
 	if in.STSAddress != nil {
 		in, out := &in.STSAddress, &out.STSAddress
 		*out = new(string)
